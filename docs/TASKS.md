@@ -27,7 +27,7 @@ Updated 2026-10-08. Steps map to the MVP scope in `SPEC.md`.
 
 - [ ] Update GitHub Actions versions before GitHub drops Node 20 for actions (deploy shows a deprecation warning; still works)
 
-- [ ] **Follow-up #1: saved places last forever** (Supabase + magic link proposed; decide at kickoff)
+- [ ] **Follow-up #1: saved places last forever**: plan drafted in `docs/PLAN-saved-places-forever.md`; needs Ashley to answer sharing (personal vs. shared lists) and budget (free + keep-alive vs. paid)
 - [ ] Shrink `bathrooms.json` (522 KB uncompressed): drop non-essential fields or split by borough
 - [ ] "This info is wrong" report link
 - [ ] Review hours for other boroughs
