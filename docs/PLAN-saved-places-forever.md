@@ -1,6 +1,6 @@
 # Plan: saved places last forever (Follow-up #1)
 
-Status: **draft for Ashley's review**, 2026-10-08. Nothing built yet.
+Status: **approved for phase 1** (free plan), 2026-10-08. Phase 2 = snapshots. Phase 3 = separate spec later. Nothing built yet.
 
 ## Roadmap for lists (Ashley, 2026-10-08)
 
@@ -8,7 +8,7 @@ Status: **draft for Ashley's review**, 2026-10-08. Nothing built yet.
 |---|---|---|
 | **1. Personal list, kept forever** | Each person has their own list they add to and edit, saved to their account | This plan (below) |
 | **2. Share and import** | Share your list with a friend; import a friend's list into your own (copies their places in as yours) | Phase 1 accounts + a share link |
-| **3. Public list** | Ashley publishes chosen places as a public list that everyone sees in Nearby, alongside the city's restrooms | Phase 1 + an "admin" role for Ashley |
+| **3. Public list** | Ashley publishes chosen places as a public list that everyone sees in Nearby, alongside the city's restrooms | Phase 1 + an "admin" role for Ashley. *Separate spec conversation later.* |
 
 Phase 1 is designed so phases 2 and 3 don't need a data migration (see "Ready for phases 2 and 3").
 
@@ -25,7 +25,7 @@ Should we store each person's saved places on a server (Supabase), tied to a sig
 5. **Supabase free plan pauses inactive projects.** After ~7 days of low database activity it pauses (restorable for 90 days); paid plans never pause ([Supabase docs](https://supabase.com/docs/guides/platform/free-project-pausing)). For a friends-scale app with quiet weeks, this is a real risk to "forever".
 6. **No secrets in the public repo.** Supabase's browser key is designed to be public; access is enforced on the server with row-level security (each person can read and write only their own rows). The admin key never goes in the app or the repo.
 7. **Sharing: answered.** Lists are personal first; sharing (phase 2) means sending a copy that the friend imports into their own list, not one shared list that several people edit.
-8. **OQ: budget.** Free plan + a daily "keep-alive" query from our nightly job, or the paid plan (no pausing)? *Needs Ashley's answer; check current Supabase pricing before deciding.* [Assumption: the paid plan is roughly $25/month; verify on supabase.com/pricing.]
+8. **Budget: answered.** Free plan, with a daily keep-alive query from our nightly job. Upgrade only when we hit a specific limit: the project pauses despite the keep-alive, or usage nears a free-plan limit (database size, monthly active users, bandwidth; check current numbers on supabase.com/pricing).
 
 ## 3. Proposal
 
@@ -64,11 +64,12 @@ Decisions made now so later phases are additive:
 - **Share:** "Share my list" creates a link (`…/#/import/<code>`) to a read-only snapshot of your list on the server, opened through the phone's share sheet (Messages, WhatsApp…). You choose which places to include; notes are left out unless you tick "include notes".
 - **Import:** opening the link shows the friend's places with a preview ("Sam's list · 6 places") and "Add to my list". They become copies in your own list (`origin: imported`) that you can edit or delete like any other.
 - **Works without accounts too:** the existing backup file can already be shared and imported, so a file-based version of phase 2 can ship before phase 1 if wanted (import would need to copy places as new ones rather than merge by id).
-- **OQ:** should a share link show your latest list (live) or a snapshot from when you shared it? Snapshot is simpler and more private; proposed default.
+- **Decided: snapshot.** A share link shows your list as it was when you shared it; sharing again makes a new snapshot.
 
-### Phase 3 sketch: public list
+### Phase 3: public list (data structure only)
 
-- Ashley gets a "Publish" toggle on her own places (admin only). Published places appear in Nearby for everyone with a badge (e.g. "NYC Poops pick") and the same Open / Hours unknown rules as city data.
-- **Accuracy:** publishing requires hours (or explicitly "Hours unknown") and shows "Last checked <date>" from the place's last edit.
-- **OQ:** will the public list ever take suggestions from other people (e.g. "Suggest this place")? If yes, that needs a review queue; if Ashley-only, no moderation is needed.
-- **OQ:** private businesses (cafés, stores) on a public list: label them "Customers only" or similar, so the app doesn't promise access a business doesn't offer.
+Phase 3 gets its own planning/spec conversation when we get there. For now it only shapes the tables:
+
+- `places.published_at` (nullable): set only by an admin account (Ashley); row-level security lets everyone read published places and only the owner/admin change them.
+- Notes stay private unless a per-place "include notes" flag is set, so publishing never exposes door codes by accident.
+- `profiles.is_admin` (boolean, default false), set by hand in the database, never from the app.

@@ -54,3 +54,6 @@ Canvas: https://claude.ai/artifact/TaZJrd5tawKGG1meXcGfdL (11 screens, requireme
 1. **Personal list per person**, which they add to and edit (kept forever via accounts: phase 1).
 2. **Share your list, or import a friend's** into your own list (imported places become your own copies: phase 2).
 3. **Eventually a public list** Ashley publishes, added to the default restroom list in Nearby (phase 3).
+- **Phase 1 runs on Supabase's free plan** with a nightly keep-alive query; upgrade only when a specific limit is hit (pausing despite the keep-alive, or nearing a free-plan quota).
+- **Phase 2 share links are snapshots** of your list at the time you share it.
+- **Phase 3 gets its own spec conversation later.** For now it only informs the data model (a published flag, an admin flag, notes private by default).

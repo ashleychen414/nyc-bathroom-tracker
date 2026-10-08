@@ -27,9 +27,9 @@ Updated 2026-10-08. Steps map to the MVP scope in `SPEC.md`.
 
 - [ ] Update GitHub Actions versions before GitHub drops Node 20 for actions (deploy shows a deprecation warning; still works)
 
-- [ ] **Lists phase 1: personal list kept forever** (accounts + sync). Plan: `docs/PLAN-saved-places-forever.md`. Open: budget (free + keep-alive vs. paid)
-- [ ] **Lists phase 2: share your list / import a friend's list** into your own (copies). Open: live link vs. snapshot (snapshot proposed)
-- [ ] **Lists phase 3: Ashley's public list** shown to everyone in Nearby. Open: suggestions from others?; labeling customers-only places
+- [ ] **Lists phase 1: personal list kept forever** (accounts + sync). Plan: `docs/PLAN-saved-places-forever.md`. Decided: Supabase free plan + nightly keep-alive; upgrade only when a limit is hit
+- [ ] **Lists phase 2: share your list / import a friend's list** into your own (copies). Decided: snapshot links
+- [ ] **Lists phase 3: Ashley's public list** shown to everyone in Nearby. Needs its own planning/spec conversation first (phase 1 tables already leave room for it)
 - [ ] Shrink `bathrooms.json` (522 KB uncompressed): drop non-essential fields or split by borough
 - [ ] "This info is wrong" report link
 - [ ] Review hours for other boroughs
