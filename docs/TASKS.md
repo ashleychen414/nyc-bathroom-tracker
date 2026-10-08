@@ -12,12 +12,14 @@ Updated 2026-10-08. Steps map to the MVP scope in `SPEC.md`.
 
 ## Next (MVP build order)
 
-- [ ] **Easier edit / delete for saved places** (Ashley, 2026-10-08). Today it exists but is buried: My places → Edit log → "Delete place" at the bottom of the form. Make it obvious: e.g. Edit and Delete on each My places card and on the place's detail screen, with a confirm (or an Undo toast) for delete.
-- [ ] Map view follow-ups: tap a spot on the map to add a place; remember the map position between visits.
-- [ ] **Saving without a confirmation step** (feedback 2026-10-08: "the save confirmation screen is confusing i wish i could just have it saved all the time"). First confirm which screen they meant:
+- [ ] **Lists phase 1: personal list kept forever** (accounts + sync). Plan: `docs/PLAN-saved-places-forever.md`. Decided: Supabase free plan + nightly keep-alive; upgrade only when a limit is hit
+  - Priority #1 (Ashley, 2026-10-08). Once places are saved to an account, simplify the screens that exist only to protect phone-only data: the "Keep your places safe" Home Screen sheet, the backup sheet, and the "Saved on this phone only" notes. That should also resolve the "save confirmation screen" feedback below.
+- [ ] **Saving without a confirmation step** (likely solved by lists phase 1; re-check with the tester after) (feedback 2026-10-08: "the save confirmation screen is confusing i wish i could just have it saved all the time"). First confirm which screen they meant:
   - The "Keep your places safe" sheet after saving → make it less interruptive (e.g. a small banner on My places instead of a pop-up), or show it only once.
   - The Save button on the log form → save changes automatically as you tap ratings/type notes (no Save/Cancel).
   - Or they want places kept without any extra steps → that's Follow-up #1 (places last forever), which removes the need for the Home Screen prompt.
+- [ ] **Easier edit / delete for saved places** (Ashley, 2026-10-08; lower priority). Today it exists but is buried: My places → Edit log → "Delete place" at the bottom of the form. Make it obvious: e.g. Edit and Delete on each My places card and on the place's detail screen, with a confirm (or an Undo toast) for delete.
+- [ ] Map view follow-ups: tap a spot on the map to add a place; remember the map position between visits.
 - [ ] Test on a real iPhone once hosted: GPS, first-launch flow, time pickers, emoji tap targets (location only works on https)
 - [ ] Launch to friends; start logging in `FEEDBACK.md`
 
@@ -27,7 +29,6 @@ Updated 2026-10-08. Steps map to the MVP scope in `SPEC.md`.
 
 - [ ] Update GitHub Actions versions before GitHub drops Node 20 for actions (deploy shows a deprecation warning; still works)
 
-- [ ] **Lists phase 1: personal list kept forever** (accounts + sync). Plan: `docs/PLAN-saved-places-forever.md`. Decided: Supabase free plan + nightly keep-alive; upgrade only when a limit is hit
 - [ ] **Lists phase 2: share your list / import a friend's list** into your own (copies). Decided: snapshot links
 - [ ] **Lists phase 3: Ashley's public list** shown to everyone in Nearby. Needs its own planning/spec conversation first (phase 1 tables already leave room for it)
 - [ ] Shrink `bathrooms.json` (522 KB uncompressed): drop non-essential fields or split by borough
