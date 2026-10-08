@@ -1,5 +1,7 @@
-# Publishes the app to GitHub Pages on every push to main, and nightly with fresh
-# NYC Open Data. If the city's API is down, the committed data is deployed instead.
+# Publishes the app to GitHub Pages on every push to main. Nightly, it also refreshes
+# the restroom data from NYC Open Data and commits it when the city data changed;
+# that commit is what makes Vercel republish. If the city's API is down, the committed
+# data is kept.
 name: Deploy
 
 on:
@@ -10,7 +12,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -31,12 +33,20 @@ jobs:
           node-version: 22
       - run: npm test
       - name: Refresh restroom data
-        run: npm run data || echo "::warning::Data refresh failed; deploying the committed data"
-      - name: Assemble site
+        if: github.event_name != 'push'
         run: |
-          mkdir _site
-          cp -r index.html src public _site/
-          find _site -name '*.test.js' -delete
+          if npm run data; then
+            if [ -n "$(git status --porcelain public/data data)" ]; then
+              git config user.name "github-actions[bot]"
+              git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+              git add public/data data
+              git commit -m "Refresh restroom data from NYC Open Data"
+              git push
+            fi
+          else
+            echo "::warning::Data refresh failed; deploying the committed data"
+          fi
+      - run: node scripts/assemble-site.mjs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
