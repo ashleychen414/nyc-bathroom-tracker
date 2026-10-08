@@ -13,6 +13,16 @@ Updated 2026-10-08. Steps map to the MVP scope in `SPEC.md`.
 
 ## Next (MVP build order)
 
+- [ ] **Better place search when adding a place** (feedback 2026-10-08: restaurants and other private places are hard to find). Today's search (Photon / OpenStreetMap) is weak on businesses. Options to compare:
+  - A business-focused search service with a free tier (e.g. Geoapify or Mapbox Search); needs an API key restricted to our domain
+  - Google Places autocomplete: best coverage, but billed per search beyond a free allowance and needs a billing account
+  - Bias results harder to the person's location and show business type ("Café · 0.1 mi") so the right one is obvious
+  - Decide: which service, and the cost ceiling. Check current free-tier limits before choosing.
+- [ ] **Bathroom layout: several separate single bathrooms** (feedback 2026-10-08). Today the log only has "Stalls: yes/no + how many", which can't express "3 separate single-stall bathrooms" (common in NYC cafés), which is different from "one bathroom with 3 stalls". Proposal: replace Stalls with **Layout**:
+  - One single bathroom
+  - Several single bathrooms → how many?
+  - One bathroom with stalls → how many stalls?
+  - Card chips like "3 single bathrooms" / "1 bathroom, 4 stalls". Existing logs convert automatically (Stalls = yes + count → "with stalls"; Stalls = no → "one single bathroom"). Public restroom data already has "Single-stall / Multi-stall" types to show alongside.
 - [ ] Confirm sync end to end: sign in on a phone with saved places, check they appear on a second device / in Supabase
 - [ ] **Lists phase 1: personal list kept forever** (accounts + sync). Plan: `docs/PLAN-saved-places-forever.md`. Decided: Supabase free plan + nightly keep-alive; upgrade only when a limit is hit
   - Priority #1 (Ashley, 2026-10-08). Once places are saved to an account, simplify the screens that exist only to protect phone-only data: the "Keep your places safe" Home Screen sheet, the backup sheet, and the "Saved on this phone only" notes. That should also resolve the "save confirmation screen" feedback below.
