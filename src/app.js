@@ -3,13 +3,15 @@
 // Routes: #/nearby (default), #/places, #/welcome, #/r/<restroom id>, #/mine/<place id>,
 //         #/add, #/edit/<place id>, #/log/<restroom id>
 
-import { listPlaces, getPlace } from './lib/storage.js';
+import { listPlaces, getPlace, exportPlaces, importPlaces } from './lib/storage.js';
+import { isStandalone, mobilePlatform } from './lib/device.js';
 import { getPosition, distanceMiles, lookupZip } from './lib/geo.js';
 import { buildEntries, nearby } from './lib/nearby.js';
 import { welcomeView, nearbyView, publicDetailView, mineDetailView } from './views/nearby.js';
 import { placesView } from './views/places.js';
 import { openForm, closeForm, isFormOpen, handleFormClick, handleFormInput } from './views/form.js';
 import { tabBar } from './views/shared.js';
+import { homeScreenSheet, backupSheet, backupResult } from './views/sheets.js';
 
 const app = document.getElementById('app');
 
@@ -42,6 +44,9 @@ const state = {
   zipStatus: '',
   radius: prefs.radius ?? 0.5,
   filters: { kind: 'all', openNow: false, accessible: false, changing: false },
+  sheet: null, // 'homescreen' | 'backup'
+  backupMessage: '',
+  backupError: '',
 };
 
 // ---------- Routing ----------
@@ -67,8 +72,19 @@ function goBack(fallback) {
   else location.replace(fallback);
 }
 
+function sheetHtml() {
+  if (state.sheet === 'homescreen') return homeScreenSheet(mobilePlatform());
+  if (state.sheet === 'backup') {
+    return backupSheet({ count: listPlaces().length, lastExport: prefs.lastExport, message: state.backupMessage, error: state.backupError });
+  }
+  return '';
+}
+
 function paint(html, tab) {
-  app.innerHTML = html + (tab ? tabBar(tab) : '');
+  const hadSheet = Boolean(app.querySelector('.sheet'));
+  app.innerHTML = html + (tab ? tabBar(tab) : '') + sheetHtml();
+  document.body.classList.toggle('sheet-open', Boolean(state.sheet));
+  if (state.sheet && !hadSheet) app.querySelector('.sheet')?.focus();
   app.classList.toggle('has-tabbar', Boolean(tab));
   if (paintedHash !== location.hash) window.scrollTo(0, 0);
   paintedHash = location.hash;
@@ -122,7 +138,11 @@ function render() {
       paintedHash = location.hash;
       app.classList.remove('has-tabbar');
       window.scrollTo(0, 0);
-      return openForm(app, opts, { here: state.here, done: () => goBack(name === 'log' ? `#/r/${encodeURIComponent(id)}` : '#/places') });
+      return openForm(app, opts, {
+        here: state.here,
+        saved: ({ isNew }) => isNew && maybePromptHomeScreen(),
+        done: () => goBack(name === 'log' ? `#/r/${encodeURIComponent(id)}` : '#/places'),
+      });
     }
 
     default: {
@@ -139,6 +159,64 @@ function render() {
 function refresh() {
   const { name } = parseRoute();
   if (!['add', 'edit', 'log', 'welcome'].includes(name)) render();
+}
+
+// ---------- Sheets ----------
+
+// After the 1st and 3rd new place, on phones, until the app is on the Home Screen.
+function maybePromptHomeScreen() {
+  const saves = (prefs.saves ?? 0) + 1;
+  savePrefs({ saves });
+  if (mobilePlatform() && !isStandalone() && (saves === 1 || saves === 3)) state.sheet = 'homescreen';
+}
+
+function openSheet(name) {
+  state.sheet = name;
+  state.backupMessage = '';
+  state.backupError = '';
+  render();
+}
+
+function closeSheet() {
+  state.sheet = null;
+  render();
+}
+
+async function exportBackup() {
+  const data = exportPlaces();
+  const name = `bathroom-places-${data.exportedAt.slice(0, 10)}.json`;
+  const file = new File([JSON.stringify(data, null, 2)], name, { type: 'application/json' });
+  try {
+    // On phones the share sheet is the reliable way to save a file ("Save to Files").
+    if (mobilePlatform() && navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: 'Bathroom Finder backup' });
+    else {
+      const url = URL.createObjectURL(file);
+      const a = Object.assign(document.createElement('a'), { href: url, download: name });
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+  } catch (err) {
+    if (err.name === 'AbortError') return; // closed the share sheet
+    state.backupError = "Couldn't export. Try again.";
+    return render();
+  }
+  savePrefs({ lastExport: data.exportedAt });
+  state.backupMessage = `Exported ${data.places.length} place${data.places.length === 1 ? '' : 's'} to ${name}.`;
+  state.backupError = '';
+  render();
+}
+
+async function importBackup(file) {
+  try {
+    state.backupMessage = backupResult(importPlaces(await file.text()));
+    state.backupError = '';
+  } catch (err) {
+    state.backupMessage = '';
+    state.backupError = err.message;
+  }
+  render();
 }
 
 // ---------- Location ----------
@@ -200,12 +278,18 @@ function useZip() {
 // ---------- Events ----------
 
 app.addEventListener('click', (e) => {
-  const target = e.target.closest('button');
+  const target = e.target.closest('button, [data-action="close-sheet"]');
   if (!target) return;
   if (handleFormClick(target)) return;
 
   const { action, value } = target.dataset;
   switch (action) {
+    case 'close-sheet':
+      return closeSheet();
+    case 'open-backup':
+      return openSheet('backup');
+    case 'export':
+      return exportBackup();
     case 'back':
       return goBack('#/nearby');
     case 'radius':
@@ -231,6 +315,14 @@ app.addEventListener('click', (e) => {
       location.replace('#/nearby');
       return requestAnimationFrame(() => app.querySelector('#zip')?.focus());
   }
+});
+
+app.addEventListener('change', (e) => {
+  if (e.target.id === 'import-file' && e.target.files[0]) importBackup(e.target.files[0]);
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && state.sheet) closeSheet();
 });
 
 app.addEventListener('input', (e) => {

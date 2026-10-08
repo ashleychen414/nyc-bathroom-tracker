@@ -11,6 +11,7 @@ let root = null;
 let draft = null;
 let formKey = null;
 let onDone = null;
+let onSaved = null;
 let near = null;
 let suggestions = [];
 let searchTimer = null;
@@ -24,10 +25,11 @@ export function closeForm() {
 }
 
 // opts: { key, placeId } to edit, { key, bathroom } to log a public restroom, { key } to add.
-export function openForm(container, opts, { here, done }) {
+export function openForm(container, opts, { here, done, saved }) {
   root = container;
   formKey = opts.key;
   onDone = done;
+  onSaved = saved;
   near = here;
   suggestions = [];
   const existing = opts.placeId ? getPlace(opts.placeId) : null;
@@ -278,6 +280,7 @@ function save() {
   } catch {
     return (error.textContent = "Couldn't save on this phone. Check that your browser allows site data.");
   }
+  onSaved?.({ isNew: !draft.id });
   finish();
 }
 

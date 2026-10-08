@@ -1,6 +1,6 @@
 // My places tab: the user's saved places, nearest first.
 
-import { esc, formatDate } from '../lib/html.js';
+import { esc, formatDate, icon } from '../lib/html.js';
 import { distanceMiles, formatDistance, directionsUrl } from '../lib/geo.js';
 import { getStatus } from '../lib/hours.js';
 import { placeStatus } from '../lib/nearby.js';
@@ -36,7 +36,10 @@ export function placesView(s, places) {
   return `
     <header class="bar">
       <h1>My places</h1>
-      <a class="btn primary" href="#/add">+ Add</a>
+      <div class="bar-actions">
+        <button class="btn icon-btn" data-action="open-backup" aria-label="Back up your places">${icon.more()}</button>
+        <a class="btn primary" href="#/add">+ Add</a>
+      </div>
     </header>
     <main class="list">
       ${
@@ -50,6 +53,6 @@ export function placesView(s, places) {
                <p class="hint">You can also add notes to a public restroom from its detail page.</p>
              </div>`
       }
-      <p class="fineprint">Saved on this phone only. Clearing your browser data will remove them.</p>
+      <p class="fineprint">Saved on this phone only. <button class="link" data-action="open-backup">Back up</button></p>
     </main>`;
 }

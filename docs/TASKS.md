@@ -13,7 +13,6 @@ Updated 2026-10-08. Steps map to the MVP scope in `SPEC.md`.
 ## Next (MVP build order)
 
 - [ ] Test on a real iPhone once hosted: GPS, first-launch flow, time pickers, emoji tap targets (location only works on https)
-- [ ] Step 6: Add to Home Screen prompt (installable web app), permanent-storage request, export/import backup
 - [ ] Launch to friends; start logging in `FEEDBACK.md`
 
 ## Later
@@ -28,6 +27,7 @@ Updated 2026-10-08. Steps map to the MVP scope in `SPEC.md`.
 
 ## Done
 
+- [x] 2026-10-08: Step 6: installable web app (icon, manifest), Add to Home Screen sheet after 1st and 3rd new place on phones, backup sheet (export via share sheet / download, import merges by id, newer edit wins)
 - [x] 2026-10-08: Step 7: hosted on GitHub Pages at https://ashleychen414.github.io/nyc-bathroom-tracker/ with deploy on push + nightly data refresh (~5am NY)
 - [x] 2026-10-08: Steps 2-5: Nearby tab (public + your places mixed, radius, filters, open-first sort, top-up to 5, empty state), first-launch location screen, zip fallback, restroom detail with "Add notes", Hours for your places, back-button-friendly routing
 - [x] 2026-10-08: UX confirmed on the canvas; SPEC.md updated

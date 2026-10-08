@@ -390,3 +390,46 @@ a.card:active { transform: scale(.99); }
 .day { font-weight: 700; font-size: 14px; }
 .closed-toggle { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--muted); min-height: 36px; }
 #hours-group .seg { padding: 0 6px; white-space: nowrap; font-size: 15px; }
+
+/* ---------- Bottom sheets ---------- */
+body.sheet-open { overflow: hidden; }
+.sheet-backdrop { position: fixed; inset: 0; z-index: 10; background: rgba(0, 0, 0, .45); }
+.sheet {
+  position: fixed; z-index: 11; bottom: 0; left: 50%; transform: translateX(-50%);
+  width: 100%; max-width: 560px; max-height: 90dvh; overflow-y: auto;
+  background: var(--surface); border-radius: 22px 22px 0 0;
+  padding: 10px 20px calc(24px + env(safe-area-inset-bottom));
+  display: grid; gap: 14px; outline: none;
+}
+.grabber { justify-self: center; width: 40px; height: 5px; border-radius: 3px; background: var(--border); }
+.sheet h2 { font-size: 22px; font-weight: 800; }
+.steps { margin: 0; padding: 0; list-style: none; counter-reset: step; display: grid; gap: 8px; }
+.steps li {
+  counter-increment: step; display: flex; gap: 12px; align-items: center;
+  padding: 12px; border-radius: 12px; background: var(--bg);
+}
+.steps li::before {
+  content: counter(step); flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%;
+  background: var(--accent); color: var(--accent-text); font-weight: 800; font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+}
+.steps svg { vertical-align: -3px; color: var(--accent); }
+.sheet-actions { display: flex; gap: 10px; }
+.opt {
+  display: flex; gap: 14px; align-items: center; width: 100%; text-align: left; min-height: 64px;
+  padding: 14px; border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--bg); color: var(--text); font: inherit; cursor: pointer;
+}
+.opt:disabled { opacity: .5; cursor: default; }
+.opt:focus-within { outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 2px; }
+.opt-icon {
+  width: 40px; height: 40px; border-radius: 12px; background: var(--open-bg); color: var(--accent);
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.opt b { display: block; }
+.opt .sub { display: block; font-size: 14px; color: var(--muted); }
+.success { color: var(--open-text); font-weight: 600; }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.bar-actions { display: flex; gap: 8px; align-items: center; }
+.icon-btn { width: 44px; padding: 0; }
+.fineprint .link { font-size: 13px; min-height: 0; }
