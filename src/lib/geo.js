@@ -52,5 +52,16 @@ export async function reverseGeocode({ lat, lng }) {
   return feature ? toResult(feature) : null;
 }
 
-export const directionsUrl = ({ lat, lng }) =>
+// Center of an NYC zip code, used when location is off. Returns null if not found.
+export async function lookupZip(zip, signal) {
+  const params = new URLSearchParams({ q: zip, limit: '5', bbox: NYC_BBOX });
+  const res = await fetch(`${PHOTON}/api/?${params}`, { signal });
+  if (!res.ok) throw new Error(`zip lookup failed (${res.status})`);
+  const feature = (await res.json()).features.find((f) => f.properties.osm_value === 'postcode' && f.properties.name === zip);
+  if (!feature) return null;
+  const [lng, lat] = feature.geometry.coordinates;
+  return { lat, lng, area: feature.properties.district ?? feature.properties.city ?? '' };
+}
+
+export const directionsUrl =({ lat, lng }) =>
   `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=walking`;

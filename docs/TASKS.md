@@ -9,15 +9,10 @@ Updated 2026-10-08. Steps map to the MVP scope in `SPEC.md`.
   - `missing` (27): find hours or leave as "Hours unknown"
   - `unparsed` (7): write structured hours into `data/hours-overrides.json`
   - Watch for: "Temp Closed" (Paerdegat Athletic Facility) is listed as hours, not status
-- [ ] **Fix git on this Mac** (Xcode developer tools are broken). Owner: Ashley. Then `git init` and the first commit.
 
 ## Next (MVP build order)
 
-- [ ] Step 2: App shell (Vite), GPS + zip fallback, list sorted by status then distance, radius picker
-- [ ] Step 3: Status badges and greyed-out states; "City data last updated" line
-- [ ] Step 4: Public / My places filter; accessibility, stall, and changing-station tags; Google Maps link
-- [ ] Step 5 (remaining): star a public restroom to save it to My places (needs the Nearby list from step 2)
-- [ ] Test the My places prototype on a real iPhone (GPS, keyboard, stars at thumb size)
+- [ ] Test on a real iPhone once hosted: GPS, first-launch flow, time pickers, emoji tap targets (location only works on https)
 - [ ] Step 6: Add to Home Screen prompt (installable web app), permanent-storage request, export/import backup
 - [ ] Step 7: Hosting (Vercel/Netlify/GitHub Pages) + nightly data refresh (GitHub Actions)
 - [ ] Launch to friends; start logging in `FEEDBACK.md`
@@ -32,6 +27,9 @@ Updated 2026-10-08. Steps map to the MVP scope in `SPEC.md`.
 
 ## Done
 
+- [x] 2026-10-08: Steps 2-5: Nearby tab (public + your places mixed, radius, filters, open-first sort, top-up to 5, empty state), first-launch location screen, zip fallback, restroom detail with "Add notes", Hours for your places, back-button-friendly routing
+- [x] 2026-10-08: UX confirmed on the canvas; SPEC.md updated
+- [x] 2026-10-08: Git set up (Xcode 27), first commit
 - [x] 2026-10-08: My places prototype: add (current location / address search), log 7 dimensions, edit, delete, Google Maps directions, stored on the phone (`src/lib/storage.js`, schema v1)
 - [x] 2026-10-08: Planning and scope lock (see `SPEC.md`, `DECISIONS.md`)
 - [x] 2026-10-08: Step 1: data pipeline (`npm run data`), strict hours parser + status logic with tests (`npm test`)

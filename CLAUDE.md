@@ -17,6 +17,8 @@ never to "Open". Closed and non-operational restrooms are shown greyed out, not 
 - `docs/TASKS.md`: Now / Next / Later / Done. Keep it current at the end of every work session.
 - `docs/FEEDBACK.md`: user feedback, logged verbatim with date and who. Triage into TASKS.md.
 - `src/lib/hours.js`: hours parser + open/closed status (shared by build script and app).
+- `src/lib/nearby.js`: builds the Nearby list (mix, filter, sort, top-up). `src/lib/hours-form.js`: Hours form ↔ hours model.
+- `src/app.js`: state, hash routing, location. `src/views/*`: screens (nearby, places, form, shared pieces).
 - `scripts/build-data.mjs`: pulls NYC Open Data → `public/data/bathrooms.json` and `data/hours-review.md`.
 - `data/hours-overrides.json`: hand-reviewed structured hours, keyed by bathroom id. Wins over parsed hours.
 
@@ -24,6 +26,7 @@ never to "Open". Closed and non-operational restrooms are shown greyed out, not 
 
 - `npm run data`: rebuild bathroom data from NYC Open Data (no API key needed)
 - `npm test`: unit tests (node:test, no deps)
+- `npm run dev`: local server at http://localhost:5173
 
 ## Data facts (verified 2026-10-08)
 
@@ -37,7 +40,7 @@ never to "Open". Closed and non-operational restrooms are shown greyed out, not 
 ## Working conventions
 
 - No backend in the MVP. Saved places live on the user's phone behind a single storage module
-  (`src/lib/storage.js`, to be built) so the follow-up sync to a server only touches that file.
+  (`src/lib/storage.js`) so the follow-up sync to a server only touches that file.
 - Saved places need permanent ids, createdAt/updatedAt, and a schema version, so they can be
   moved to the server later.
 - Keep dependencies minimal. Flag any new paid service or API key to Ashley before adding it.

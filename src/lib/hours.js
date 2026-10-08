@@ -147,3 +147,27 @@ export function getStatus(bathroom, now = new Date()) {
 
 // Sort rank within a radius: open first, then unknown/varies, then greyed-out.
 export const STATE_RANK = { open: 0, unknown: 1, varies: 1, closed: 2 };
+
+const DAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONDAY_FIRST = [1, 2, 3, 4, 5, 6, 0];
+
+export const formatRange = ([start, end]) => `${formatTime(start)} – ${formatTime(end)}`;
+
+// Readable rows for a detail screen, grouping consecutive days with the same hours:
+// [{ label: 'Mon–Fri', text: '10am – 6pm' }, { label: 'Sun', text: 'Closed' }]. null = unknown.
+export function describeHours(hours) {
+  if (!hours) return null;
+  if (hours.kind === 'always') return [{ label: 'Every day', text: 'Open 24 hours' }];
+  if (hours.kind === 'minimum') return [{ label: 'Every day', text: `At least ${formatRange(hours.range)}` }];
+
+  const textFor = (d) => (d === null ? 'Hours unknown' : d.length === 0 ? 'Closed' : d.map(formatRange).join(', '));
+  const rows = [];
+  for (const day of MONDAY_FIRST) {
+    const text = textFor(hours.days[day]);
+    const last = rows.at(-1);
+    if (last?.text === text) last.end = DAY_SHORT[day];
+    else rows.push({ start: DAY_SHORT[day], end: null, text });
+  }
+  if (rows.length === 1) return [{ label: 'Every day', text: rows[0].text }];
+  return rows.map((r) => ({ label: r.end ? `${r.start}–${r.end}` : r.start, text: r.text }));
+}
