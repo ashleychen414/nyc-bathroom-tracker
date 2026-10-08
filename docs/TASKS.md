@@ -12,6 +12,11 @@ Updated 2026-10-08. Steps map to the MVP scope in `SPEC.md`.
 
 ## Next (MVP build order)
 
+- [ ] **Map view** (feedback 2026-10-08: "i wish there was a map view, rather than list view"). A map of Nearby with pins colored by status (open / unknown / closed), your location, and the same filters; tap a pin → detail. Decide: map instead of the list, or a List / Map toggle. Needs a map library (e.g. Leaflet + OpenStreetMap tiles, free, no key). Also unlocks "tap a spot on the map to add a place".
+- [ ] **Saving without a confirmation step** (feedback 2026-10-08: "the save confirmation screen is confusing i wish i could just have it saved all the time"). First confirm which screen they meant:
+  - The "Keep your places safe" sheet after saving → make it less interruptive (e.g. a small banner on My places instead of a pop-up), or show it only once.
+  - The Save button on the log form → save changes automatically as you tap ratings/type notes (no Save/Cancel).
+  - Or they want places kept without any extra steps → that's Follow-up #1 (places last forever), which removes the need for the Home Screen prompt.
 - [ ] Test on a real iPhone once hosted: GPS, first-launch flow, time pickers, emoji tap targets (location only works on https)
 - [ ] Launch to friends; start logging in `FEEDBACK.md`
 
@@ -24,7 +29,6 @@ Updated 2026-10-08. Steps map to the MVP scope in `SPEC.md`.
 - [ ] **Follow-up #1: saved places last forever** (Supabase + magic link proposed; decide at kickoff)
 - [ ] Shrink `bathrooms.json` (522 KB uncompressed): drop non-essential fields or split by borough
 - [ ] "This info is wrong" report link
-- [ ] Map view / tap a spot on a map to add a place
 - [ ] Review hours for other boroughs
 
 ## Done

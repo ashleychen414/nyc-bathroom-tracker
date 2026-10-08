@@ -5,7 +5,8 @@ Triage: link the resulting task in `TASKS.md`, or mark `won't do` with a reason.
 
 | Date | Who | Device | Feedback (verbatim) | Category | Triage |
 |---|---|---|---|---|---|
-| | | | | bug / data accuracy / UX / feature request | |
+| 2026-10-08 | Early tester (via Ashley) | ? | "i wish there was a map view, rather than list view" | feature request | TASKS.md → Next: Map view |
+| 2026-10-08 | Early tester (via Ashley) | ? | "the save confirmation screen is confusing i wish i could just have it saved all the time" | UX | TASKS.md → Next: Saving without a confirmation step (needs clarifying which screen) |
 
 Categories:
 - **bug**: something broke
