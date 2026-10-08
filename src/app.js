@@ -43,7 +43,8 @@ const state = {
   zipDraft: prefs.zip ?? '',
   zipStatus: '',
   radius: prefs.radius ?? 0.5,
-  filters: { kind: 'all', openNow: false, accessible: false, changing: false },
+  // Closed restrooms are hidden by default; the "Hide closed" chip turns that off.
+  filters: { kind: 'all', hideClosed: true, openNow: false, accessible: false, changing: false },
   sheet: null, // 'homescreen' | 'backup'
   backupMessage: '',
   backupError: '',

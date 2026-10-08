@@ -50,6 +50,11 @@ test('sorted open first, then unknown, then greyed out, by distance within each'
   );
 });
 
+test('Hide closed leaves out closed restrooms', () => {
+  const { inside } = nearby(buildEntries(bathrooms, places, NOW), HERE, { radius: 0.5, hideClosed: true });
+  assert.deepEqual(inside.map((e) => e.id), ['open-near', 'p-mine', 'open-far', 'unknown']);
+});
+
 test('tops up to 5 with the nearest outside the radius', () => {
   const { inside, outside } = nearby(buildEntries(bathrooms, places, NOW), HERE, { radius: 0.25 });
   assert.deepEqual(inside.map((e) => e.id), ['unknown', 'closed-near']);

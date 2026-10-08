@@ -12,6 +12,7 @@ const KINDS = [
   ['mine', 'My places'],
 ];
 const TOGGLES = [
+  ['hideClosed', 'Hide closed'],
   ['openNow', 'Open now'],
   ['accessible', 'Accessible'],
   ['changing', 'Changing station'],
@@ -103,7 +104,8 @@ function results(s, { inside, outside }) {
          ${outside.length ? `<p>Here are the closest ${what}restrooms outside your radius.</p>` : '<p>Try a wider radius or fewer filters.</p>'}
          <div class="row-actions">
            ${next ? `<button class="btn dark small" data-action="radius" data-value="${next}">Widen to ${radiusLabel(next)}</button>` : ''}
-           ${s.filters.openNow ? '<button class="btn small" data-action="toggle" data-value="openNow">Show closed too</button>' : ''}
+           ${s.filters.openNow ? '<button class="btn small" data-action="toggle" data-value="openNow">Include unknown hours</button>' : ''}
+           ${s.filters.hideClosed && !s.filters.openNow ? '<button class="btn small" data-action="toggle" data-value="hideClosed">Show closed too</button>' : ''}
          </div>
        </div>`;
   return `

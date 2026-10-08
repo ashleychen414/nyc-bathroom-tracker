@@ -33,7 +33,8 @@ export function buildEntries(bathrooms, places, now = new Date()) {
   ];
 }
 
-export function matches(entry, { kind = 'all', openNow = false, accessible = false, changing = false }) {
+export function matches(entry, { kind = 'all', hideClosed = false, openNow = false, accessible = false, changing = false }) {
+  if (hideClosed && entry.status.state === 'closed') return false;
   if (kind === 'public' && entry.kind !== 'public') return false;
   if (kind === 'mine' && !entry.place) return false;
   if (openNow && entry.status.state !== 'open') return false;

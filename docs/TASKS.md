@@ -12,7 +12,7 @@ Updated 2026-10-08. Steps map to the MVP scope in `SPEC.md`.
 
 ## Next (MVP build order)
 
-- [ ] **Map view** (feedback 2026-10-08: "i wish there was a map view, rather than list view"). A map of Nearby with pins colored by status (open / unknown / closed), your location, and the same filters; tap a pin → detail. Decide: map instead of the list, or a List / Map toggle. Needs a map library (e.g. Leaflet + OpenStreetMap tiles, free, no key). Also unlocks "tap a spot on the map to add a place".
+- [ ] **Map view** (feedback 2026-10-08: "i wish there was a map view, rather than list view"). A map of Nearby with pins colored by status (open / unknown / closed), your location, and the same filters; tap a pin → detail. Decided: a **List / Map toggle** on Nearby (list stays the default). Needs a map library (e.g. Leaflet + OpenStreetMap tiles, free, no key). Also unlocks "tap a spot on the map to add a place".
 - [ ] **Saving without a confirmation step** (feedback 2026-10-08: "the save confirmation screen is confusing i wish i could just have it saved all the time"). First confirm which screen they meant:
   - The "Keep your places safe" sheet after saving → make it less interruptive (e.g. a small banner on My places instead of a pop-up), or show it only once.
   - The Save button on the log form → save changes automatically as you tap ratings/type notes (no Save/Cancel).

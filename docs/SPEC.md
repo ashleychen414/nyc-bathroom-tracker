@@ -17,15 +17,15 @@ Scope locked 2026-10-08. UX confirmed 2026-10-08 on the [UX canvas](https://clau
 3. **Location:** first launch explains why, then asks for GPS. "Enter a zip code instead" is always available. If location is off, the app uses the zip code's center and marks distances as approximate (~).
 4. **Nearby list (core experience): public restrooms and your places, mixed.**
    - Radius 0.25 / 0.5 / 1 mi, default 0.5 (remembered)
-   - Filter chips: All · Public · My places, plus toggles Open now, Accessible (fully accessible only), Changing station
-   - Fewer than 5 inside the radius: fill to 5 with the nearest outside it, under an "Outside X mi" label. Nothing inside: say so, offer "Widen to …" and (with Open now on) "Show closed too"
+   - Filter chips: All · Public · My places, plus toggles Hide closed (on by default), Open now, Accessible (fully accessible only), Changing station
+   - Fewer than 5 inside the radius: fill to 5 with the nearest outside it, under an "Outside X mi" label. Nothing inside: say so, offer "Widen to …", plus "Include unknown hours" (Open now on) or "Show closed too" (Hide closed on)
    - Card: name, distance, status badge, "Your place" badge if saved, type, up to 3 tags, your emoji log if saved. Tap → detail
    - Footer: "City data last updated <date>"
 5. **Status (accuracy first), same rules for public restrooms and your places:**
    - Open: only when structured hours confirm it right now, in New York time
    - Hours unknown: no hours, or unparseable (your places with no hours land here)
    - Hours vary / Seasonal: may be closed; show the city's original text
-   - Greyed out: Closed, Not Operational, Closed for Construction, Not open yet, Closed now
+   - Greyed out: Closed, Not Operational, Closed for Construction, Not open yet, Closed now. **Hidden by default** via a "Hide closed" filter chip that starts on (2026-10-08); tap it to show them.
    - Sort: Open → Unknown/Varies → Greyed out, then by distance
 6. **Restroom detail:** name, type · operator · distance, status, Directions, hours (structured + the city's original text), what to expect (accessibility, restroom type, changing station, season), and a "Your notes" card. "Add notes" saves the restroom to My places and opens the log; if already saved it shows your log and "Edit notes".
 7. **My places:** your own places + public restrooms you saved, nearest first.

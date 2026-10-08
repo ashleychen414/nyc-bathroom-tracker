@@ -43,3 +43,8 @@ Canvas: https://claude.ai/artifact/TaZJrd5tawKGG1meXcGfdL (11 screens, requireme
 - **App name: NYC Poops** (page title, Home Screen name, install steps, backup file name).
 - **Logo:** Ashley's circular badge (`design/NYC_POOPs_logo.jpeg`) used for the Home Screen icon, the welcome screen, and a small mark in the Nearby header. Icons are cropped from the badge with padding so iPhone's rounded corners and Android's masks don't clip the ring.
 - **Colors follow the logo:** accent #135633 (logo green) and background #f8f4ed (logo cream), replacing the teal.
+
+## 2026-10-08: After first feedback (Ashley)
+
+- **Map view will be a List / Map toggle** on Nearby, not a replacement for the list.
+- **Nearby shows only restrooms that are open or might be, by default.** Done as a "Hide closed" filter chip that starts on, not a hard rule (Ashley's call): tapping it brings closed restrooms back, greyed out. Your saved places always show in My places.
