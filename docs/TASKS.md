@@ -4,7 +4,6 @@ Updated 2026-10-08. Steps map to the MVP scope in `SPEC.md`.
 
 ## Now
 
-- [ ] **Supabase dashboard setup for sign-in** (Ashley): email templates show the code; Site URL and redirect URLs. Then test sign-in on localhost, then publish.
 
 - [ ] **Review Brooklyn hours** (`data/hours-review.md`, 52 rows). Owner: Ashley + Claude.
   - `assumed-daily` (18): confirm they really are daily (check operator websites)
@@ -14,6 +13,7 @@ Updated 2026-10-08. Steps map to the MVP scope in `SPEC.md`.
 
 ## Next (MVP build order)
 
+- [ ] Confirm sync end to end: sign in on a phone with saved places, check they appear on a second device / in Supabase
 - [ ] **Lists phase 1: personal list kept forever** (accounts + sync). Plan: `docs/PLAN-saved-places-forever.md`. Decided: Supabase free plan + nightly keep-alive; upgrade only when a limit is hit
   - Priority #1 (Ashley, 2026-10-08). Once places are saved to an account, simplify the screens that exist only to protect phone-only data: the "Keep your places safe" Home Screen sheet, the backup sheet, and the "Saved on this phone only" notes. That should also resolve the "save confirmation screen" feedback below.
 - [ ] **Saving without a confirmation step** (likely solved by lists phase 1; re-check with the tester after) (feedback 2026-10-08: "the save confirmation screen is confusing i wish i could just have it saved all the time"). First confirm which screen they meant:
@@ -39,6 +39,7 @@ Updated 2026-10-08. Steps map to the MVP scope in `SPEC.md`.
 
 ## Done
 
+- [x] 2026-10-08: Lists phase 1 live on www.nycpoops.com: email-code sign-in (custom SMTP via Resend from nycpoops.com), background sync, account sheet. Ashley tested sign-in locally; place upload to the account still to confirm on a real phone
 - [x] 2026-10-08: Bug: "Sign in" button on the My places banner wrapped onto two lines (Ashley). Fixed: the button keeps its width and doesn't wrap
 - [x] 2026-10-08: Map view: List / Map toggle on Nearby (remembered), pins colored by status, your places ringed in blue, your location + radius circle, tap a pin → name, status, Details, Directions. Leaflet 1.9.4 from cdnjs (integrity-pinned) + OpenStreetMap tiles
 - [x] 2026-10-08: Vercel hosting at https://nyc-bathroom-tracker-ashley-s-sandbox.vercel.app/ (linked to GitHub, login wall off); nightly refresh commits data only when it changes

@@ -26,6 +26,7 @@ never to "Open". Closed and non-operational restrooms are shown greyed out, not 
 
 ## Hosting
 
+- **Main link: https://www.nycpoops.com** (domain bought on Vercel; nycpoops.com redirects to www). Email codes are sent from noreply@nycpoops.com via Resend (custom SMTP in Supabase).
 - Vercel: https://nyc-bathroom-tracker-ashley-s-sandbox.vercel.app/ (team ashley-s-sandbox, linked to GitHub; builds on every push via `vercel.json`).
 - GitHub Pages: https://ashleychen414.github.io/nyc-bathroom-tracker/ (public repo ashleychen414/nyc-bathroom-tracker).
 - Both publish `_site/` from `scripts/assemble-site.mjs`. `.github/workflows/deploy.yml` deploys Pages on every push, and nightly refreshes the city data and commits it only when it changed (that commit is what redeploys Vercel).
