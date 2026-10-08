@@ -22,6 +22,12 @@ never to "Open". Closed and non-operational restrooms are shown greyed out, not 
 - `scripts/build-data.mjs`: pulls NYC Open Data → `public/data/bathrooms.json` and `data/hours-review.md`.
 - `data/hours-overrides.json`: hand-reviewed structured hours, keyed by bathroom id. Wins over parsed hours.
 
+## Hosting
+
+- Live: https://ashleychen414.github.io/nyc-bathroom-tracker/ (GitHub Pages, public repo ashleychen414/nyc-bathroom-tracker).
+- `.github/workflows/deploy.yml` deploys on every push to main and nightly with fresh city data. The repo is public: never commit personal info, keys, or private doc links.
+- Commits use the GitHub noreply email (set in this repo's git config).
+
 ## Commands
 
 - `npm run data`: rebuild bathroom data from NYC Open Data (no API key needed)
