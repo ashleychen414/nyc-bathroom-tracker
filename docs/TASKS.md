@@ -37,6 +37,11 @@ Updated 2026-10-08. Steps map to the MVP scope in `SPEC.md`.
 
 ## Later
 
+### Future ideas (backlog, Ashley 2026-10-08; spec each before building)
+
+- [ ] **Curated lists** (e.g. "Best bathrooms to cry in") that people can browse and save into their own list. Builds on lists phase 2 (import a list as your own copies) and phase 3 (lists published by NYC Poops).
+- [ ] **Visit log:** "as a user, I want to log when I went to a bathroom." A "I went here" tap that records the time, plus your visit history per place. Data: a separate `visits` table (user, place, visited_at), not inside the place's log, so visits don't overwrite each other.
+- [ ] **Aggregated visits:** "as a user, I want to see how many times people have used this bathroom so I can decide if this is a credible source." Show counts per public restroom (e.g. "Visited 23 times by 9 people"). Needs: visits tied to the city restroom id so counts combine across people; counts only, never who; a minimum number of people before showing a count, for privacy.
 - [ ] Pick the main link to share (Vercel or GitHub Pages) and optionally a nicer Vercel name or custom domain; consider turning the other one off
 
 - [ ] Update GitHub Actions versions before GitHub drops Node 20 for actions (deploy shows a deprecation warning; still works)
