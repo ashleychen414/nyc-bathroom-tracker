@@ -12,6 +12,7 @@ import { placesView } from './views/places.js';
 import { openForm, closeForm, isFormOpen, handleFormClick, handleFormInput } from './views/form.js';
 import { tabBar } from './views/shared.js';
 import { homeScreenSheet, backupSheet, backupResult } from './views/sheets.js';
+import { mountMap, unmountMap } from './views/map.js';
 
 const app = document.getElementById('app');
 
@@ -43,6 +44,7 @@ const state = {
   zipDraft: prefs.zip ?? '',
   zipStatus: '',
   radius: prefs.radius ?? 0.5,
+  view: prefs.view === 'map' ? 'map' : 'list',
   // Closed restrooms are hidden by default; the "Hide closed" chip turns that off.
   filters: { kind: 'all', hideClosed: true, openNow: false, accessible: false, changing: false },
   sheet: null, // 'homescreen' | 'backup'
@@ -83,6 +85,7 @@ function sheetHtml() {
 
 function paint(html, tab) {
   const hadSheet = Boolean(app.querySelector('.sheet'));
+  unmountMap();
   app.innerHTML = html + (tab ? tabBar(tab) : '') + sheetHtml();
   document.body.classList.toggle('sheet-open', Boolean(state.sheet));
   if (state.sheet && !hadSheet) app.querySelector('.sheet')?.focus();
@@ -151,7 +154,13 @@ function render() {
         state.data && state.here
           ? nearby(buildEntries(state.data.bathrooms, listPlaces()), state.here, { radius: state.radius, ...state.filters })
           : null;
-      return paint(nearbyView(state, list), 'nearby');
+      paint(nearbyView(state, list), 'nearby');
+      const mapEl = app.querySelector('#map');
+      if (mapEl && list) {
+        const { here } = state;
+        mountMap(mapEl, { entries: [...list.inside, ...list.outside], here, radius: state.radius, approx: here.source === 'zip', zip: here.zip });
+      }
+      return;
     }
   }
 }
@@ -296,6 +305,10 @@ app.addEventListener('click', (e) => {
     case 'radius':
       state.radius = Number(value);
       savePrefs({ radius: state.radius });
+      return render();
+    case 'view':
+      state.view = value;
+      savePrefs({ view: value });
       return render();
     case 'kind':
       state.filters.kind = value;

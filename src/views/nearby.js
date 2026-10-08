@@ -5,6 +5,7 @@ import { formatDistance, directionsUrl } from '../lib/geo.js';
 import { getStatus, describeHours } from '../lib/hours.js';
 import { RADII, placeStatus } from '../lib/nearby.js';
 import { statusBadge, mineBadge, logChips, hasLog, publicTags, restroomType, backBar, sourceDate } from './shared.js';
+import { mapLegend } from './map.js';
 
 const KINDS = [
   ['all', 'All'],
@@ -79,6 +80,11 @@ function controls(s) {
     <div class="filter-row" role="group" aria-label="Filters">${kinds}<span class="divider" aria-hidden="true"></span>${toggles}</div>`;
 }
 
+const viewToggle = (view) => `
+  <div class="view-toggle" role="group" aria-label="View">
+    ${['list', 'map'].map((v) => `<button type="button" class="${view === v ? 'on' : ''}" aria-pressed="${view === v}" data-action="view" data-value="${v}">${v === 'list' ? 'List' : 'Map'}</button>`).join('')}
+  </div>`;
+
 function entryCard(e, approx) {
   const b = e.bathroom;
   const href = e.kind === 'public' ? `#/r/${encodeURIComponent(e.id)}` : `#/mine/${encodeURIComponent(e.id)}`;
@@ -111,8 +117,13 @@ function results(s, { inside, outside }) {
   return `
     ${inside.length ? `<p class="meta">${inside.length} within ${radiusLabel(s.radius)}${near} · open first, then nearest</p>` : ''}
     ${empty}
-    ${inside.map((e) => entryCard(e, approx)).join('')}
-    ${outside.length ? `<p class="section-label">Outside ${radiusLabel(s.radius)}</p>${outside.map((e) => entryCard(e, approx)).join('')}` : ''}`;
+    ${
+      s.view === 'map'
+        ? `<div id="map" class="map" role="region" aria-label="Map of nearby restrooms"></div>${mapLegend}
+           ${outside.length ? `<p class="hint">Includes the ${outside.length} nearest outside ${radiusLabel(s.radius)}.</p>` : ''}`
+        : `${inside.map((e) => entryCard(e, approx)).join('')}
+           ${outside.length ? `<p class="section-label">Outside ${radiusLabel(s.radius)}</p>${outside.map((e) => entryCard(e, approx)).join('')}` : ''}`
+    }`;
 }
 
 export function nearbyView(s, list) {
@@ -123,7 +134,10 @@ export function nearbyView(s, list) {
   else body = results(s, list);
   return `
     <header class="top">
-      <div class="brand-row"><img class="brand-mark" src="public/brand/logo-badge.jpg" width="40" height="40" alt="NYC Poops"><h1>Nearby</h1></div>
+      <div class="brand-row">
+        <img class="brand-mark" src="public/brand/logo-badge.jpg" width="40" height="40" alt="NYC Poops"><h1>Nearby</h1>
+        ${viewToggle(s.view)}
+      </div>
       ${locationBlock(s)}
       ${controls(s)}
     </header>

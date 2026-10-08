@@ -434,3 +434,27 @@ body.sheet-open { overflow: hidden; }
 .welcome-logo { width: 168px; height: 168px; border-radius: 50%; object-fit: cover; }
 .brand-row { display: flex; align-items: center; gap: 10px; }
 .brand-mark { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+
+/* ---------- Map view ---------- */
+.brand-row h1 { flex: 1; }
+.view-toggle { display: flex; background: var(--unknown-bg); border-radius: 10px; padding: 3px; gap: 3px; }
+.view-toggle button {
+  min-height: 36px; padding: 0 14px; border: none; border-radius: 8px; background: transparent;
+  font: inherit; font-size: 14px; font-weight: 700; color: var(--unknown-text); cursor: pointer;
+}
+.view-toggle button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(0, 0, 0, .1); }
+.map {
+  height: max(340px, calc(100dvh - 330px)); border-radius: var(--radius); overflow: hidden;
+  border: 1px solid var(--border); background: var(--unknown-bg); z-index: 0;
+}
+.map-error { padding: 24px; text-align: center; color: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 12px; height: 12px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--border); }
+.legend i.mine { border-width: 3px; }
+.pin-popup { font-family: inherit; display: grid; gap: 4px; min-width: 180px; }
+.pin-popup p { margin: 0; }
+.pin-name { font-weight: 800; font-size: 15px; }
+.pin-meta { color: #57534e; font-size: 13px; }
+.pin-actions { display: flex; gap: 16px; margin-top: 4px !important; }
+.pin-actions a { color: #135633; font-weight: 700; font-size: 14px; }
