@@ -466,6 +466,7 @@ body.sheet-open { overflow: hidden; }
   background: var(--open-bg); border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
 }
 .signin-title { font-weight: 800; }
+.signin-banner .btn { flex-shrink: 0; white-space: nowrap; }
 .signin-form { display: grid; gap: 10px; }
 .code-input { font-size: 24px; letter-spacing: .3em; text-align: center; font-variant-numeric: tabular-nums; }
 .toast {
