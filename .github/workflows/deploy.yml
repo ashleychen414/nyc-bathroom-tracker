@@ -1,0 +1,45 @@
+# Publishes the app to GitHub Pages on every push to main, and nightly with fresh
+# NYC Open Data. If the city's API is down, the committed data is deployed instead.
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '17 9 * * *' # daily, ~5am New York time
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm test
+      - name: Refresh restroom data
+        run: npm run data || echo "::warning::Data refresh failed; deploying the committed data"
+      - name: Assemble site
+        run: |
+          mkdir _site
+          cp -r index.html src public _site/
+          find _site -name '*.test.js' -delete
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
+        uses: actions/deploy-pages@v4
