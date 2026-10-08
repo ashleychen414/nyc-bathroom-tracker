@@ -24,8 +24,10 @@ never to "Open". Closed and non-operational restrooms are shown greyed out, not 
 
 ## Hosting
 
-- Live: https://ashleychen414.github.io/nyc-bathroom-tracker/ (GitHub Pages, public repo ashleychen414/nyc-bathroom-tracker).
-- `.github/workflows/deploy.yml` deploys on every push to main and nightly with fresh city data. The repo is public: never commit personal info, keys, or private doc links.
+- Vercel: https://nyc-bathroom-tracker-ashley-s-sandbox.vercel.app/ (team ashley-s-sandbox, linked to GitHub; builds on every push via `vercel.json`).
+- GitHub Pages: https://ashleychen414.github.io/nyc-bathroom-tracker/ (public repo ashleychen414/nyc-bathroom-tracker).
+- Both publish `_site/` from `scripts/assemble-site.mjs`. `.github/workflows/deploy.yml` deploys Pages on every push, and nightly refreshes the city data and commits it only when it changed (that commit is what redeploys Vercel).
+- Saved places are per web address: moving users between hosts needs backup export/import. The repo is public: never commit personal info, keys, or private doc links.
 - Commits use the GitHub noreply email (set in this repo's git config).
 
 ## Commands

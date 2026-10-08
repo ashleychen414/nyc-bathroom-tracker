@@ -17,6 +17,8 @@ Updated 2026-10-08. Steps map to the MVP scope in `SPEC.md`.
 
 ## Later
 
+- [ ] Pick the main link to share (Vercel or GitHub Pages) and optionally a nicer Vercel name or custom domain; consider turning the other one off
+
 - [ ] Update GitHub Actions versions before GitHub drops Node 20 for actions (deploy shows a deprecation warning; still works)
 
 - [ ] **Follow-up #1: saved places last forever** (Supabase + magic link proposed; decide at kickoff)
@@ -27,6 +29,7 @@ Updated 2026-10-08. Steps map to the MVP scope in `SPEC.md`.
 
 ## Done
 
+- [x] 2026-10-08: Vercel hosting at https://nyc-bathroom-tracker-ashley-s-sandbox.vercel.app/ (linked to GitHub, login wall off); nightly refresh commits data only when it changes
 - [x] 2026-10-08: Step 6: installable web app (icon, manifest), Add to Home Screen sheet after 1st and 3rd new place on phones, backup sheet (export via share sheet / download, import merges by id, newer edit wins)
 - [x] 2026-10-08: Step 7: hosted on GitHub Pages at https://ashleychen414.github.io/nyc-bathroom-tracker/ with deploy on push + nightly data refresh (~5am NY)
 - [x] 2026-10-08: Steps 2-5: Nearby tab (public + your places mixed, radius, filters, open-first sort, top-up to 5, empty state), first-launch location screen, zip fallback, restroom detail with "Add notes", Hours for your places, back-button-friendly routing
