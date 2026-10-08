@@ -4,6 +4,8 @@ Updated 2026-10-08. Steps map to the MVP scope in `SPEC.md`.
 
 ## Now
 
+- [ ] **Supabase dashboard setup for sign-in** (Ashley): email templates show the code; Site URL and redirect URLs. Then test sign-in on localhost, then publish.
+
 - [ ] **Review Brooklyn hours** (`data/hours-review.md`, 52 rows). Owner: Ashley + Claude.
   - `assumed-daily` (18): confirm they really are daily (check operator websites)
   - `missing` (27): find hours or leave as "Hours unknown"

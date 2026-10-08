@@ -3,7 +3,9 @@
 // Routes: #/nearby (default), #/places, #/welcome, #/r/<restroom id>, #/mine/<place id>,
 //         #/add, #/edit/<place id>, #/log/<restroom id>
 
-import { listPlaces, getPlace, exportPlaces, importPlaces } from './lib/storage.js';
+import { listPlaces, getPlace, exportPlaces, importPlaces, clearLocal } from './lib/storage.js';
+import { currentUser, sendCode, verifyCode, signOut, deleteAccount } from './lib/auth.js';
+import { startSync, syncNow, syncStatus } from './lib/sync.js';
 import { isStandalone, mobilePlatform } from './lib/device.js';
 import { getPosition, distanceMiles, lookupZip } from './lib/geo.js';
 import { buildEntries, nearby } from './lib/nearby.js';
@@ -13,6 +15,7 @@ import { openForm, closeForm, isFormOpen, handleFormClick, handleFormInput } fro
 import { tabBar } from './views/shared.js';
 import { homeScreenSheet, backupSheet, backupResult } from './views/sheets.js';
 import { mountMap, unmountMap } from './views/map.js';
+import { signInSheet, accountSheet } from './views/account.js';
 
 const app = document.getElementById('app');
 
@@ -47,7 +50,13 @@ const state = {
   view: prefs.view === 'map' ? 'map' : 'list',
   // Closed restrooms are hidden by default; the "Hide closed" chip turns that off.
   filters: { kind: 'all', hideClosed: true, openNow: false, accessible: false, changing: false },
-  sheet: null, // 'homescreen' | 'backup'
+  sheet: null, // 'homescreen' | 'backup' | 'signin' | 'account'
+  signin: { step: 'email', email: '', code: '', busy: false, error: '', message: '' },
+  toast: '',
+  sync: syncStatus,
+  get user() {
+    return currentUser();
+  },
   backupMessage: '',
   backupError: '',
 };
@@ -76,7 +85,11 @@ function goBack(fallback) {
 }
 
 function sheetHtml() {
-  if (state.sheet === 'homescreen') return homeScreenSheet(mobilePlatform());
+  if (state.sheet === 'homescreen') return homeScreenSheet(mobilePlatform() ?? 'ios');
+  if (state.sheet === 'signin') return signInSheet(state.signin);
+  if (state.sheet === 'account' && state.user) {
+    return accountSheet({ user: state.user, status: syncStatus, count: listPlaces().length, homeScreenTip: Boolean(mobilePlatform()) && !isStandalone() });
+  }
   if (state.sheet === 'backup') {
     return backupSheet({ count: listPlaces().length, lastExport: prefs.lastExport, message: state.backupMessage, error: state.backupError });
   }
@@ -86,7 +99,7 @@ function sheetHtml() {
 function paint(html, tab) {
   const hadSheet = Boolean(app.querySelector('.sheet'));
   unmountMap();
-  app.innerHTML = html + (tab ? tabBar(tab) : '') + sheetHtml();
+  app.innerHTML = html + (tab ? tabBar(tab) : '') + sheetHtml() + (state.toast ? `<div class="toast" role="status">${state.toast}</div>` : '');
   document.body.classList.toggle('sheet-open', Boolean(state.sheet));
   if (state.sheet && !hadSheet) app.querySelector('.sheet')?.focus();
   app.classList.toggle('has-tabbar', Boolean(tab));
@@ -144,7 +157,6 @@ function render() {
       window.scrollTo(0, 0);
       return openForm(app, opts, {
         here: state.here,
-        saved: ({ isNew }) => isNew && maybePromptHomeScreen(),
         done: () => goBack(name === 'log' ? `#/r/${encodeURIComponent(id)}` : '#/places'),
       });
     }
@@ -173,13 +185,6 @@ function refresh() {
 
 // ---------- Sheets ----------
 
-// After the 1st and 3rd new place, on phones, until the app is on the Home Screen.
-function maybePromptHomeScreen() {
-  const saves = (prefs.saves ?? 0) + 1;
-  savePrefs({ saves });
-  if (mobilePlatform() && !isStandalone() && (saves === 1 || saves === 3)) state.sheet = 'homescreen';
-}
-
 function openSheet(name) {
   state.sheet = name;
   state.backupMessage = '';
@@ -189,6 +194,104 @@ function openSheet(name) {
 
 function closeSheet() {
   state.sheet = null;
+  render();
+}
+
+let toastTimer = null;
+function toast(text) {
+  state.toast = text;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    state.toast = '';
+    app.querySelector('.toast')?.remove();
+  }, 4000);
+}
+
+// ---------- Sign-in and account ----------
+
+const FRIENDLY = {
+  over_email_send_rate_limit: 'Too many codes sent. Wait a few minutes and try again.',
+  over_request_rate_limit: 'Too many tries. Wait a few minutes and try again.',
+  otp_expired: "That code didn't work or has expired. Check it, or send a new one.",
+};
+const friendly = (err) =>
+  err instanceof TypeError ? "Can't reach the server. Check your connection." : FRIENDLY[err.code] ?? (err.status === 429 ? FRIENDLY.over_request_rate_limit : err.message);
+
+function openSignIn() {
+  state.signin = { step: 'email', email: state.signin.email, code: '', busy: false, error: '', message: '' };
+  state.sheet = 'signin';
+  render();
+  app.querySelector('#signin-email')?.focus();
+}
+
+async function requestCode() {
+  const email = state.signin.email.trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    state.signin.error = 'Enter a valid email address.';
+    return render();
+  }
+  Object.assign(state.signin, { email, busy: true, error: '', message: '' });
+  render();
+  try {
+    await sendCode(email);
+    Object.assign(state.signin, { step: 'code', code: '', message: 'Code sent.' });
+  } catch (err) {
+    state.signin.error = friendly(err);
+  }
+  state.signin.busy = false;
+  render();
+  app.querySelector('#signin-code')?.focus();
+}
+
+async function checkCode() {
+  const code = state.signin.code.replace(/\D/g, '');
+  if (code.length < 6) {
+    state.signin.error = 'Enter the code from the email.';
+    return render();
+  }
+  Object.assign(state.signin, { busy: true, error: '', message: '' });
+  render();
+  try {
+    await verifyCode(state.signin.email, code);
+  } catch (err) {
+    Object.assign(state.signin, { busy: false, error: friendly(err) });
+    return render();
+  }
+  state.signin.busy = false;
+  state.sheet = null;
+  const count = listPlaces().length;
+  toast(count ? `Signed in. Saving your ${count} place${count === 1 ? '' : 's'} to your account…` : 'Signed in.');
+  render();
+  syncNow();
+}
+
+async function handleSignOut() {
+  await syncNow();
+  const unsaved = syncStatus.state !== 'synced';
+  const message = unsaved
+    ? "Some changes haven't reached your account yet (you may be offline). Sign out anyway? Those changes will be lost."
+    : "Sign out? Your places stay in your account and come back when you sign in again. They'll be removed from this phone.";
+  if (!confirm(message)) return;
+  signOut();
+  clearLocal();
+  Object.assign(syncStatus, { state: 'off', at: null, error: '' });
+  state.sheet = null;
+  toast('Signed out.');
+  render();
+}
+
+async function handleDeleteAccount() {
+  if (!confirm("Delete your account and all your saved places? This can't be undone.")) return;
+  try {
+    await deleteAccount();
+  } catch (err) {
+    alert(`Couldn't delete your account: ${friendly(err)}`);
+    return;
+  }
+  clearLocal();
+  Object.assign(syncStatus, { state: 'off', at: null, error: '' });
+  state.sheet = null;
+  toast('Your account and saved places were deleted.');
   render();
 }
 
@@ -298,6 +401,24 @@ app.addEventListener('click', (e) => {
       return closeSheet();
     case 'open-backup':
       return openSheet('backup');
+    case 'open-account':
+      return openSheet('account');
+    case 'open-homescreen':
+      return openSheet('homescreen');
+    case 'open-signin':
+      return openSignIn();
+    case 'resend-code':
+      return requestCode();
+    case 'change-email':
+      Object.assign(state.signin, { step: 'email', error: '', message: '' });
+      render();
+      return app.querySelector('#signin-email')?.focus();
+    case 'sign-out':
+      return handleSignOut();
+    case 'delete-account':
+      return handleDeleteAccount();
+    case 'sync-now':
+      return syncNow();
     case 'export':
       return exportBackup();
     case 'back':
@@ -331,6 +452,14 @@ app.addEventListener('click', (e) => {
   }
 });
 
+app.addEventListener('submit', (e) => {
+  const form = e.target.dataset.form;
+  if (!form) return;
+  e.preventDefault();
+  if (form === 'send-code') requestCode();
+  if (form === 'verify-code') checkCode();
+});
+
 app.addEventListener('change', (e) => {
   if (e.target.id === 'import-file' && e.target.files[0]) importBackup(e.target.files[0]);
 });
@@ -341,6 +470,8 @@ document.addEventListener('keydown', (e) => {
 
 app.addEventListener('input', (e) => {
   if (handleFormInput(e)) return;
+  if (e.target.id === 'signin-email') return void (state.signin.email = e.target.value);
+  if (e.target.id === 'signin-code') return void (state.signin.code = e.target.value);
   if (e.target.id === 'zip') {
     const zip = e.target.value.replace(/\D/g, '').slice(0, 5);
     e.target.value = zip;
@@ -354,6 +485,13 @@ app.addEventListener('input', (e) => {
 });
 
 // ---------- Start ----------
+
+// Re-render after a sync only where it shows: My places, the account sheet, or when places changed.
+startSync((changed) => {
+  const { name } = parseRoute();
+  if (['add', 'edit', 'log', 'welcome'].includes(name)) return;
+  if (changed || name === 'places' || state.sheet === 'account') render();
+});
 
 fetch('public/data/bathrooms.json')
   .then((res) => {

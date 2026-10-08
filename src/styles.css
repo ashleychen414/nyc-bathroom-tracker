@@ -458,3 +458,20 @@ body.sheet-open { overflow: hidden; }
 .pin-meta { color: #57534e; font-size: 13px; }
 .pin-actions { display: flex; gap: 16px; margin-top: 4px !important; }
 .pin-actions a { color: #135633; font-weight: 700; font-size: 14px; }
+
+/* ---------- Sign-in and account ---------- */
+.signin-banner {
+  display: flex; align-items: center; gap: 12px; justify-content: space-between;
+  padding: 14px 16px; border-radius: var(--radius);
+  background: var(--open-bg); border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border));
+}
+.signin-title { font-weight: 800; }
+.signin-form { display: grid; gap: 10px; }
+.code-input { font-size: 24px; letter-spacing: .3em; text-align: center; font-variant-numeric: tabular-nums; }
+.toast {
+  position: fixed; z-index: 20; left: 50%; transform: translateX(-50%);
+  bottom: calc(84px + env(safe-area-inset-bottom)); width: max-content; max-width: calc(100% - 32px);
+  padding: 12px 16px; border-radius: 12px; background: var(--dark); color: var(--dark-text);
+  font-weight: 600; font-size: 14px; box-shadow: 0 6px 20px rgba(0, 0, 0, .2);
+}
+.link:disabled { opacity: .5; }

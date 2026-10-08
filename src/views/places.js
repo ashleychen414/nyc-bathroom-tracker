@@ -5,6 +5,7 @@ import { distanceMiles, formatDistance, directionsUrl } from '../lib/geo.js';
 import { getStatus } from '../lib/hours.js';
 import { placeStatus } from '../lib/nearby.js';
 import { statusBadge, logChips } from './shared.js';
+import { signInBanner, syncLine } from './account.js';
 
 function placeCard(p, bathroom, approx) {
   const status = bathroom ? getStatus(bathroom) : placeStatus(p);
@@ -37,11 +38,12 @@ export function placesView(s, places) {
     <header class="bar">
       <h1>My places</h1>
       <div class="bar-actions">
-        <button class="btn icon-btn" data-action="open-backup" aria-label="Back up your places">${icon.more()}</button>
+        <button class="btn icon-btn" data-action="${s.user ? 'open-account' : 'open-backup'}" aria-label="${s.user ? 'Your account' : 'Back up your places'}">${icon.more()}</button>
         <a class="btn primary" href="#/add">+ Add</a>
       </div>
     </header>
     <main class="list">
+      ${s.user ? '' : signInBanner}
       ${
         list.length
           ? `<p class="meta">${list.length} place${list.length === 1 ? '' : 's'}${s.here ? ' · nearest first' : ''}</p>` +
@@ -53,6 +55,6 @@ export function placesView(s, places) {
                <p class="hint">You can also add notes to a public restroom from its detail page.</p>
              </div>`
       }
-      <p class="fineprint">Saved on this phone only. <button class="link" data-action="open-backup">Back up</button></p>
+      <p class="fineprint">${syncLine(s.user, s.sync)}</p>
     </main>`;
 }

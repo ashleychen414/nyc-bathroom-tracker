@@ -1,6 +1,5 @@
-// Saved places ("My places"), stored on this device for the MVP.
-// All reads and writes go through this module so follow-up #1 (sync to a server)
-// only has to change this file.
+// Saved places ("My places"). The phone's copy is the source the app reads and edits;
+// when signed in, src/lib/sync.js keeps it in step with the account copy on the server.
 //
 // Place (schema version 1):
 // {
@@ -12,7 +11,10 @@
 //     stallCount: positive integer, only when hasStalls is true
 //     notes: string
 //   }  every log field is optional; only what the user chose to log is stored
+//   hours?: hours model (see hours.js), your own places only
+//   origin?: 'mine' (default) | 'imported' (lists phase 2), importedFrom?: { name, placeId }
 //   createdAt, updatedAt: ISO strings
+//   deletedAt?: ISO string. Deleted places stay as hidden "tombstones" so the delete syncs.
 // }
 
 const KEY = 'nbt.places';
@@ -32,9 +34,16 @@ function store(places) {
   localStorage.setItem(KEY, JSON.stringify({ version: SCHEMA_VERSION, places }));
 }
 
-export const listPlaces = () => load().sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+const visible = (p) => !p.deletedAt;
 
-export const getPlace = (id) => load().find((p) => p.id === id) ?? null;
+// Lets the sync layer know something changed locally.
+const listeners = new Set();
+export const onLocalChange = (fn) => listeners.add(fn);
+const notify = () => listeners.forEach((fn) => fn());
+
+export const listPlaces = () => load().filter(visible).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+
+export const getPlace = (id) => load().find((p) => p.id === id && visible(p)) ?? null;
 
 export function savePlace(place) {
   const places = load();
@@ -44,11 +53,35 @@ export function savePlace(place) {
   if (index === -1) places.push(saved);
   else places[index] = saved;
   store(places);
+  notify();
   return saved;
 }
 
 export function deletePlace(id) {
-  store(load().filter((p) => p.id !== id));
+  const now = new Date().toISOString();
+  store(load().map((p) => (p.id === id ? { ...p, deletedAt: now, updatedAt: now } : p)));
+  notify();
+}
+
+// ---------- For the sync layer ----------
+
+export const loadAll = () => load(); // including tombstones
+export const replaceAll = (places) => store(places); // no notify: sync writes here
+export function clearLocal() {
+  try {
+    localStorage.removeItem(KEY);
+  } catch {
+    // nothing to clear
+  }
+}
+
+// Given the account copy and the phone copy, returns the merged list (newer edit wins
+// per place, tombstones included) and the places the server needs.
+export function planSync(server, local) {
+  const { places: merged } = mergePlaces(server, local);
+  const serverById = new Map(server.map((p) => [p.id, p]));
+  const toPush = merged.filter((p) => !serverById.has(p.id) || p.updatedAt > serverById.get(p.id).updatedAt);
+  return { merged, toPush };
 }
 
 // ---------- Backup ----------
@@ -56,7 +89,7 @@ export function deletePlace(id) {
 const BACKUP_APP = 'nyc-bathroom-tracker';
 
 export function exportPlaces() {
-  return { app: BACKUP_APP, version: SCHEMA_VERSION, exportedAt: new Date().toISOString(), places: load() };
+  return { app: BACKUP_APP, version: SCHEMA_VERSION, exportedAt: new Date().toISOString(), places: load().filter(visible) };
 }
 
 const isPlace = (p) =>
@@ -96,6 +129,7 @@ export function importPlaces(text) {
   if (data.version > SCHEMA_VERSION) throw new Error('That backup is from a newer version of the app. Reload and try again.');
   const { places, counts } = mergePlaces(load(), data.places);
   store(places);
+  notify();
   return counts;
 }
 

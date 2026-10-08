@@ -32,6 +32,13 @@ never to "Open". Closed and non-operational restrooms are shown greyed out, not 
 - Saved places are per web address: moving users between hosts needs backup export/import. The repo is public: never commit personal info, keys, or private doc links.
 - Commits use the GitHub noreply email (set in this repo's git config).
 
+## Accounts and sync (lists phase 1)
+
+- Supabase project **NYC Poops** (`fvombovjjgffhiphzgiw`), org **Ashley's Sandbox**, free plan. Never use the koodoslabs org (Ashley's employer).
+- Table `public.places` (id, user_id, data jsonb, updated_at, deleted_at) with row-level security: users read/insert/update only their own rows; no delete policy (deletes are tombstones). RPCs: `delete_my_account()`, `keep_alive()` (nightly GitHub Action).
+- Sign-in is a one-time **code** by email (not a link: links open Safari instead of the Home Screen app). Needs `{{ .Token }}` in the Supabase email templates.
+- `src/lib/auth.js` (plain fetch to Supabase Auth), `src/lib/sync.js` (local-first; newer edit wins per place via `planSync` in storage.js). The publishable key in `src/lib/supabase-config.js` is public by design.
+
 ## Commands
 
 - `npm run data`: rebuild bathroom data from NYC Open Data (no API key needed)

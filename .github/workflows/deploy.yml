@@ -1,7 +1,7 @@
 # Publishes the app to GitHub Pages on every push to main. Nightly, it also refreshes
 # the restroom data from NYC Open Data and commits it when the city data changed;
 # that commit is what makes Vercel republish. If the city's API is down, the committed
-# data is kept.
+# data is kept. Nightly runs also ping Supabase so the free-plan project stays awake.
 name: Deploy
 
 on:
@@ -46,6 +46,14 @@ jobs:
           else
             echo "::warning::Data refresh failed; deploying the committed data"
           fi
+      - name: Keep the Supabase project awake
+        if: github.event_name != 'push'
+        # Free-plan projects pause after ~7 quiet days; one small query a day prevents it.
+        # The publishable key is public by design (row-level security protects the data).
+        run: |
+          curl -fsS -X POST "https://fvombovjjgffhiphzgiw.supabase.co/rest/v1/rpc/keep_alive" \
+            -H "apikey: sb_publishable_ey4-1LzjhoJXRGQ7P9NbmQ_yEkQLTs-" -H "Content-Type: application/json" -d '{}' \
+            || echo "::warning::Supabase keep-alive failed"
       - run: node scripts/assemble-site.mjs
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3

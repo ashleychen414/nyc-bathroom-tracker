@@ -57,3 +57,11 @@ Canvas: https://claude.ai/artifact/TaZJrd5tawKGG1meXcGfdL (11 screens, requireme
 - **Phase 1 runs on Supabase's free plan** with a nightly keep-alive query; upgrade only when a specific limit is hit (pausing despite the keep-alive, or nearing a free-plan quota).
 - **Phase 2 share links are snapshots** of your list at the time you share it.
 - **Phase 3 gets its own spec conversation later.** For now it only informs the data model (a published flag, an admin flag, notes private by default).
+
+## 2026-10-08: Lists phase 1 build
+
+- **Supabase project in Ashley's personal org (free plan),** not the koodoslabs company org (Enterprise, billed, employer-owned).
+- **Sign in with a 6-digit email code, not a magic link.** On iPhone a link opens Safari rather than the Home Screen app, which keeps separate data.
+- **Local-first sync:** the phone's copy is what the app shows and edits; it syncs with the account in the background (after changes, on open, when back online). Newer edit wins per place; deletes sync as tombstones.
+- **Signing out removes places from that phone** (they stay in the account). If changes haven't synced yet, the app warns first.
+- **The post-save "Keep your places safe" pop-up is gone.** My places shows a sign-in banner instead, and the Home Screen tip moved into the account sheet. This should resolve the "save confirmation screen" feedback.
