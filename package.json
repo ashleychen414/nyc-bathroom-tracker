@@ -1,0 +1,15 @@
+{
+  "name": "nyc-bathroom-tracker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Find nearby public restrooms in NYC (Brooklyn first), plus your own saved places.",
+  "scripts": {
+    "dev": "node scripts/serve.mjs",
+    "data": "node scripts/build-data.mjs",
+    "test": "node --test 'src/**/*.test.js'"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

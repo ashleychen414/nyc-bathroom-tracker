@@ -1,0 +1,17 @@
+{
+  "nyc-2e635503d2": {
+    "note": "Atlantic Ave LIRR. Source: '7 a.m.-7 p.m., with a one-hour closure for cleaning from 12 noon-1 p.m.' Days not stated; read as daily.",
+    "reviewedOn": "2026-10-08",
+    "hours": { "kind": "weekly", "days": [
+      [[420, 720], [780, 1140]], [[420, 720], [780, 1140]], [[420, 720], [780, 1140]], [[420, 720], [780, 1140]],
+      [[420, 720], [780, 1140]], [[420, 720], [780, 1140]], [[420, 720], [780, 1140]]
+    ] }
+  },
+  "nyc-c5ba4c1cb9": {
+    "note": "Bensonhurst Indoor Tennis. Source: 'Mon-Fri - 7:00am - 12:00am Sat-Sun 7:00am-10:00pm'.",
+    "reviewedOn": "2026-10-08",
+    "hours": { "kind": "weekly", "days": [
+      [[420, 1320]], [[420, 1440]], [[420, 1440]], [[420, 1440]], [[420, 1440]], [[420, 1440]], [[420, 1320]]
+    ] }
+  }
+}
