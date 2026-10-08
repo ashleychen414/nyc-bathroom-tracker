@@ -2,6 +2,16 @@
 
 Status: **draft for Ashley's review**, 2026-10-08. Nothing built yet.
 
+## Roadmap for lists (Ashley, 2026-10-08)
+
+| Phase | What people get | Builds on |
+|---|---|---|
+| **1. Personal list, kept forever** | Each person has their own list they add to and edit, saved to their account | This plan (below) |
+| **2. Share and import** | Share your list with a friend; import a friend's list into your own (copies their places in as yours) | Phase 1 accounts + a share link |
+| **3. Public list** | Ashley publishes chosen places as a public list that everyone sees in Nearby, alongside the city's restrooms | Phase 1 + an "admin" role for Ashley |
+
+Phase 1 is designed so phases 2 and 3 don't need a data migration (see "Ready for phases 2 and 3").
+
 ## 1. Decision
 
 Should we store each person's saved places on a server (Supabase), tied to a sign-in by email link, so they survive a cleared browser, a new phone, or switching between our web addresses, and are deleted only when the person deletes them?
@@ -14,14 +24,14 @@ Should we store each person's saved places on a server (Supabase), tied to a sig
 4. **"Forever" requires a way back in.** If the server copy is keyed to something stored only on the phone, losing the phone loses the key. So the person needs a recoverable sign-in (email is the simplest).
 5. **Supabase free plan pauses inactive projects.** After ~7 days of low database activity it pauses (restorable for 90 days); paid plans never pause ([Supabase docs](https://supabase.com/docs/guides/platform/free-project-pausing)). For a friends-scale app with quiet weeks, this is a real risk to "forever".
 6. **No secrets in the public repo.** Supabase's browser key is designed to be public; access is enforced on the server with row-level security (each person can read and write only their own rows). The admin key never goes in the app or the repo.
-7. **OQ: sharing.** Do friends want to share a list (e.g. a group list), or is each list personal? This changes the data model. *Needs Ashley's answer before building.*
+7. **Sharing: answered.** Lists are personal first; sharing (phase 2) means sending a copy that the friend imports into their own list, not one shared list that several people edit.
 8. **OQ: budget.** Free plan + a daily "keep-alive" query from our nightly job, or the paid plan (no pausing)? *Needs Ashley's answer; check current Supabase pricing before deciding.* [Assumption: the paid plan is roughly $25/month; verify on supabase.com/pricing.]
 
 ## 3. Proposal
 
 Keep the app **local-first**: the phone's copy stays the source for showing and editing (fast, works offline), and a server copy syncs in the background once the person signs in. Signing in is optional: the app keeps working exactly as today without an account; a banner on My places says "Sign in to keep your places forever". Sign-in is a magic link by email (no password). On first sign-in, places already on the phone upload and merge with any on the server (newer edit wins), so nothing is lost when someone signs in on a second phone or our other web address.
 
-Deletes are kept as "tombstones" (a deleted flag + time) so a delete on one phone isn't undone by an older copy on another; a person's account and all their places are permanently removed only when they choose "Delete my account". Supabase on the free plan with our nightly GitHub Action also running one small query to prevent pausing; move to the paid plan if pausing ever happens or usage grows. Rough effort: **2–3 days** part-time. [Assumption: personal lists only, no sharing.]
+Deletes are kept as "tombstones" (a deleted flag + time) so a delete on one phone isn't undone by an older copy on another; a person's account and all their places are permanently removed only when they choose "Delete my account". Supabase on the free plan with our nightly GitHub Action also running one small query to prevent pausing; move to the paid plan if pausing ever happens or usage grows. Rough effort: **2–3 days** part-time.
 
 ## 4. Alternatives
 
@@ -40,3 +50,25 @@ Deletes are kept as "tombstones" (a deleted flag + time) so a delete on one phon
 5. Nightly job: add the keep-alive query (free plan only).
 6. Tests for the merge with tombstones; manual test on two devices (phone + Mac) and both web addresses.
 7. Update the privacy line in the app ("Saved on this phone only" → what's stored where) and the docs.
+
+## Ready for phases 2 and 3
+
+Decisions made now so later phases are additive:
+
+- **Each place records where it came from:** `origin` = `mine` | `imported`, plus `importedFrom` (the friend's display name and their place id) for imported ones. Re-importing the same friend's list then updates or skips places already imported instead of duplicating them, and your own edits to an imported place are never overwritten.
+- **Places can carry a `publishedAt` time** (phase 3). Only Ashley's account (an admin flag on the server) can set it; row-level security lets everyone read published places and nobody else edit them.
+- **Notes stay private by default.** Logs can hold things like door codes. Publishing (phase 3) shows the name, location, hours and ratings; notes only if Ashley ticks "include notes" per place.
+
+### Phase 2 sketch: share and import
+
+- **Share:** "Share my list" creates a link (`…/#/import/<code>`) to a read-only snapshot of your list on the server, opened through the phone's share sheet (Messages, WhatsApp…). You choose which places to include; notes are left out unless you tick "include notes".
+- **Import:** opening the link shows the friend's places with a preview ("Sam's list · 6 places") and "Add to my list". They become copies in your own list (`origin: imported`) that you can edit or delete like any other.
+- **Works without accounts too:** the existing backup file can already be shared and imported, so a file-based version of phase 2 can ship before phase 1 if wanted (import would need to copy places as new ones rather than merge by id).
+- **OQ:** should a share link show your latest list (live) or a snapshot from when you shared it? Snapshot is simpler and more private; proposed default.
+
+### Phase 3 sketch: public list
+
+- Ashley gets a "Publish" toggle on her own places (admin only). Published places appear in Nearby for everyone with a badge (e.g. "NYC Poops pick") and the same Open / Hours unknown rules as city data.
+- **Accuracy:** publishing requires hours (or explicitly "Hours unknown") and shows "Last checked <date>" from the place's last edit.
+- **OQ:** will the public list ever take suggestions from other people (e.g. "Suggest this place")? If yes, that needs a review queue; if Ashley-only, no moderation is needed.
+- **OQ:** private businesses (cafés, stores) on a public list: label them "Customers only" or similar, so the app doesn't promise access a business doesn't offer.

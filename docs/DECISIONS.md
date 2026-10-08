@@ -48,3 +48,9 @@ Canvas: https://claude.ai/artifact/TaZJrd5tawKGG1meXcGfdL (11 screens, requireme
 
 - **Map view will be a List / Map toggle** on Nearby, not a replacement for the list.
 - **Nearby shows only restrooms that are open or might be, by default.** Done as a "Hide closed" filter chip that starts on, not a hard rule (Ashley's call): tapping it brings closed restrooms back, greyed out. Your saved places always show in My places.
+
+## 2026-10-08: Lists roadmap (Ashley)
+
+1. **Personal list per person**, which they add to and edit (kept forever via accounts: phase 1).
+2. **Share your list, or import a friend's** into your own list (imported places become your own copies: phase 2).
+3. **Eventually a public list** Ashley publishes, added to the default restroom list in Nearby (phase 3).
