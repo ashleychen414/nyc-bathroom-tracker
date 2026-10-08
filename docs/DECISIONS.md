@@ -37,3 +37,9 @@ Canvas: https://claude.ai/artifact/TaZJrd5tawKGG1meXcGfdL (11 screens, requireme
 - **MVP filters:** All · Public · My places, Open now, Accessible, Changing station.
 - **Backup:** export a .json file; import merges by place id, keeping the newer edit.
 - **Kept as defaults (not yet confirmed):** "Closed now" is greyed out like closed restrooms; the Home Screen prompt shows after the first save.
+
+## 2026-10-08: Name and logo (Ashley)
+
+- **App name: NYC Poops** (page title, Home Screen name, install steps, backup file name).
+- **Logo:** Ashley's circular badge (`design/NYC_POOPs_logo.jpeg`) used for the Home Screen icon, the welcome screen, and a small mark in the Nearby header. Icons are cropped from the badge with padding so iPhone's rounded corners and Android's masks don't clip the ring.
+- **Colors follow the logo:** accent #135633 (logo green) and background #f8f4ed (logo cream), replacing the teal.

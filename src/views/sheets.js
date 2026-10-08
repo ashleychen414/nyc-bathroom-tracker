@@ -16,10 +16,10 @@ export function homeScreenSheet(platform) {
     platform === 'ios'
       ? `<li><span>Tap ${shareIcon} <b>Share</b> in Safari's toolbar</span></li>
          <li><span>Choose <b>Add to Home Screen</b></span></li>
-         <li><span>Open Bathroom Finder from your Home Screen from now on</span></li>`
+         <li><span>Open NYC Poops from your Home Screen from now on</span></li>`
       : `<li><span>Tap your browser's <b>⋮</b> menu</span></li>
          <li><span>Choose <b>Add to Home screen</b> or <b>Install app</b></span></li>
-         <li><span>Open Bathroom Finder from your Home Screen from now on</span></li>`;
+         <li><span>Open NYC Poops from your Home Screen from now on</span></li>`;
   const why =
     platform === 'ios'
       ? "On iPhone, saved places can be cleared if you don't open this site for a week. Adding it to your Home Screen keeps them, and opens the app in one tap."

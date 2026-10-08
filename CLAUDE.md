@@ -1,4 +1,6 @@
-# NYC Bathroom Tracker
+# NYC Poops (NYC Bathroom Tracker)
+
+App name shown to users: **NYC Poops**. Logo source: `design/NYC_POOPs_logo.jpeg`; brand green #135633 on cream #f8f4ed.
 
 Mobile web app to find the nearest usable restroom fast, for people who need to go urgently
 (e.g. ostomy, pregnancy). Brooklyn first, NYC public data, plus each user's own saved places.

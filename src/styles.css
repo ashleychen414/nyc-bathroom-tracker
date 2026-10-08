@@ -1,12 +1,12 @@
 :root {
-  --bg: #f6f5f2;
+  --bg: #f8f4ed;
   --surface: #ffffff;
   --text: #1c1b19;
   --muted: #6b6862;
   --border: #e3e0da;
-  --accent: #0f766e;
+  --accent: #135633;
   --accent-text: #ffffff;
-  --accent-soft: #e2f2ef;
+  --accent-soft: #e4efe7;
   --danger: #b42318;
   --radius: 14px;
   color-scheme: light;
@@ -19,9 +19,9 @@
     --text: #f1efe9;
     --muted: #a39f96;
     --border: #34332f;
-    --accent: #2bb3a3;
-    --accent-text: #0b1f1d;
-    --accent-soft: #17302d;
+    --accent: #5cbf86;
+    --accent-text: #0c1f14;
+    --accent-soft: #173323;
     --danger: #f97066;
     color-scheme: dark;
   }
@@ -218,7 +218,7 @@ textarea.input { resize: vertical; }
 
 /* ---------- Status colors ---------- */
 :root {
-  --open-bg: #ddf1ec; --open-text: #0b5e58; --open-dot: #0f766e;
+  --open-bg: #e1efe5; --open-text: #0f4a2b; --open-dot: #1d7a45;
   --unknown-bg: #eceae6; --unknown-text: #4a4743; --unknown-dot: #8a867e;
   --varies-bg: #fbebd0; --varies-text: #7a4f08; --varies-dot: #c7841a;
   --closed-bg: #e3e0da; --closed-text: #4a4743;
@@ -229,7 +229,7 @@ textarea.input { resize: vertical; }
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --open-bg: #123a35; --open-text: #8ee0d3; --open-dot: #2bb3a3;
+    --open-bg: #163626; --open-text: #9fdcb6; --open-dot: #4fb37a;
     --unknown-bg: #2c2b28; --unknown-text: #c9c5bc; --unknown-dot: #8a867e;
     --varies-bg: #3a2c12; --varies-text: #f3c77a; --varies-dot: #e0a33c;
     --closed-bg: #2c2b28; --closed-text: #a39f96;
@@ -342,10 +342,6 @@ a.card:active { transform: scale(.99); }
   display: flex; flex-direction: column; justify-content: space-between; gap: 32px;
 }
 .welcome-top { display: grid; gap: 18px; }
-.welcome-icon {
-  width: 72px; height: 72px; border-radius: 22px; background: var(--open-bg); color: var(--accent);
-  display: flex; align-items: center; justify-content: center;
-}
 .welcome h1 { font-size: 32px; line-height: 1.15; font-weight: 800; }
 .lead { font-size: 17px; color: var(--muted); }
 .points {
@@ -433,3 +429,8 @@ body.sheet-open { overflow: hidden; }
 .bar-actions { display: flex; gap: 8px; align-items: center; }
 .icon-btn { width: 44px; padding: 0; }
 .fineprint .link { font-size: 13px; min-height: 0; }
+
+/* ---------- Brand ---------- */
+.welcome-logo { width: 168px; height: 168px; border-radius: 50%; object-fit: cover; }
+.brand-row { display: flex; align-items: center; gap: 10px; }
+.brand-mark { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }

@@ -184,11 +184,11 @@ function closeSheet() {
 
 async function exportBackup() {
   const data = exportPlaces();
-  const name = `bathroom-places-${data.exportedAt.slice(0, 10)}.json`;
+  const name = `nyc-poops-places-${data.exportedAt.slice(0, 10)}.json`;
   const file = new File([JSON.stringify(data, null, 2)], name, { type: 'application/json' });
   try {
     // On phones the share sheet is the reliable way to save a file ("Save to Files").
-    if (mobilePlatform() && navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: 'Bathroom Finder backup' });
+    if (mobilePlatform() && navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: 'NYC Poops backup' });
     else {
       const url = URL.createObjectURL(file);
       const a = Object.assign(document.createElement('a'), { href: url, download: name });

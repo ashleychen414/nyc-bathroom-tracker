@@ -22,7 +22,7 @@ const radiusLabel = (r) => `${r} mi`;
 export const welcomeView = () => `
   <main class="welcome">
     <div class="welcome-top">
-      <div class="welcome-icon">${icon.pin(36)}</div>
+      <img class="welcome-logo" src="public/brand/logo-badge.jpg" width="168" height="168" alt="NYC Poops: public restrooms, New York City">
       <h1>Find a restroom near you, fast</h1>
       <p class="lead">Allow location to see the closest restrooms, sorted by what's open right now.</p>
       <ol class="points">
@@ -121,7 +121,7 @@ export function nearbyView(s, list) {
   else body = results(s, list);
   return `
     <header class="top">
-      <h1>Nearby</h1>
+      <div class="brand-row"><img class="brand-mark" src="public/brand/logo-badge.jpg" width="40" height="40" alt="NYC Poops"><h1>Nearby</h1></div>
       ${locationBlock(s)}
       ${controls(s)}
     </header>

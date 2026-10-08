@@ -1,15 +1,15 @@
 {
-  "name": "Bathroom Finder",
-  "short_name": "Bathrooms",
+  "name": "NYC Poops",
+  "short_name": "NYC Poops",
   "description": "Find the nearest open restroom in NYC, and keep your own list of places.",
   "start_url": "../#/nearby",
   "scope": "../",
   "display": "standalone",
-  "background_color": "#f6f5f2",
-  "theme_color": "#0f766e",
+  "background_color": "#f8f4ed",
+  "theme_color": "#135633",
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
-    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
