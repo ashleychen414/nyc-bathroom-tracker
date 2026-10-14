@@ -3,5 +3,6 @@ dist/
 .DS_Store
 _site/
 
-# Private product docs: kept on this Mac only, never pushed to the public repo
-docs/private/
+# Private product docs: kept on this Mac only, never pushed to the public repo.
+# No trailing slash, so it also ignores a symlink to the folder (from a worktree).
+docs/private

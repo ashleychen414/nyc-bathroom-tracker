@@ -81,3 +81,10 @@ See `docs/IMPROVEMENTS-SCOPING.md` §2.
 - **The map legend is always visible** as a strip between the filters and the map, never below it (Ashley). Short labels so it fits one line on a phone.
 - **Bottom card instead of pin popups:** shows the best match by default (open first, then nearest) with Directions and Details; ‹ › steps through results; tapping a pin selects it.
 - **Compact header so the map keeps its room:** location is one line ("Near 11215 (approx.) · Change"); the radius is a dropdown in the filter row.
+
+## 2026-10-14: Working with several agents in parallel
+
+- **Each agent gets its own worktree and branch; changes reach `main` only through a pull request,** and tests run on every PR. Pushing straight to `main` deploys, so it's not a place for unreviewed parallel work.
+- **Parallel branches don't edit `docs/TASKS.md` or `docs/DECISIONS.md`.** Notes go in the PR description and are copied in after merging, because every branch editing those files guarantees merge conflicts.
+- **One agent at a time owns database (Supabase) changes,** so migrations don't collide.
+- **`docs/private/` is linked into worktrees, not copied;** `.gitignore` now ignores the link too, so it can't be committed to the public repo.

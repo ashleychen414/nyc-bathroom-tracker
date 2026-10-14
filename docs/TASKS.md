@@ -52,6 +52,7 @@ Updated 2026-10-14. Steps map to the MVP scope in `SPEC.md`. Product improvement
 
 ## Done
 
+- [x] 2026-10-14: **Set up for parallel agents**: tests run on every pull request (`.github/workflows/test.yml`); parallel-work rules in `CLAUDE.md` (worktrees, PR-only, shared docs, one database owner, private docs link)
 - [x] 2026-10-14: **E4 map-first home**: Nearby opens on a full-screen map (list remembered only if chosen); legend strip always visible between the filters and the map; bottom card with the best match (open first, then nearest), Directions + Details, ‹ › to step through results; tapping a pin selects it; compact header (one-line location, radius dropdown in the filter row)
 - [x] 2026-10-14: **E0 quick wins**: hours show the formatted table + "Hours from NYC Open Data · View on Google Maps" (the city's wording only when it couldn't be read); filter by type (Parks, Libraries, Transit, Public plazas, Privately owned public spaces); database access-rule checks (`npm run test:rls` on every deploy, `supabase/tests/places_rls.sql` for signed-in users); migrations saved in `supabase/migrations/`
 - [x] 2026-10-14: Sync confirmed end to end in production (2 accounts, 3 places in Supabase)
