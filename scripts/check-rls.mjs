@@ -37,7 +37,7 @@ const checks = [
   }],
   ['anonymous visitors can read the city restrooms', async () => {
     const r = await call('/rest/v1/bathrooms?select=id,source&source=eq.seed&limit=1', { headers: { Prefer: 'count=exact' } });
-    assert.equal(r.status, 200);
+    assert.ok(r.status === 200 || r.status === 206, `expected 200/206, got ${r.status}`); // 206 = partial page with a count
     const total = Number(r.headers.get('content-range')?.split('/')[1]);
     assert.ok(total >= 1000, `expected 1,000+ seed bathrooms, got ${total}`);
     assert.match(r.body[0].id, /^nyc-[0-9a-f]{10}$/);
