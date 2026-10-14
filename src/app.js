@@ -551,6 +551,7 @@ fetch('public/data/bathrooms.json')
     return res.json();
   })
   .then((data) => {
+    for (const b of data.bathrooms) b.specialDays = data.specialDays?.[b.operator];
     state.data = data;
   })
   .catch(() => {

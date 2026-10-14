@@ -76,3 +76,26 @@ test('formatTime', () => {
   assert.equal(formatTime(1440), 'midnight');
   assert.equal(formatTime(720), 'noon');
 });
+
+test('getStatus: special days (holidays) replace the day', () => {
+  const hours = parseHours('10am - 8pm Daily').hours;
+  const lib = (specialDays, extra = {}) => ({ status: 'Operational', season: 'Year Round', hours, specialDays, ...extra });
+  assert.equal(getStatus(lib({ '2025-10-08': [] }), nyWed(12)).state, 'closed');
+  assert.equal(getStatus(lib({ '2025-10-08': [] }), nyWed(12)).label, 'Closed today (holiday)');
+  assert.equal(getStatus(lib({ '2025-10-08': null }), nyWed(12)).state, 'unknown');
+  assert.equal(getStatus(lib({ '2025-10-08': [[600, 780]] }), nyWed(12)).state, 'open');
+  assert.equal(getStatus(lib({ '2025-10-08': [[600, 780]] }), nyWed(14)).state, 'closed');
+  // Other days, and restrooms without special days, are unaffected.
+  assert.equal(getStatus(lib({ '2025-10-09': [] }), nyWed(12)).state, 'open');
+  assert.equal(getStatus(lib(undefined), nyWed(12)).state, 'open');
+  // A holiday never reopens a restroom that is closed or not operational.
+  assert.equal(getStatus(lib({ '2025-10-08': [[600, 780]] }, { status: 'Closed for Construction' }), nyWed(12)).state, 'closed');
+  // 24-hour restrooms on an unknown holiday read as unknown, not open.
+  assert.equal(getStatus({ status: 'Operational', hours: { kind: 'always' }, specialDays: { '2025-10-08': null } }, nyWed(3)).state, 'unknown');
+});
+
+test('getStatus: the holiday date is the New York date, not UTC', () => {
+  // 11pm Wed in New York is already Thursday in UTC.
+  const b = { status: 'Operational', hours: { kind: 'always' }, specialDays: { '2025-10-09': [] } };
+  assert.equal(getStatus(b, nyWed(23)).state, 'open');
+});
