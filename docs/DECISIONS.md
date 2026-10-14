@@ -65,3 +65,13 @@ Canvas: https://claude.ai/artifact/TaZJrd5tawKGG1meXcGfdL (11 screens, requireme
 - **Local-first sync:** the phone's copy is what the app shows and edits; it syncs with the account in the background (after changes, on open, when back online). Newer edit wins per place; deletes sync as tombstones.
 - **Signing out removes places from that phone** (they stay in the account). If changes haven't synced yet, the app warns first.
 - **The post-save "Keep your places safe" pop-up is gone.** My places shows a sign-in banner instead, and the Home Screen tip moved into the account sheet. This should resolve the "save confirmation screen" feedback.
+
+## 2026-10-14: Improvements, resolving conflicts with earlier decisions (Ashley)
+
+See `docs/IMPROVEMENTS-SCOPING.md` §2.
+
+1. **Switch to a shared bathroom database.** Lists and shares point to one shared record per bathroom (references), not private copies, so visits and fixes raise trust for everyone. Replaces the Oct 8 phase 2 "imported places become your own copies" decision. Share links can still be snapshots of *which* bathrooms.
+2. **Map-first home.** Nearby opens on the full-screen map by default, with a toggle to switch to the list. Replaces the Oct 8 "list stays the default" decision.
+3. **Fact-based fields (stalls, layout, trash cans, etc.) on hold.** No decision on how facts vs. ratings display until that functionality is picked up.
+4. **Notes stay private.** Public tips are a separate future feature, not a toggle on notes.
+5. **No third-party analytics.** Measure the goal (10 regular users, 2 contributors) with counts from our own database.

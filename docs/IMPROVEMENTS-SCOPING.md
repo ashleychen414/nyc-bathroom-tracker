@@ -31,7 +31,10 @@ XS ≤ ½ day · S ≈ 1 day · M 2–3 days · L 4–6 days · XL 7+ days.
 
 ---
 
-## 2. Conflicts with earlier decisions (need Ashley's call)
+## 2. Conflicts with earlier decisions
+
+**Resolved 2026-10-14 (Ashley), see `DECISIONS.md`:** conflict 1 (copies vs. references) → shared database (references); conflict 3 (list vs. map) → map-first default with a list toggle; conflict 4 (ratings vs. facts) → fact display on hold; conflict 5 (notes vs. tips) → notes stay private, tips later; conflict 6 (analytics) → database counts only. Conflict 2 (local-first) follows from 1: the phone becomes a cache for shared facts, as proposed.
+
 
 1. **Copies vs. references.** `DECISIONS.md` (Oct 8) says sharing gives the friend *their own copies*; improvements.md proposes *references to one shared bathroom* so visits and fixes help everyone. References are what make the trust goal possible, so **I recommend switching to references**, but it reverses the phase 2 "copies" decision. Snapshot links can still work: a share is a snapshot of *which* bathrooms, not of their details.
 2. **Local-first.** Today the phone's copy is the source and works offline. A shared `bathrooms` table makes the server the source for shared facts. **Proposal:** keep the phone as a cache (read offline, queue your own visits/edits), but shared facts come from the server. Medium complexity; it's in E2's size.
@@ -115,9 +118,9 @@ Photos (E12), public tips (E6), filter by type (E0), hours source line (E0), map
 
 ## 6. Decisions needed to start
 
-1. **References instead of copies** for lists and sharing (§2.1). *Blocks E2, E10.*
-2. **Map-first home** replacing list-first (§2.3). *Blocks E4.*
+1. ~~References instead of copies~~ **Decided: shared database (references).**
+2. ~~Map-first home~~ **Decided: map-first, list toggle.**
 3. **What "private bathroom" means**, and whether private ones are visible only to their owner. *Blocks E2.*
-4. **Starting rating dimensions** (recommend the four 1–5 ratings; stalls/trash/layout become facts). *Blocks E3.*
-5. **Analytics approach** to measure the goal (§2.6). *Blocks knowing if A/B worked.*
+4. **Starting rating dimensions** (recommend the four 1–5 ratings). How facts like stalls/layout display is **on hold** until that work starts. *Blocks E3.*
+5. ~~Analytics approach~~ **Decided: database counts only.**
 6. **Milestone order:** A → B → C, or B first.

@@ -13,7 +13,7 @@ Updated 2026-10-14. Steps map to the MVP scope in `SPEC.md`. Product improvement
 
 ## Next (MVP build order)
 
-- [ ] **Decide the 6 open questions in `docs/IMPROVEMENTS-SCOPING.md` §6** (references vs. copies, map-first home, what "private" means, rating dimensions, analytics, milestone order), then re-order this list by milestone (A: E0, E4, E9-lite).
+- [ ] **Decide the remaining open questions in `docs/IMPROVEMENTS-SCOPING.md` §6**: what "private bathroom" means (blocks E2), starting rating dimensions (blocks E3), and milestone order (A → B → C proposed). Decided 2026-10-14: shared database, map-first home, facts on hold, notes private, database counts.
 - [ ] **Better place search when adding a place** (feedback 2026-10-08: restaurants and other private places are hard to find). Today's search (Photon / OpenStreetMap) is weak on businesses. Options to compare:
   - A business-focused search service with a free tier (e.g. Geoapify or Mapbox Search); needs an API key restricted to our domain
   - Google Places autocomplete: best coverage, but billed per search beyond a free allowance and needs a billing account
