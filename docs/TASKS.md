@@ -1,6 +1,6 @@
 # Tasks
 
-Updated 2026-10-08. Steps map to the MVP scope in `SPEC.md`.
+Updated 2026-10-14. Steps map to the MVP scope in `SPEC.md`. Product improvements (Ashley, Oct 12) are sized and cross-referenced in `docs/IMPROVEMENTS-SCOPING.md`; epic numbers (E0–E13) refer to that doc.
 
 ## Now
 
@@ -13,6 +13,7 @@ Updated 2026-10-08. Steps map to the MVP scope in `SPEC.md`.
 
 ## Next (MVP build order)
 
+- [ ] **Decide the 6 open questions in `docs/IMPROVEMENTS-SCOPING.md` §6** (references vs. copies, map-first home, what "private" means, rating dimensions, analytics, milestone order), then re-order this list by milestone (A: E0, E4, E9-lite).
 - [ ] **Better place search when adding a place** (feedback 2026-10-08: restaurants and other private places are hard to find). Today's search (Photon / OpenStreetMap) is weak on businesses. Options to compare:
   - A business-focused search service with a free tier (e.g. Geoapify or Mapbox Search); needs an API key restricted to our domain
   - Google Places autocomplete: best coverage, but billed per search beyond a free allowance and needs a billing account
@@ -23,9 +24,6 @@ Updated 2026-10-08. Steps map to the MVP scope in `SPEC.md`.
   - Several single bathrooms → how many?
   - One bathroom with stalls → how many stalls?
   - Card chips like "3 single bathrooms" / "1 bathroom, 4 stalls". Existing logs convert automatically (Stalls = yes + count → "with stalls"; Stalls = no → "one single bathroom"). Public restroom data already has "Single-stall / Multi-stall" types to show alongside.
-- [ ] Confirm sync end to end: sign in on a phone with saved places, check they appear on a second device / in Supabase
-- [ ] **Lists phase 1: personal list kept forever** (accounts + sync). Plan: `docs/PLAN-saved-places-forever.md`. Decided: Supabase free plan + nightly keep-alive; upgrade only when a limit is hit
-  - Priority #1 (Ashley, 2026-10-08). Once places are saved to an account, simplify the screens that exist only to protect phone-only data: the "Keep your places safe" Home Screen sheet, the backup sheet, and the "Saved on this phone only" notes. That should also resolve the "save confirmation screen" feedback below.
 - [ ] **Saving without a confirmation step** (likely solved by lists phase 1; re-check with the tester after) (feedback 2026-10-08: "the save confirmation screen is confusing i wish i could just have it saved all the time"). First confirm which screen they meant:
   - The "Keep your places safe" sheet after saving → make it less interruptive (e.g. a small banner on My places instead of a pop-up), or show it only once.
   - The Save button on the log form → save changes automatically as you tap ratings/type notes (no Save/Cancel).
@@ -54,6 +52,7 @@ Updated 2026-10-08. Steps map to the MVP scope in `SPEC.md`.
 
 ## Done
 
+- [x] 2026-10-14: Sync confirmed end to end in production (2 accounts, 3 places in Supabase)
 - [x] 2026-10-08: Lists phase 1 live on www.nycpoops.com: email-code sign-in (custom SMTP via Resend from nycpoops.com), background sync, account sheet. Ashley tested sign-in locally; place upload to the account still to confirm on a real phone
 - [x] 2026-10-08: Bug: "Sign in" button on the My places banner wrapped onto two lines (Ashley). Fixed: the button keeps its width and doesn't wrap
 - [x] 2026-10-08: Map view: List / Map toggle on Nearby (remembered), pins colored by status, your places ringed in blue, your location + radius circle, tap a pin → name, status, Details, Directions. Leaflet 1.9.4 from cdnjs (integrity-pinned) + OpenStreetMap tiles
