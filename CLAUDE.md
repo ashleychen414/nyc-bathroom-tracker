@@ -17,6 +17,7 @@ never to "Open". Closed and non-operational restrooms are shown greyed out, not 
 - `docs/SPEC.md`: locked MVP scope, out of scope, follow-ups. Change only when Ashley decides.
 - `docs/DECISIONS.md`: dated log of product and technical decisions and why. Append, don't rewrite.
 - `docs/TASKS.md`: Now / Next / Later / Done. Keep it current at the end of every work session.
+- `docs/private/` (git-ignored, on Ashley's Mac only): private product docs. `improvements.md` = product vision, target users, goals, friend feedback, proposed data model (Ashley, Oct 12). Read it for product context; never commit or quote it into public files. Sized and cross-referenced in `docs/IMPROVEMENTS-SCOPING.md`.
 - `docs/FEEDBACK.md`: user feedback, logged verbatim with date and who. Triage into TASKS.md.
 - `src/lib/hours.js`: hours parser + open/closed status (shared by build script and app).
 - `src/lib/nearby.js`: builds the Nearby list (mix, filter, sort, top-up). `src/lib/hours-form.js`: Hours form ↔ hours model.

@@ -1,6 +1,6 @@
 # Improvements: sizing, scope and cross-reference
 
-Companion to `docs/improvements.md` (Ashley, Oct 12). Written 2026-10-14 against the actual code, database and `TASKS.md`.
+Companion to `docs/private/improvements.md` (Ashley, Oct 12; private, on Ashley's Mac only). Written 2026-10-14 against the actual code, database and `TASKS.md`.
 
 **Sizes** are part-time build days with Claude doing the build, including tests and a deploy:
 XS ≤ ½ day · S ≈ 1 day · M 2–3 days · L 4–6 days · XL 7+ days.
