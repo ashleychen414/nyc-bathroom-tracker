@@ -67,3 +67,20 @@ never to "Open". Closed and non-operational restrooms are shown greyed out, not 
   moved to the server later.
 - Keep dependencies minimal. Flag any new paid service or API key to Ashley before adding it.
 - When finishing work: update `docs/TASKS.md`, and add to `docs/DECISIONS.md` if a decision was made.
+  Exception: in parallel work (below), put these in the PR description instead.
+
+## Parallel work (several agents at once)
+
+- Each agent works in its own git worktree and branch, never in the main checkout. Changes reach
+  `main` only through a pull request; `.github/workflows/test.yml` runs the tests on every PR.
+- Split work by feature, not by layer. Two agents must not edit the same files at the same time.
+- **Shared docs:** don't edit `docs/TASKS.md` or `docs/DECISIONS.md` on a parallel branch (every
+  branch would conflict there). Write "Tasks:" and "Decisions:" notes in the PR description; they are
+  copied into those files once, after merging.
+- **Database:** only one agent at a time makes Supabase schema or policy changes (migrations). Say
+  so in the PR title. Other agents don't touch `supabase/`.
+- **Private docs:** `docs/private/` isn't in git, so a new worktree doesn't have it. Link it in,
+  from the worktree's folder: `ln -s /Users/ashleychen/nyc-bathroom-tracker/docs/private docs/private`
+  (git ignores the link). Never copy its contents into tracked files.
+- **Local server:** give each worktree its own port, e.g. `PORT=5174 npm run dev`.
+- Before merging, update the branch from `main` and rerun `npm test`.
