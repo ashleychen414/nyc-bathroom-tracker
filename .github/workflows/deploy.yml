@@ -1,7 +1,9 @@
 # Publishes the app to GitHub Pages on every push to main. Nightly, it also refreshes
 # the restroom data from NYC Open Data and commits it when the city data changed;
 # that commit is what makes Vercel republish. If the city's API is down, the committed
-# data is kept. Nightly runs also ping Supabase so the free-plan project stays awake.
+# data is kept. Every run then copies that data into the shared Supabase bathrooms table
+# (skipped until the SUPABASE_SECRET_KEY secret exists). Nightly runs also ping Supabase
+# so the free-plan project stays awake.
 name: Deploy
 
 on:
@@ -27,8 +29,8 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - run: npm test
@@ -48,6 +50,13 @@ jobs:
           else
             echo "::warning::Data refresh failed; deploying the committed data"
           fi
+      - name: Update the shared bathrooms table
+        # Upserts public/data/bathrooms.json into public.bathrooms (scripts/sync-bathrooms.mjs).
+        # SUPABASE_SECRET_KEY is a Supabase secret key (service role): repo Settings → Secrets
+        # and variables → Actions. Without it this step skips; a failure warns but still deploys.
+        env:
+          SUPABASE_SECRET_KEY: ${{ secrets.SUPABASE_SECRET_KEY }}
+        run: npm run sync:bathrooms || echo "::warning::Bathrooms table update failed; the app still reads the JSON file"
       - name: Keep the Supabase project awake
         if: github.event_name != 'push'
         # Free-plan projects pause after ~7 quiet days; one small query a day prevents it.
@@ -57,9 +66,9 @@ jobs:
             -H "apikey: sb_publishable_ey4-1LzjhoJXRGQ7P9NbmQ_yEkQLTs-" -H "Content-Type: application/json" -d '{}' \
             || echo "::warning::Supabase keep-alive failed"
       - run: node scripts/assemble-site.mjs
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
         with:
           path: _site
       - id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
