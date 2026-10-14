@@ -66,6 +66,11 @@ function locationBlock(s) {
     return `<p class="loc">${icon.pin()} Your location <button class="link" data-action="use-zip">Use a zip code</button></p>`;
   }
   if (s.locating) return `<p class="loc">${icon.locate(16)} Finding you…</p>`;
+  // Using a zip already: one line, so the map keeps its room. The full explanation and field show on Change.
+  if (s.here?.source === 'zip' && !s.zipEditing) {
+    return `<p class="loc">${icon.pin()} Near ${esc(s.here.zip)} <span class="muted">(approx.)</span>
+      <span class="loc-actions"><button class="link" data-action="edit-zip">Change</button></span></p>`;
+  }
   const why =
     s.locationIssue === 'denied'
       ? 'Location is off for this site, so distances are from the middle of your zip code.'
@@ -78,9 +83,9 @@ function locationBlock(s) {
 }
 
 function controls(s) {
-  const radius = RADII.map(
-    (r) => `<button type="button" class="${s.radius === r ? 'on' : ''}" aria-pressed="${s.radius === r}" data-action="radius" data-value="${r}">${radiusLabel(r)}</button>`,
-  ).join('');
+  const radius = `<label class="chip-select"><span class="visually-hidden">Radius</span><select id="radius-filter">${RADII.map(
+    (r) => `<option value="${r}" ${s.radius === r ? 'selected' : ''}>Within ${radiusLabel(r)}</option>`,
+  ).join('')}</select></label>`;
   const kinds = KINDS.map(
     ([k, label]) => `<button type="button" class="chip-btn ${s.filters.kind === k ? 'on' : ''}" aria-pressed="${s.filters.kind === k}" data-action="kind" data-value="${k}">${label}</button>`,
   ).join('');
@@ -88,8 +93,7 @@ function controls(s) {
     ([k, label]) => `<button type="button" class="chip-btn ${s.filters[k] ? 'on' : ''}" aria-pressed="${s.filters[k]}" data-action="toggle" data-value="${k}">${label}</button>`,
   ).join('');
   return `
-    <div class="radius" role="group" aria-label="Radius">${radius}</div>
-    <div class="filter-row" role="group" aria-label="Filters">${kinds}${typeSelect(s.filters.type)}<span class="divider" aria-hidden="true"></span>${toggles}</div>`;
+    <div class="filter-row" role="group" aria-label="Filters">${radius}${kinds}${typeSelect(s.filters.type)}<span class="divider" aria-hidden="true"></span>${toggles}</div>`;
 }
 
 function typeSelect(type) {
@@ -115,14 +119,12 @@ function entryCard(e, approx) {
     </a>`;
 }
 
-function results(s, { inside, outside }) {
-  const approx = s.here.source === 'zip';
-  const near = approx ? ` of ${esc(s.here.zip)}` : '';
+function emptyBox(s, { inside, outside }) {
+  if (inside.length) return '';
+  const near = s.here.source === 'zip' ? ` of ${esc(s.here.zip)}` : '';
   const next = RADII.find((r) => r > s.radius);
   const what = s.filters.openNow ? 'open ' : '';
-  const empty = inside.length
-    ? ''
-    : `<div class="empty-box">
+  return `<div class="empty-box">
          <p class="empty-title">Nothing ${what}within ${radiusLabel(s.radius)}${near}</p>
          ${outside.length ? `<p>Here are the closest ${what}restrooms outside your radius.</p>` : '<p>Try a wider radius or fewer filters.</p>'}
          <div class="row-actions">
@@ -131,25 +133,55 @@ function results(s, { inside, outside }) {
            ${s.filters.hideClosed && !s.filters.openNow ? '<button class="btn small" data-action="toggle" data-value="hideClosed">Show closed too</button>' : ''}
          </div>
        </div>`;
+}
+
+function results(s, list) {
+  const { inside, outside } = list;
+  const approx = s.here.source === 'zip';
+  const near = approx ? ` of ${esc(s.here.zip)}` : '';
   return `
     ${inside.length ? `<p class="meta">${inside.length} within ${radiusLabel(s.radius)}${near} · open first, then nearest</p>` : ''}
-    ${empty}
-    ${
-      s.view === 'map'
-        ? `<div id="map" class="map" role="region" aria-label="Map of nearby restrooms"></div>${mapLegend}
-           ${outside.length ? `<p class="hint">Includes the ${outside.length} nearest outside ${radiusLabel(s.radius)}.</p>` : ''}`
-        : `${inside.map((e) => entryCard(e, approx)).join('')}
-           ${outside.length ? `<p class="section-label">Outside ${radiusLabel(s.radius)}</p>${outside.map((e) => entryCard(e, approx)).join('')}` : ''}`
-    }`;
+    ${emptyBox(s, list)}
+    ${inside.map((e) => entryCard(e, approx)).join('')}
+    ${outside.length ? `<p class="section-label">Outside ${radiusLabel(s.radius)}</p>${outside.map((e) => entryCard(e, approx)).join('')}` : ''}`;
+}
+
+// The card over the map: the selected bathroom (default: the best match, open first then nearest).
+export function mapSheet(s, list, selectedId) {
+  const entries = [...list.inside, ...list.outside];
+  if (!entries.length) return emptyBox(s, list) || '<p class="muted">No restrooms match these filters.</p>';
+  const index = Math.max(0, entries.findIndex((e) => e.id === selectedId));
+  const e = entries[index];
+  const approx = s.here.source === 'zip';
+  const outside = index >= list.inside.length;
+  const label = !selectedId
+    ? list.inside.length
+      ? `Best match · ${list.inside.length} within ${radiusLabel(s.radius)}`
+      : `Nothing within ${radiusLabel(s.radius)} · nearest outside`
+    : outside
+      ? `Outside ${radiusLabel(s.radius)}`
+      : `${index + 1} of ${list.inside.length} within ${radiusLabel(s.radius)}`;
+  const href = e.kind === 'public' ? `#/r/${encodeURIComponent(e.id)}` : `#/mine/${encodeURIComponent(e.id)}`;
+  const sub = e.bathroom ? e.bathroom.type : e.place.address;
+  return `
+    <div class="sheet-head">
+      <span class="section-label">${esc(label)}</span>
+      <span class="pager">
+        <button class="btn ghost small" data-action="sheet-step" data-value="-1" aria-label="Previous restroom" ${index === 0 ? 'disabled' : ''}>‹</button>
+        <button class="btn ghost small" data-action="sheet-step" data-value="1" aria-label="Next restroom" ${index === entries.length - 1 ? 'disabled' : ''}>›</button>
+      </span>
+    </div>
+    <div class="card-head"><h2>${esc(e.name)}</h2><span class="dist">${approx ? '~' : ''}${formatDistance(e.distance)}</span></div>
+    <div class="badges">${statusBadge(e.status)}${e.place ? mineBadge : ''}${sub ? `<span class="type">${esc(sub)}</span>` : ''}</div>
+    ${e.place ? logChips(e.place.log) : ''}
+    <div class="actions">
+      <a class="btn primary" href="${directionsUrl(e)}" target="_blank" rel="noopener">${icon.directions()}Directions</a>
+      <a class="btn" href="${href}">Details</a>
+    </div>`;
 }
 
 export function nearbyView(s, list) {
-  let body;
-  if (s.dataError) body = '<p class="error">Couldn\'t load restrooms. Check your connection and reload.</p>';
-  else if (!s.data) body = '<p class="meta">Loading restrooms…</p>';
-  else if (!s.here) body = s.locating ? '' : '<p class="meta">Enter a zip code to see restrooms near it.</p>';
-  else body = results(s, list);
-  return `
+  const header = `
     <header class="top">
       <div class="brand-row">
         <img class="brand-mark" src="public/brand/logo-badge.jpg" width="40" height="40" alt="NYC Poops"><h1>Nearby</h1>
@@ -157,7 +189,22 @@ export function nearbyView(s, list) {
       </div>
       ${locationBlock(s)}
       ${controls(s)}
-    </header>
+    </header>`;
+  // Map view (default): legend always visible above the map, map fills the rest, card on top.
+  if (s.view === 'map' && s.data && s.here && list) {
+    return `${header}
+      ${mapLegend({ showClosed: !s.filters.hideClosed })}
+      <main class="map-main">
+        <div id="map" class="map" role="region" aria-label="Map of nearby restrooms"></div>
+        <section class="map-sheet" id="map-sheet" aria-live="polite">${mapSheet(s, list, s.selectedId)}</section>
+      </main>`;
+  }
+  let body;
+  if (s.dataError) body = '<p class="error">Couldn\'t load restrooms. Check your connection and reload.</p>';
+  else if (!s.data) body = '<p class="meta">Loading restrooms…</p>';
+  else if (!s.here) body = s.locating ? '' : '<p class="meta">Enter a zip code to see restrooms near it.</p>';
+  else body = results(s, list);
+  return `${header}
     <main class="list">
       ${body}
       ${sourceDate(s.data)}

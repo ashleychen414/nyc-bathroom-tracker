@@ -1,44 +1,64 @@
-// Map view of Nearby: the same results as the list, as pins colored by status.
+// Map view of Nearby (the default): full-screen map, pins colored by status, and a bottom
+// card for the selected bathroom. Tapping a pin selects it; the card is rendered by nearby.js.
 
 import { loadLeaflet } from '../lib/leaflet-loader.js';
-import { formatDistance, directionsUrl } from '../lib/geo.js';
 import { esc } from '../lib/html.js';
 
-const PIN = { open: '#1d7a45', unknown: '#8a867e', varies: '#c7841a', closed: '#b5b1a9' };
+export const PIN = { open: '#1d7a45', unknown: '#8a867e', varies: '#c7841a', closed: '#b5b1a9' };
 const MINE_RING = '#1f4e8c';
+const SELECTED_RING = '#1c1b19';
 const YOU = '#2563eb';
 const METERS_PER_MILE = 1609.34;
 
 let map = null;
+let markers = new Map(); // entry id -> { marker, entry }
+let selectedId = null;
 
 export function unmountMap() {
   map?.remove();
   map = null;
+  markers = new Map();
+  selectedId = null;
 }
 
-function popupHtml(e, approx) {
-  const href = e.kind === 'public' ? `#/r/${encodeURIComponent(e.id)}` : `#/mine/${encodeURIComponent(e.id)}`;
-  return `
-    <div class="pin-popup">
-      <p class="pin-name">${esc(e.name)}</p>
-      <p class="pin-meta">${esc(e.status.label)} · ${approx ? '~' : ''}${formatDistance(e.distance)}${e.place ? ' · Your place' : ''}</p>
-      <p class="pin-actions"><a href="${href}">Details</a><a href="${directionsUrl(e)}" target="_blank" rel="noopener">Directions</a></p>
-    </div>`;
+const pinStyle = (e, selected) => ({
+  radius: selected ? 13 : e.place ? 10 : 8,
+  color: selected ? SELECTED_RING : e.place ? MINE_RING : '#fff',
+  weight: selected ? 4 : e.place ? 3 : 2,
+  fillColor: PIN[e.status.state],
+  fillOpacity: e.status.state === 'closed' ? 0.7 : 1,
+});
+
+// Highlights a pin and, if it's hidden behind the card, pans just enough to show it.
+export function selectPin(id, { pan = false } = {}) {
+  if (!map) return;
+  markers.get(selectedId)?.marker.setStyle(pinStyle(markers.get(selectedId).entry, false));
+  selectedId = id;
+  const hit = markers.get(id);
+  if (!hit) return;
+  hit.marker.setStyle(pinStyle(hit.entry, true)).bringToFront();
+  if (pan) map.panInside(hit.marker.getLatLng(), { paddingTopLeft: [24, 24], paddingBottomRight: [24, sheetHeight() + 24] });
 }
 
-// el: the #map element just painted. Re-creates the map each time the list changes.
-export async function mountMap(el, { entries, here, radius, approx, zip }) {
+let sheetEl = null;
+const sheetHeight = () => sheetEl?.offsetHeight ?? 0;
+
+// el: the #map element just painted; sheet: the card over the map (kept clear when framing).
+export async function mountMap(el, { entries, here, radius, approx, zip, selected, sheet, onSelect }) {
   let L;
   try {
     L = await loadLeaflet();
   } catch (err) {
-    if (el.isConnected) el.innerHTML = `<p class="map-error">${esc(err.message)} Check your connection, or use the list.</p>`;
+    if (el.isConnected) el.innerHTML = `<p class="map-error">${esc(err.message)} Check your connection, or switch to the list.</p>`;
     return;
   }
   if (!el.isConnected) return; // the screen changed while Leaflet was loading
   unmountMap();
+  sheetEl = sheet;
 
-  map = L.map(el, { zoomControl: true });
+  // Attribution top-right so the bottom card never covers it.
+  map = L.map(el, { zoomControl: true, attributionControl: false });
+  L.control.attribution({ position: 'topright', prefix: false }).addTo(map);
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
     maxZoom: 19,
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -51,28 +71,30 @@ export async function mountMap(el, { entries, here, radius, approx, zip }) {
     .addTo(map);
 
   for (const e of entries) {
-    L.circleMarker([e.lat, e.lng], {
-      radius: e.place ? 10 : 8,
-      color: e.place ? MINE_RING : '#fff',
-      weight: e.place ? 3 : 2,
-      fillColor: PIN[e.status.state],
-      fillOpacity: e.status.state === 'closed' ? 0.7 : 1,
-    })
-      .bindPopup(popupHtml(e, approx))
+    const marker = L.circleMarker([e.lat, e.lng], pinStyle(e, false))
+      .bindTooltip(esc(e.name), { direction: 'top', offset: [0, -8] })
+      .on('click', () => onSelect(e.id))
       .addTo(map);
+    markers.set(e.id, { marker, entry: e });
   }
 
-  // Frame the radius (computed from the center: a circle can't measure itself before the map has a view) plus every pin.
+  // Frame the radius (computed from the center: a circle can't measure itself before the
+  // map has a view) plus every pin, keeping them clear of the bottom card.
   const bounds = L.latLng(center).toBounds(2 * radius * METERS_PER_MILE);
   for (const e of entries) bounds.extend([e.lat, e.lng]);
-  map.fitBounds(bounds.pad(0.08), { maxZoom: 17 });
+  map.fitBounds(bounds, { maxZoom: 17, paddingTopLeft: [24, 24], paddingBottomRight: [24, sheetHeight() + 24] });
+  if (selected) selectPin(selected);
 }
 
-export const mapLegend = `
-  <div class="legend" aria-hidden="true">
-    <span><i style="background:${PIN.open}"></i>Open</span>
-    <span><i style="background:${PIN.unknown}"></i>Unknown</span>
-    <span><i style="background:${PIN.varies}"></i>Varies</span>
-    <span><i class="mine" style="background:#fff;border-color:${MINE_RING}"></i>Your place</span>
-    <span><i style="background:${YOU}"></i>You</span>
-  </div>`;
+export function mapLegend({ showClosed }) {
+  const item = (color, label, extra = '') => `<span><i style="background:${color}${extra}"></i>${label}</span>`;
+  return `
+    <div class="legend legend-strip" role="note" aria-label="Map key">
+      ${item(PIN.open, 'Open')}
+      ${item(PIN.unknown, 'Unknown')}
+      ${item(PIN.varies, 'Varies')}
+      ${showClosed ? item(PIN.closed, 'Closed') : ''}
+      <span><i class="mine" style="background:#fff;border-color:${MINE_RING}"></i>Your place</span>
+      ${item(YOU, 'You')}
+    </div>`;
+}

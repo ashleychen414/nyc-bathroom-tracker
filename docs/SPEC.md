@@ -15,8 +15,8 @@ Scope locked 2026-10-08. UX confirmed 2026-10-08 on the [UX canvas](https://clau
 1. **Public data:** NYC Open Data, all boroughs loaded (users near borough lines), Brooklyn hours hand-reviewed.
 2. **Navigation:** two tabs, Nearby and My places. Detail and form screens hide the tabs and have a back/cancel.
 3. **Location:** first launch explains why, then asks for GPS. "Enter a zip code instead" is always available. If location is off, the app uses the zip code's center and marks distances as approximate (~).
-4. **Nearby (core experience): public restrooms and your places, mixed.** *Planned change (2026-10-14): open on the full-screen map by default, with a toggle to the list (E4).*
-   - Radius 0.25 / 0.5 / 1 mi, default 0.5 (remembered)
+4. **Nearby (core experience): public restrooms and your places, mixed.** *Since 2026-10-14: opens on a full-screen map by default (legend always visible above the map; a bottom card shows the best match with Directions and Details; tap a pin to select it), with a toggle to the list, remembered if chosen.*
+   - Radius 0.25 / 0.5 / 1 mi, default 0.5 (remembered), as a dropdown in the filter row
    - Filter chips: All · Public · My places, plus toggles Hide closed (on by default), Open now, Accessible (fully accessible only), Changing station
    - Fewer than 5 inside the radius: fill to 5 with the nearest outside it, under an "Outside X mi" label. Nothing inside: say so, offer "Widen to …", plus "Include unknown hours" (Open now on) or "Show closed too" (Hide closed on)
    - Card: name, distance, status badge, "Your place" badge if saved, type, up to 3 tags, your emoji log if saved. Tap → detail

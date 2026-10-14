@@ -495,3 +495,31 @@ body.sheet-open { overflow: hidden; }
 .chip-select:focus-within { outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 2px; }
 .source { font-size: 13px; color: var(--muted); }
 .source a { color: var(--accent); font-weight: 600; }
+
+/* ---------- Map-first home ---------- */
+#app.map-mode { height: 100dvh; display: flex; flex-direction: column; overflow: hidden; }
+#app.map-mode .top { flex-shrink: 0; gap: 10px; padding-bottom: 10px; }
+.legend-strip {
+  flex-shrink: 0; padding: 8px 16px; background: var(--bg); border-bottom: 1px solid var(--border);
+  font-size: 12px; gap: 4px 12px;
+}
+.legend-strip i { width: 11px; height: 11px; }
+.map-main { position: relative; flex: 1; min-height: 0; }
+.map-main .map { position: absolute; inset: 0; height: auto; border: none; border-radius: 0; }
+.map-sheet {
+  position: absolute; z-index: 500; left: 10px; right: 10px; bottom: 10px;
+  display: grid; gap: 8px; padding: 12px 14px 14px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .18);
+}
+.map-sheet .empty-box { border: none; padding: 0; background: transparent; }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.sheet-head .section-label { margin: 0; }
+.pager { display: flex; gap: 2px; }
+.pager .btn { min-height: 36px; min-width: 40px; font-size: 22px; line-height: 1; padding: 0; }
+.pager .btn:disabled { opacity: .3; }
+.map-sheet .card-head h2 { font-size: 17px; }
+.map-sheet .actions .btn { gap: 6px; }
+
+.loc-actions { display: inline-flex; gap: 12px; margin-left: auto; }
+.loc .muted { font-weight: 500; }

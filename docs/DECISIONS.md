@@ -75,3 +75,9 @@ See `docs/IMPROVEMENTS-SCOPING.md` §2.
 3. **Fact-based fields (stalls, layout, trash cans, etc.) on hold.** No decision on how facts vs. ratings display until that functionality is picked up.
 4. **Notes stay private.** Public tips are a separate future feature, not a toggle on notes.
 5. **No third-party analytics.** Measure the goal (10 regular users, 2 contributors) with counts from our own database.
+
+## 2026-10-14: Map-first home details (E4)
+
+- **The map legend is always visible** as a strip between the filters and the map, never below it (Ashley). Short labels so it fits one line on a phone.
+- **Bottom card instead of pin popups:** shows the best match by default (open first, then nearest) with Directions and Details; ‹ › steps through results; tapping a pin selects it.
+- **Compact header so the map keeps its room:** location is one line ("Near 11215 (approx.) · Change"); the radius is a dropdown in the filter row.

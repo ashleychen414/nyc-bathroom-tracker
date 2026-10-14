@@ -14,7 +14,8 @@ import { placesView } from './views/places.js';
 import { openForm, closeForm, isFormOpen, handleFormClick, handleFormInput } from './views/form.js';
 import { tabBar } from './views/shared.js';
 import { homeScreenSheet, backupSheet, backupResult } from './views/sheets.js';
-import { mountMap, unmountMap } from './views/map.js';
+import { mountMap, unmountMap, selectPin } from './views/map.js';
+import { mapSheet } from './views/nearby.js';
 import { signInSheet, accountSheet } from './views/account.js';
 
 const app = document.getElementById('app');
@@ -46,8 +47,11 @@ const state = {
   locationIssue: null, // 'denied' | 'unavailable'
   zipDraft: prefs.zip ?? '',
   zipStatus: '',
+  zipEditing: false, // showing the zip field while already using a zip
   radius: prefs.radius ?? 0.5,
-  view: prefs.view === 'map' ? 'map' : 'list',
+  // Map first (Oct 14 decision); the list is remembered only if someone switches to it.
+  view: prefs.view === 'list' ? 'list' : 'map',
+  selectedId: null, // pin selected on the map; null = best match
   // Closed restrooms are hidden by default; the "Hide closed" chip turns that off.
   filters: { kind: 'all', type: '', hideClosed: true, openNow: false, accessible: false, changing: false },
   sheet: null, // 'homescreen' | 'backup' | 'signin' | 'account'
@@ -103,6 +107,7 @@ function paint(html, tab) {
   document.body.classList.toggle('sheet-open', Boolean(state.sheet));
   if (state.sheet && !hadSheet) app.querySelector('.sheet')?.focus();
   app.classList.toggle('has-tabbar', Boolean(tab));
+  app.classList.toggle('map-mode', Boolean(app.querySelector('.map-main')));
   if (paintedHash !== location.hash) window.scrollTo(0, 0);
   paintedHash = location.hash;
 }
@@ -166,15 +171,45 @@ function render() {
         state.data && state.here
           ? nearby(buildEntries(state.data.bathrooms, listPlaces()), state.here, { radius: state.radius, ...state.filters })
           : null;
+      currentList = list;
+      if (list && state.selectedId && ![...list.inside, ...list.outside].some((e) => e.id === state.selectedId)) state.selectedId = null;
       paint(nearbyView(state, list), 'nearby');
       const mapEl = app.querySelector('#map');
       if (mapEl && list) {
         const { here } = state;
-        mountMap(mapEl, { entries: [...list.inside, ...list.outside], here, radius: state.radius, approx: here.source === 'zip', zip: here.zip });
+        mountMap(mapEl, {
+          entries: [...list.inside, ...list.outside],
+          here,
+          radius: state.radius,
+          approx: here.source === 'zip',
+          zip: here.zip,
+          selected: state.selectedId ?? [...list.inside, ...list.outside][0]?.id,
+          sheet: app.querySelector('#map-sheet'),
+          onSelect: (id) => selectOnMap(id),
+        });
       }
       return;
     }
   }
+}
+
+// ---------- Map selection (updates the card and the pin without rebuilding the map) ----------
+
+let currentList = null;
+
+function selectOnMap(id, { pan = false } = {}) {
+  state.selectedId = id;
+  const sheet = app.querySelector('#map-sheet');
+  if (sheet && currentList) sheet.innerHTML = mapSheet(state, currentList, id);
+  selectPin(id, { pan });
+}
+
+function stepSelection(delta) {
+  if (!currentList) return;
+  const entries = [...currentList.inside, ...currentList.outside];
+  const index = Math.max(0, entries.findIndex((e) => e.id === state.selectedId));
+  const next = entries[Math.min(entries.length - 1, Math.max(0, index + delta))];
+  if (next) selectOnMap(next.id, { pan: true });
 }
 
 // Re-render only screens that show location-dependent content, never an open form.
@@ -365,6 +400,7 @@ async function applyZip(zip) {
     }
     state.here = { lat: found.lat, lng: found.lng, source: 'zip', zip, area: found.area };
     state.zipStatus = '';
+    state.zipEditing = false;
     savePrefs({ zip, source: 'zip' });
     refresh();
   } catch (err) {
@@ -427,11 +463,18 @@ app.addEventListener('click', (e) => {
       state.radius = Number(value);
       savePrefs({ radius: state.radius });
       return render();
+    case 'edit-zip':
+      state.zipEditing = true;
+      render();
+      return app.querySelector('#zip')?.focus();
+    case 'sheet-step':
+      return stepSelection(Number(value));
     case 'view':
       state.view = value;
       savePrefs({ view: value });
       return render();
     case 'kind':
+      state.selectedId = null;
       state.filters.kind = value;
       return render();
     case 'toggle':
@@ -461,6 +504,11 @@ app.addEventListener('submit', (e) => {
 });
 
 app.addEventListener('change', (e) => {
+  if (e.target.id === 'radius-filter') {
+    state.radius = Number(e.target.value);
+    savePrefs({ radius: state.radius });
+    return render();
+  }
   if (e.target.id === 'type-filter') {
     state.filters.type = e.target.value;
     return render();

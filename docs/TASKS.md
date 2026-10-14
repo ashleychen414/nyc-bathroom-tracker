@@ -29,7 +29,7 @@ Updated 2026-10-14. Steps map to the MVP scope in `SPEC.md`. Product improvement
   - The Save button on the log form → save changes automatically as you tap ratings/type notes (no Save/Cancel).
   - Or they want places kept without any extra steps → that's Follow-up #1 (places last forever), which removes the need for the Home Screen prompt.
 - [ ] **Easier edit / delete for saved places** (Ashley, 2026-10-08; lower priority). Today it exists but is buried: My places → Edit log → "Delete place" at the bottom of the form. Make it obvious: e.g. Edit and Delete on each My places card and on the place's detail screen, with a confirm (or an Undo toast) for delete.
-- [ ] Map view follow-ups: tap a spot on the map to add a place; remember the map position between visits.
+- [ ] Map follow-ups: tap a spot on the map to add a place; remember the map position between visits; show your live location dot moving as you walk
 - [ ] Test on a real iPhone once hosted: GPS, first-launch flow, time pickers, emoji tap targets (location only works on https)
 - [ ] Launch to friends; start logging in `FEEDBACK.md`
 
@@ -52,6 +52,7 @@ Updated 2026-10-14. Steps map to the MVP scope in `SPEC.md`. Product improvement
 
 ## Done
 
+- [x] 2026-10-14: **E4 map-first home**: Nearby opens on a full-screen map (list remembered only if chosen); legend strip always visible between the filters and the map; bottom card with the best match (open first, then nearest), Directions + Details, ‹ › to step through results; tapping a pin selects it; compact header (one-line location, radius dropdown in the filter row)
 - [x] 2026-10-14: **E0 quick wins**: hours show the formatted table + "Hours from NYC Open Data · View on Google Maps" (the city's wording only when it couldn't be read); filter by type (Parks, Libraries, Transit, Public plazas, Privately owned public spaces); database access-rule checks (`npm run test:rls` on every deploy, `supabase/tests/places_rls.sql` for signed-in users); migrations saved in `supabase/migrations/`
 - [x] 2026-10-14: Sync confirmed end to end in production (2 accounts, 3 places in Supabase)
 - [x] 2026-10-08: Lists phase 1 live on www.nycpoops.com: email-code sign-in (custom SMTP via Resend from nycpoops.com), background sync, account sheet. Ashley tested sign-in locally; place upload to the account still to confirm on a real phone
