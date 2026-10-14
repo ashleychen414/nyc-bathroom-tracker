@@ -29,6 +29,7 @@ const bathrooms = [
   pub('outside-1', 0.7, '6am - 11pm'),
   pub('outside-2', 0.9, undefined),
   pub('way-out', 3, '6am - 11pm'),
+  pub('lib', 2, '10am - 6pm', { type: 'Library' }),
 ];
 const places = [
   { id: 'p-mine', name: 'Whole Foods', lat: HERE.lat + 0.35 * MILE_LAT, lng: HERE.lng, hours: parseHours('7am - 10pm').hours, log: {} },
@@ -75,4 +76,5 @@ test('filters', () => {
   assert.ok(!ids({ accessible: true }).includes('open-near'));
   assert.ok(!ids({ changing: true }).includes('open-near'));
   assert.ok(!ids({ accessible: true }).includes('p-mine'));
+  assert.deepEqual(ids({ type: 'Library' }), ['lib']);
 });

@@ -33,7 +33,9 @@ export function buildEntries(bathrooms, places, now = new Date()) {
   ];
 }
 
-export function matches(entry, { kind = 'all', hideClosed = false, openNow = false, accessible = false, changing = false }) {
+export function matches(entry, { kind = 'all', type = '', hideClosed = false, openNow = false, accessible = false, changing = false }) {
+  // A type (Park, Library, ...) is a city-data field, so it narrows to public restrooms of that type.
+  if (type && entry.bathroom?.type !== type) return false;
   if (hideClosed && entry.status.state === 'closed') return false;
   if (kind === 'public' && entry.kind !== 'public') return false;
   if (kind === 'mine' && !entry.place) return false;

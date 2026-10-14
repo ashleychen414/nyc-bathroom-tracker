@@ -46,6 +46,9 @@ never to "Open". Closed and non-operational restrooms are shown greyed out, not 
 - `npm run data`: rebuild bathroom data from NYC Open Data (no API key needed)
 - `npm test`: unit tests (node:test, no deps)
 - `npm run dev`: local server at http://localhost:5173
+- `npm run test:rls`: checks what an anonymous visitor can do against the live Supabase project (also runs on every deploy)
+
+**Database changes:** every schema change is a Supabase migration, saved in `supabase/migrations/` with the same version as in Supabase. After any change to a table or its policies, run `supabase/tests/places_rls.sql` (it rolls back, leaving nothing behind) and add matching checks for new tables.
 
 ## Data facts (verified 2026-10-08)
 

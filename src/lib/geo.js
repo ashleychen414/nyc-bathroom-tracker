@@ -63,5 +63,8 @@ export async function lookupZip(zip, signal) {
   return { lat, lng, area: feature.properties.district ?? feature.properties.city ?? '' };
 }
 
+// Opens the spot in Google Maps (useful to cross-check hours there).
+export const googleMapsUrl = ({ lat, lng }) => `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+
 export const directionsUrl =({ lat, lng }) =>
   `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=walking`;

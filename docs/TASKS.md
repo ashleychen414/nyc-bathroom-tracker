@@ -52,6 +52,7 @@ Updated 2026-10-14. Steps map to the MVP scope in `SPEC.md`. Product improvement
 
 ## Done
 
+- [x] 2026-10-14: **E0 quick wins**: hours show the formatted table + "Hours from NYC Open Data · View on Google Maps" (the city's wording only when it couldn't be read); filter by type (Parks, Libraries, Transit, Public plazas, Privately owned public spaces); database access-rule checks (`npm run test:rls` on every deploy, `supabase/tests/places_rls.sql` for signed-in users); migrations saved in `supabase/migrations/`
 - [x] 2026-10-14: Sync confirmed end to end in production (2 accounts, 3 places in Supabase)
 - [x] 2026-10-08: Lists phase 1 live on www.nycpoops.com: email-code sign-in (custom SMTP via Resend from nycpoops.com), background sync, account sheet. Ashley tested sign-in locally; place upload to the account still to confirm on a real phone
 - [x] 2026-10-08: Bug: "Sign in" button on the My places banner wrapped onto two lines (Ashley). Fixed: the button keeps its width and doesn't wrap

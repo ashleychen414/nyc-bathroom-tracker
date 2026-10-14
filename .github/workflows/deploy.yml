@@ -32,6 +32,8 @@ jobs:
         with:
           node-version: 22
       - run: npm test
+      - name: Check database access rules (anonymous visitor)
+        run: npm run test:rls
       - name: Refresh restroom data
         if: github.event_name != 'push'
         run: |

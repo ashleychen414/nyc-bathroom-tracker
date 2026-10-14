@@ -476,3 +476,22 @@ body.sheet-open { overflow: hidden; }
   font-weight: 600; font-size: 14px; box-shadow: 0 6px 20px rgba(0, 0, 0, .2);
 }
 .link:disabled { opacity: .5; }
+
+/* ---------- Type filter and hours source ---------- */
+.chip-select {
+  flex-shrink: 0; position: relative; display: inline-flex; align-items: center;
+  min-height: 38px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface);
+}
+.chip-select select {
+  appearance: none; border: none; background: transparent; color: var(--text);
+  font: inherit; font-size: 14px; font-weight: 600; padding: 0 30px 0 14px; min-height: 36px; cursor: pointer;
+}
+.chip-select::after {
+  content: ''; position: absolute; right: 12px; top: 50%; width: 7px; height: 7px; margin-top: -5px;
+  border-right: 2px solid currentColor; border-bottom: 2px solid currentColor; transform: rotate(45deg); pointer-events: none;
+}
+.chip-select.on { background: var(--dark); border-color: var(--dark); color: var(--dark-text); }
+.chip-select.on select { color: var(--dark-text); }
+.chip-select:focus-within { outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 2px; }
+.source { font-size: 13px; color: var(--muted); }
+.source a { color: var(--accent); font-weight: 600; }

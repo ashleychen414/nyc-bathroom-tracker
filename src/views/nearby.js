@@ -1,7 +1,7 @@
 // Nearby tab: first-launch screen, the mixed list, and restroom detail screens.
 
 import { esc, icon } from '../lib/html.js';
-import { formatDistance, directionsUrl } from '../lib/geo.js';
+import { formatDistance, directionsUrl, googleMapsUrl } from '../lib/geo.js';
 import { getStatus, describeHours } from '../lib/hours.js';
 import { RADII, placeStatus } from '../lib/nearby.js';
 import { statusBadge, mineBadge, logChips, hasLog, publicTags, restroomType, backBar, sourceDate } from './shared.js';
@@ -18,6 +18,18 @@ const TOGGLES = [
   ['accessible', 'Accessible'],
   ['changing', 'Changing station'],
 ];
+
+// City data location types (fixed list in NYC Open Data).
+export const TYPES = [
+  ['', 'All types'],
+  ['Park', 'Parks'],
+  ['Library', 'Libraries'],
+  ['Transit', 'Transit'],
+  ['Public Plaza', 'Public plazas'],
+  ['Privately Owned Public Space', 'Privately owned public spaces'],
+];
+
+const SOURCE_URL = 'https://data.cityofnewyork.us/City-Government/Public-Restrooms/i7jb-7jku';
 
 const radiusLabel = (r) => `${r} mi`;
 
@@ -77,7 +89,12 @@ function controls(s) {
   ).join('');
   return `
     <div class="radius" role="group" aria-label="Radius">${radius}</div>
-    <div class="filter-row" role="group" aria-label="Filters">${kinds}<span class="divider" aria-hidden="true"></span>${toggles}</div>`;
+    <div class="filter-row" role="group" aria-label="Filters">${kinds}${typeSelect(s.filters.type)}<span class="divider" aria-hidden="true"></span>${toggles}</div>`;
+}
+
+function typeSelect(type) {
+  const options = TYPES.map(([v, label]) => `<option value="${esc(v)}" ${v === type ? 'selected' : ''}>${label}</option>`).join('');
+  return `<label class="chip-select ${type ? 'on' : ''}"><span class="visually-hidden">Type</span><select id="type-filter">${options}</select></label>`;
 }
 
 const viewToggle = (view) => `
@@ -172,6 +189,22 @@ function notesCard(place, addHref) {
     </section>`;
 }
 
+// Structured hours when we could read them; otherwise the city's wording once, so it's never shown twice.
+function publicHours(b) {
+  const raw = b.hoursText?.replace(/\s*\n\s*/g, '; ');
+  let body;
+  if (describeHours(b.hours)) {
+    body = hoursRows(b.hours) + (b.hours.kind === 'minimum' ? '<p class="hint">Open later in season.</p>' : '');
+  } else if (raw) {
+    body = `<p>${esc(raw)}</p><p class="hint">We couldn't read these hours exactly, so we don't mark this restroom as open.</p>`;
+  } else {
+    body = '<p class="muted">Hours unknown</p>';
+  }
+  return `${body}
+    ${b.season === 'Seasonal' ? '<p class="hint">Seasonal restroom: it may be closed outside its season.</p>' : ''}
+    <p class="source">Hours from <a href="${SOURCE_URL}" target="_blank" rel="noopener">NYC Open Data</a> · <a href="${googleMapsUrl(b)}" target="_blank" rel="noopener">View on Google Maps</a></p>`;
+}
+
 const kv = (label, value) => (value ? `<div class="kv"><span>${esc(label)}</span><span>${esc(value)}</span></div>` : '');
 
 export function publicDetailView(s, b, place, distance) {
@@ -191,9 +224,7 @@ export function publicDetailView(s, b, place, distance) {
       ${notesCard(place, `#/log/${encodeURIComponent(b.id)}`)}
       <section class="group">
         <h2 class="label">Hours</h2>
-        ${hoursRows(b.hours)}
-        ${b.season === 'Seasonal' ? '<p class="hint">Seasonal restroom: it may be closed outside its season.</p>' : ''}
-        ${b.hoursText ? `<p class="hint">City listing says: "${esc(b.hoursText.replace(/\s*\n\s*/g, '; '))}"</p>` : ''}
+        ${publicHours(b)}
       </section>
       <section class="group">
         <h2 class="label">What to expect</h2>

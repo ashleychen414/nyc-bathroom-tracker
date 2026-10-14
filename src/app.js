@@ -49,7 +49,7 @@ const state = {
   radius: prefs.radius ?? 0.5,
   view: prefs.view === 'map' ? 'map' : 'list',
   // Closed restrooms are hidden by default; the "Hide closed" chip turns that off.
-  filters: { kind: 'all', hideClosed: true, openNow: false, accessible: false, changing: false },
+  filters: { kind: 'all', type: '', hideClosed: true, openNow: false, accessible: false, changing: false },
   sheet: null, // 'homescreen' | 'backup' | 'signin' | 'account'
   signin: { step: 'email', email: '', code: '', busy: false, error: '', message: '' },
   toast: '',
@@ -461,6 +461,10 @@ app.addEventListener('submit', (e) => {
 });
 
 app.addEventListener('change', (e) => {
+  if (e.target.id === 'type-filter') {
+    state.filters.type = e.target.value;
+    return render();
+  }
   if (e.target.id === 'import-file' && e.target.files[0]) importBackup(e.target.files[0]);
 });
 
