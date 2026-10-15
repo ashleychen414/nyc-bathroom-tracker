@@ -217,5 +217,13 @@
     "source": "https://wyckoffmuseum.org/visit/",
     "reviewedOn": "2026-10-14",
     "hours": null
+  },
+  "nyc-0127e2bf67": {
+    "note": "McCarren Park Zone 3. City: '7:30am-11:00pm', days not stated. NYC Parks publishes no restroom hours to confirm or contradict; kept as daily, consistent with other city hours (Ashley, 2026-10-14).",
+    "source": "https://www.nycgovparks.org/facilities/restrooms/455",
+    "reviewedOn": "2026-10-14",
+    "hours": { "kind": "weekly", "days": [
+      [[450, 1380]], [[450, 1380]], [[450, 1380]], [[450, 1380]], [[450, 1380]], [[450, 1380]], [[450, 1380]]
+    ] }
   }
 }
