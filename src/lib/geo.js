@@ -1,7 +1,10 @@
 // Location helpers: GPS, distance, address search, Google Maps directions.
 
+import { searchRestaurants } from './restaurants.js';
+
 // Address search uses Photon (photon.komoot.io): free, no API key, built on OpenStreetMap.
-// Fine for a friends-scale tool; revisit (e.g. Geoapify) if usage grows.
+// Fine for a friends-scale tool; revisit (e.g. Geoapify) if usage grows. Restaurants that
+// OpenStreetMap is missing come from the city's inspection data (restaurants.js).
 const PHOTON = 'https://photon.komoot.io';
 const NYC_BBOX = '-74.26,40.49,-73.70,40.92';
 const BROOKLYN = { lat: 40.65, lng: -73.95 };
@@ -187,10 +190,53 @@ export function toResult(feature, providerRank = 0) {
   };
 }
 
+// Generic words that don't tell two places apart: "Devoción" and "Devocion Coffee" are one place.
+const GENERIC = new Set(['restaurant', 'cafe', 'coffee', 'bar', 'nyc', 'brooklyn', 'inc', 'llc', 'the', 'and']);
+const coreName = (name) =>
+  normalize(name)
+    .split(' ')
+    .filter((w) => !GENERIC.has(w))
+    .join('');
+
+// Drops city restaurant rows that OpenStreetMap already has (same name within ~250 m).
+// The OpenStreetMap one is kept: its names have proper accents and capitals.
+export function mergeRestaurants(osm, restaurants) {
+  const extra = restaurants.filter((r) => {
+    const name = coreName(r.name);
+    return !osm.some((o) => name && coreName(o.name) === name && distanceMiles(o, r) < 0.15);
+  });
+  return [...osm, ...extra];
+}
+
 // near: the person's location if known (results then show distance). Without it, results
 // are still biased to central Brooklyn but show no distance.
 export async function searchAddress(query, near, signal) {
   const center = near ?? BROOKLYN;
+  const [osm, food] = await Promise.allSettled([
+    searchPhoton(query, center, signal),
+    looksLikeAddress(query) ? [] : searchRestaurantsQuickly(query, center, signal),
+  ]);
+  if (signal?.aborted) throw new DOMException('aborted', 'AbortError');
+  if (osm.status === 'rejected' && food.status === 'rejected') throw osm.reason;
+  const results = mergeRestaurants(osm.value ?? [], food.value ?? []);
+  return rankResults(results, query, center).map((r) => (near ? { ...r, distance: distanceMiles(near, r) } : r));
+}
+
+// City restaurant results are a bonus: give up after 4 s rather than hold up the list.
+async function searchRestaurantsQuickly(query, center, signal) {
+  const abort = new AbortController();
+  const stop = () => abort.abort();
+  signal?.addEventListener('abort', stop);
+  const timer = setTimeout(stop, 4000);
+  try {
+    return await searchRestaurants(query, center, abort.signal);
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener('abort', stop);
+  }
+}
+
+async function searchPhoton(query, center, signal) {
   // location_bias_scale 0.1 + zoom 14: strong pull to within a mile or two, while famous or
   // exact matches further away still come back. We ask for more than we show and re-rank.
   const params = new URLSearchParams({
@@ -204,8 +250,7 @@ export async function searchAddress(query, near, signal) {
   });
   const res = await fetch(`${PHOTON}/api/?${params}`, { signal });
   if (!res.ok) throw new Error(`search failed (${res.status})`);
-  const results = (await res.json()).features.map((f, i) => toResult(f, i));
-  return rankResults(results, query, center).map((r) => (near ? { ...r, distance: distanceMiles(near, r) } : r));
+  return (await res.json()).features.map((f, i) => toResult(f, i));
 }
 
 export async function reverseGeocode({ lat, lng }) {
