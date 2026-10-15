@@ -1,7 +1,8 @@
--- Row-level security test for public.places, signed-in users.
+-- Row-level security tests for public.places, public.profiles and public.bathrooms.
 -- Runs entirely inside a transaction and rolls back: it leaves no users or rows behind.
 -- Run it in the Supabase SQL editor (or via the Supabase connector) after any change to
--- places or its policies. Any failed check raises an error naming the check.
+-- a table or its policies. Any failed check raises an error naming the check.
+-- Anonymous-visitor checks against the live API are in scripts/check-rls.mjs (npm run test:rls).
 begin;
 
 insert into auth.users (id, email, aud, role) values
@@ -44,5 +45,136 @@ do $$ begin
 end $$;
 
 reset role;
-select 'places RLS: all checks passed' as result;
+
+-- ---------- profiles ----------
+
+-- Every account gets a profile at sign-up (trigger on auth.users), as a member.
+do $$ begin
+  assert (select count(*) from public.profiles where id in ('11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222') and role = 'member') = 2,
+    'new accounts should get a member profile';
+  assert (select count(*) from auth.users u where not exists (select 1 from public.profiles p where p.id = u.id)) = 0,
+    'every existing account should have a profile';
+end $$;
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+
+-- A sees only their own profile and can set their display name.
+update public.profiles set display_name = 'Tester A' where id = '11111111-1111-1111-1111-111111111111';
+update public.profiles set display_name = 'changed by A' where id = '22222222-2222-2222-2222-222222222222';
+do $$ begin
+  assert (select count(*) from public.profiles) = 1, 'A should see only their own profile';
+  assert (select display_name from public.profiles) = 'Tester A', 'A should be able to set their display name';
+end $$;
+
+-- A can't make themselves an admin, add a profile, or delete one.
+do $$ begin
+  begin
+    update public.profiles set role = 'admin' where id = '11111111-1111-1111-1111-111111111111';
+    raise exception 'A was able to change their own role';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    insert into public.profiles (id) values ('33333333-3333-3333-3333-333333333333');
+    raise exception 'A was able to insert a profile';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    delete from public.profiles where id = '11111111-1111-1111-1111-111111111111';
+    raise exception 'A was able to delete a profile';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+
+reset role;
+do $$ begin
+  assert (select display_name from public.profiles where id = '22222222-2222-2222-2222-222222222222') is null,
+    'A should not be able to change B''s profile';
+end $$;
+
+-- ---------- bathrooms ----------
+
+-- Test rows (as the database owner): one seed row, one confirmed user row, one unverified user row.
+insert into public.bathrooms (id, name, source, status, lat, lng) values
+  ('rls-test-seed', 'RLS test seed', 'seed', 'unverified', 40.7, -73.9),
+  ('rls-test-confirmed', 'RLS test confirmed', 'user', 'confirmed', 40.7, -73.9),
+  ('rls-test-unverified', 'RLS test unverified', 'user', 'unverified', 40.7, -73.9);
+
+-- Anonymous visitors and signed-in users read seed and confirmed bathrooms only.
+set local role anon;
+do $$ begin
+  assert (select count(*) from public.bathrooms where id like 'rls-test-%') = 2, 'anon should see seed and confirmed rows only';
+  assert not exists (select 1 from public.bathrooms where id = 'rls-test-unverified'), 'anon should not see unverified user rows';
+end $$;
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+do $$ begin
+  assert (select count(*) from public.bathrooms where id like 'rls-test-%') = 2, 'signed-in users should see seed and confirmed rows only';
+end $$;
+
+-- Nobody but the service role writes: no insert, update, delete, or calling the sync function.
+do $$ begin
+  begin
+    insert into public.bathrooms (id, name, source, lat, lng) values ('rls-test-new', 'x', 'user', 40.7, -73.9);
+    raise exception 'a signed-in user was able to add a bathroom';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    update public.bathrooms set name = 'changed' where id = 'rls-test-seed';
+    raise exception 'a signed-in user was able to change a bathroom';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    delete from public.bathrooms where id = 'rls-test-seed';
+    raise exception 'a signed-in user was able to delete a bathroom';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    perform public.sync_seed_bathrooms('[]'::jsonb, false);
+    raise exception 'a signed-in user was able to run the bathrooms sync';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+
+reset role;
+
+-- The sync: adds new rows, keeps our status, picks the less-open copy of a duplicated id,
+-- updates only changed rows, and refuses a list that would mark most rows missing.
+delete from public.bathrooms where id like 'rls-test-%';
+do $$
+declare
+  r jsonb;
+begin
+  r := public.sync_seed_bathrooms('[
+    {"id":"rls-test-a","name":"Test A","type":"Library","borough":"Brooklyn","status":"Operational","hours":null,"hoursReviewed":false,"lat":40.69,"lng":-73.99},
+    {"id":"rls-test-b","name":"Test B","type":"Park","borough":"Queens","status":"Operational","hours":{"kind":"24h"},"hoursReviewed":true,"lat":40.75,"lng":-73.85},
+    {"id":"rls-test-b","name":"Test B","type":"Park","borough":"Queens","status":"Not Operational","hours":null,"hoursReviewed":false,"lat":40.75,"lng":-73.85}
+  ]'::jsonb, false);
+  assert (r->>'inserted')::int = 2 and (r->>'unique')::int = 2, 'sync should add 2 rows from 3 with a duplicated id: ' || r;
+  assert (select venue_type || '/' || access || '/' || status || '/' || source from public.bathrooms where id = 'rls-test-a') = 'library/public/unverified/seed',
+    'seed rows should be library/public/unverified/seed';
+  assert (select source_data->>'status' from public.bathrooms where id = 'rls-test-b') = 'Not Operational',
+    'for a duplicated id the less-open copy should win';
+
+  update public.bathrooms set status = 'confirmed' where id = 'rls-test-a';
+  r := public.sync_seed_bathrooms('[
+    {"id":"rls-test-a","name":"Test A renamed","type":"Library","borough":"Brooklyn","status":"Operational","hours":null,"hoursReviewed":false,"lat":40.69,"lng":-73.99},
+    {"id":"rls-test-b","name":"Test B","type":"Park","borough":"Queens","status":"Not Operational","hours":null,"hoursReviewed":false,"lat":40.75,"lng":-73.85}
+  ]'::jsonb, false);
+  assert (r->>'updated')::int = 1 and (r->>'inserted')::int = 0, 'sync should update only the changed row: ' || r;
+  assert (select name || '/' || status from public.bathrooms where id = 'rls-test-a') = 'Test A renamed/confirmed',
+    'sync should update city facts but keep our status';
+
+  if (select count(*) from public.bathrooms where source = 'seed') > 20 then
+    begin
+      perform public.sync_seed_bathrooms('[{"id":"rls-test-a","name":"Test A","lat":40.69,"lng":-73.99}]'::jsonb, true);
+      raise exception 'sync accepted a list that would mark most rows missing';
+    exception when raise_exception then
+      if sqlerrm not like 'Refusing to sync%' then raise; end if;
+    end;
+  end if;
+end $$;
+
+select 'places, profiles, bathrooms RLS: all checks passed' as result;
 rollback;
