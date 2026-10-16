@@ -3,8 +3,7 @@
     "note": "Atlantic Ave LIRR. Source: '7 a.m.-7 p.m., with a one-hour closure for cleaning from 12 noon-1 p.m.' Days not stated; read as daily.",
     "reviewedOn": "2026-10-08",
     "hours": { "kind": "weekly", "days": [
-      [[420, 720], [780, 1140]], [[420, 720], [780, 1140]], [[420, 720], [780, 1140]], [[420, 720], [780, 1140]],
-      [[420, 720], [780, 1140]], [[420, 720], [780, 1140]], [[420, 720], [780, 1140]]
+      [[420, 720], [780, 1140]], [[420, 720], [780, 1140]], [[420, 720], [780, 1140]], [[420, 720], [780, 1140]], [[420, 720], [780, 1140]], [[420, 720], [780, 1140]], [[420, 720], [780, 1140]]
     ] }
   },
   "nyc-c5ba4c1cb9": {
@@ -12,6 +11,219 @@
     "reviewedOn": "2026-10-08",
     "hours": { "kind": "weekly", "days": [
       [[420, 1320]], [[420, 1440]], [[420, 1440]], [[420, 1440]], [[420, 1440]], [[420, 1440]], [[420, 1320]]
+    ] }
+  },
+  "nyc-6f4bca11a1": {
+    "note": "Domino Park, Refinery Building. City: '6am-11pm', days not stated. Park site: open daily 6am-11pm; no separate restroom hours published.",
+    "source": "https://www.dominopark.com/plan-your-visit",
+    "reviewedOn": "2026-10-14",
+    "hours": { "kind": "weekly", "days": [
+      [[360, 1380]], [[360, 1380]], [[360, 1380]], [[360, 1380]], [[360, 1380]], [[360, 1380]], [[360, 1380]]
+    ] }
+  },
+  "nyc-d872e78f59": {
+    "note": "Prospect Park Indoor Tennis. City: '7:00am-11:00pm'. Operator lists different hours (6am-11pm) and separate outdoor/indoor seasons with a gap in mid-October; no restroom hours. Left unknown.",
+    "source": "https://www.prospectpark.org/visit-the-park/places-to-go/tennis-center/",
+    "reviewedOn": "2026-10-14",
+    "hours": null
+  },
+  "nyc-07163272f5": {
+    "note": "Paerdegat Basin Marina 1. City: '9:00am-5:00pm'. Each basin is a separate club concession and none posts 9-5 (hours differ by club, weekends-only, seasonal, or not listed). Left unknown.",
+    "source": "https://www.nycgovparks.org/facilities/marinas/6",
+    "reviewedOn": "2026-10-14",
+    "hours": null
+  },
+  "nyc-4d7b8dfaa2": {
+    "note": "Paerdegat Basin Marina 2. City: '9:00am-5:00pm'. Each basin is a separate club concession and none posts 9-5 (hours differ by club, weekends-only, seasonal, or not listed). Left unknown.",
+    "source": "https://www.nycgovparks.org/facilities/marinas/7",
+    "reviewedOn": "2026-10-14",
+    "hours": null
+  },
+  "nyc-d9c728438e": {
+    "note": "Paerdegat Basin Marina 3. City: '9:00am-5:00pm'. Each basin is a separate club concession and none posts 9-5 (hours differ by club, weekends-only, seasonal, or not listed). Left unknown.",
+    "source": "https://www.nycgovparks.org/facilities/marinas/5",
+    "reviewedOn": "2026-10-14",
+    "hours": null
+  },
+  "nyc-11df948147": {
+    "note": "Paerdegat Basin Marina 4. City: '9:00am-5:00pm'. Each basin is a separate club concession and none posts 9-5 (hours differ by club, weekends-only, seasonal, or not listed). Left unknown.",
+    "source": "https://www.nycgovparks.org/facilities/marinas/9",
+    "reviewedOn": "2026-10-14",
+    "hours": null
+  },
+  "nyc-6c89d2a19c": {
+    "note": "Paerdegat Basin Marina 5. City: '9:00am-5:00pm'. Each basin is a separate club concession and none posts 9-5 (hours differ by club, weekends-only, seasonal, or not listed). Left unknown.",
+    "source": "https://www.nycgovparks.org/facilities/marinas/8",
+    "reviewedOn": "2026-10-14",
+    "hours": null
+  },
+  "nyc-ffc2dc6c51": {
+    "note": "Mill Basin Marina. City: '9:00am-5:00pm'. NYC Parks: 'Seven days a week, sunup to sundown' (not a fixed time). Left unknown.",
+    "source": "https://www.nycgovparks.org/facilities/marinas/3",
+    "reviewedOn": "2026-10-14",
+    "hours": null
+  },
+  "nyc-bd69b18566": {
+    "note": "LeFrak Center at Lakeside. City: '9:00am-7:00pm'. No building hours published; activity hours vary by day and season (roller season ends Oct 18, ice returns late 2026). Left unknown.",
+    "source": "https://lakeside.prospectpark.org/activity/public-roller-skate/",
+    "reviewedOn": "2026-10-14",
+    "hours": null
+  },
+  "nyc-b4379648e0": {
+    "note": "Parade Ground restroom. City: '7:30am-5:00pm', Year Round. NYC Parks publishes no hours; older reports say seasonal (April-October). Left unknown.",
+    "source": "https://www.nycgovparks.org/facilities/restrooms/335",
+    "reviewedOn": "2026-10-14",
+    "hours": null
+  },
+  "nyc-6a1cc13e52": {
+    "note": "Brooklyn Bridge Park Pier 1. City: '6am-1am' is park hours. Restrooms: 'March-October: 7am-11pm | November-March: 7am-10pm', daily. Model has no seasons, so the shorter 7am-10pm is used year-round (never shows Open while closed).",
+    "source": "https://www.brooklynbridgepark.org/about/",
+    "reviewedOn": "2026-10-14",
+    "hours": { "kind": "weekly", "days": [
+      [[420, 1320]], [[420, 1320]], [[420, 1320]], [[420, 1320]], [[420, 1320]], [[420, 1320]], [[420, 1320]]
+    ] }
+  },
+  "nyc-e5047cb69c": {
+    "note": "Brooklyn Bridge Park Pier 6 Quay Tower. City: '6am-1am' is park hours. Restrooms: 'March-October: 7am-11pm | November-March: 7am-10pm', daily. Shorter 7am-10pm used year-round.",
+    "source": "https://www.brooklynbridgepark.org/about/",
+    "reviewedOn": "2026-10-14",
+    "hours": { "kind": "weekly", "days": [
+      [[420, 1320]], [[420, 1320]], [[420, 1320]], [[420, 1320]], [[420, 1320]], [[420, 1320]], [[420, 1320]]
+    ] }
+  },
+  "nyc-8e713e22f6": {
+    "note": "Abe Stark Rink. City: '12:30pm-4:00pm'. NYC Parks: season Oct 17, 2026 - Mar 21, 2027, Sat-Sun 12:30-3:30pm, plus some holiday weekdays (not modeled, so those show closed). Still Seasonal in city data.",
+    "source": "https://www.nycgovparks.org/facilities/iceskating/1",
+    "reviewedOn": "2026-10-14",
+    "hours": { "kind": "weekly", "days": [
+      [[750, 930]], [], [], [], [], [], [[750, 930]]
+    ] }
+  },
+  "nyc-d78f774135": {
+    "note": "Valentino Park and Pier automatic public toilet (NYC DOT/JCDecaux). 311: 'open daily from 8 AM to 8 PM'.",
+    "source": "https://portal.311.nyc.gov/article/?kanumber=KA-02226",
+    "reviewedOn": "2026-10-14",
+    "hours": { "kind": "weekly", "days": [
+      [[480, 1200]], [[480, 1200]], [[480, 1200]], [[480, 1200]], [[480, 1200]], [[480, 1200]], [[480, 1200]]
+    ] }
+  },
+  "nyc-bb9cb9ff90": {
+    "note": "Williamsburg Bridge Bus Depot automatic public toilet (NYC DOT/JCDecaux). 311: 'open daily from 8 AM to 8 PM'.",
+    "source": "https://portal.311.nyc.gov/article/?kanumber=KA-02226",
+    "reviewedOn": "2026-10-14",
+    "hours": { "kind": "weekly", "days": [
+      [[480, 1200]], [[480, 1200]], [[480, 1200]], [[480, 1200]], [[480, 1200]], [[480, 1200]], [[480, 1200]]
+    ] }
+  },
+  "nyc-2863e3674f": {
+    "note": "Grand Army Plaza automatic public toilet (NYC DOT/JCDecaux). 311: 'open daily from 8 AM to 8 PM'.",
+    "source": "https://portal.311.nyc.gov/article/?kanumber=KA-02226",
+    "reviewedOn": "2026-10-14",
+    "hours": { "kind": "weekly", "days": [
+      [[480, 1200]], [[480, 1200]], [[480, 1200]], [[480, 1200]], [[480, 1200]], [[480, 1200]], [[480, 1200]]
+    ] }
+  },
+  "nyc-86155322ff": {
+    "note": "Washington Irving Library. BPL weekly hours. BPL holiday closures are not modeled.",
+    "source": "https://www.bklynlibrary.org/locations/washington-irving",
+    "reviewedOn": "2026-10-14",
+    "hours": { "kind": "weekly", "days": [
+      [], [[600, 1080]], [[780, 1200]], [[600, 1080]], [[600, 1200]], [[600, 1080]], [[600, 1020]]
+    ] }
+  },
+  "nyc-c41179fbc9": {
+    "note": "Gravesend Library. BPL page shows the branch open with these hours, but city status is still 'Closed for Construction', so the app shows it closed until that status is fixed.",
+    "source": "https://www.bklynlibrary.org/locations/gravesend",
+    "reviewedOn": "2026-10-14",
+    "hours": { "kind": "weekly", "days": [
+      [], [[600, 1080]], [[780, 1200]], [[600, 1080]], [[600, 1200]], [[600, 1080]], [[600, 1020]]
+    ] }
+  },
+  "nyc-ad7b0d19b2": {
+    "note": "Ryder Library. BPL page shows the branch open (incl. Sun 1-5pm), but city status is still 'Closed for Construction', so the app shows it closed until that status is fixed.",
+    "source": "https://www.bklynlibrary.org/locations/ryder",
+    "reviewedOn": "2026-10-14",
+    "hours": { "kind": "weekly", "days": [
+      [[780, 1020]], [[600, 1080]], [[780, 1200]], [[600, 1080]], [[600, 1200]], [[600, 1080]], [[600, 1020]]
+    ] }
+  },
+  "nyc-995219a8ee": {
+    "note": "Leonard Library. BPL page shows the branch open, but city status is still 'Closed for Construction', so the app shows it closed until that status is fixed.",
+    "source": "https://www.bklynlibrary.org/locations/leonard",
+    "reviewedOn": "2026-10-14",
+    "hours": { "kind": "weekly", "days": [
+      [], [[600, 1080]], [[780, 1200]], [[600, 1080]], [[600, 1200]], [[600, 1080]], [[600, 1020]]
+    ] }
+  },
+  "nyc-ee6524c65f": {
+    "note": "Brooklyn Bridge Park Pier 5 Boathouse/Uplands. No city hours. Restrooms: 'March-October: 7am-11pm | November-March: 7am-10pm', daily. Shorter 7am-10pm used year-round.",
+    "source": "https://www.brooklynbridgepark.org/about/",
+    "reviewedOn": "2026-10-14",
+    "hours": { "kind": "weekly", "days": [
+      [[420, 1320]], [[420, 1320]], [[420, 1320]], [[420, 1320]], [[420, 1320]], [[420, 1320]], [[420, 1320]]
+    ] }
+  },
+  "nyc-3e42644a1d": {
+    "note": "Brooklyn Bridge Park Pier 2 Uplands. No city hours. Park restrooms 7am-10pm/11pm, but Pier 2 itself is 8am-9pm Oct-Apr, 8am-11pm May-Sep. Uses the overlap of both, 8am-9pm daily.",
+    "source": "https://www.brooklynbridgepark.org/about/",
+    "reviewedOn": "2026-10-14",
+    "hours": { "kind": "weekly", "days": [
+      [[480, 1260]], [[480, 1260]], [[480, 1260]], [[480, 1260]], [[480, 1260]], [[480, 1260]], [[480, 1260]]
+    ] }
+  },
+  "nyc-527347626f": {
+    "note": "Nellie Bly, now Adventurer's Park. City: 'Weekdays 12pm-Dusk, Weekends 11am-Dusk'. 2026 calendar opens on selected dates only, with closing 'TBD'. Left unknown.",
+    "source": "https://adventurerspark.com/park-hours/",
+    "reviewedOn": "2026-10-14",
+    "hours": null
+  },
+  "nyc-47c6ea4e78": {
+    "note": "Paerdegat Athletic Facility. City hours text: 'Temp Closed' (status says Operational). Concession ended Dec 2024, club site is gone, a new license was only proposed (Dec 2025). Every day closed until a reopening is confirmed.",
+    "source": "https://www.nycgovparks.org/opportunities/concessions/listing?id=353",
+    "reviewedOn": "2026-10-14",
+    "status": "Temporarily closed",
+    "hours": { "kind": "weekly", "days": [
+      [], [], [], [], [], [], []
+    ] }
+  },
+  "nyc-cc26890364": {
+    "note": "Parade Ground (second restroom). City: 'Open by permit'. No public hours. Left unknown.",
+    "source": "https://www.nycgovparks.org/facilities/restrooms/335",
+    "reviewedOn": "2026-10-14",
+    "hours": null
+  },
+  "nyc-83de26f066": {
+    "note": "Spring Creek Park Zone 1. City: 'Open by permit'. NYC Parks lists no inventory or hours. Left unknown.",
+    "source": "https://www.nycgovparks.org/facilities/restrooms/751",
+    "reviewedOn": "2026-10-14",
+    "hours": null
+  },
+  "nyc-80477acf80": {
+    "note": "Steeplechase Park Carousel (B&B Carousell, Luna Park). City: '11:00am - 10:00pm midnight on weekends'. Luna Park hours vary by date and weather; no weekly pattern. Left unknown.",
+    "source": "https://lunaparknyc.com/plan/park-hours/",
+    "reviewedOn": "2026-10-14",
+    "hours": null
+  },
+  "nyc-47d6128f10": {
+    "note": "Red Hook Library interim space, 362 Van Brunt St. City: '10 am to 5 pm on weedays'. BPL: Mon-Fri 10am-5pm, closed Sat-Sun. BPL holiday closures are not modeled.",
+    "source": "https://www.bklynlibrary.org/locations/red-hook/interim-library",
+    "reviewedOn": "2026-10-14",
+    "hours": { "kind": "weekly", "days": [
+      [], [[600, 1020]], [[600, 1020]], [[600, 1020]], [[600, 1020]], [[600, 1020]], []
+    ] }
+  },
+  "nyc-9523b51720": {
+    "note": "Fidler-Wyckoff House Park. City: 'Tuesday-Saturday' (no times). Museum: 'about 10 a.m. to 5 p.m. most Tuesdays through Saturday from April through November', approximate. Left unknown.",
+    "source": "https://wyckoffmuseum.org/visit/",
+    "reviewedOn": "2026-10-14",
+    "hours": null
+  },
+  "nyc-0127e2bf67": {
+    "note": "McCarren Park Zone 3. City: '7:30am-11:00pm', days not stated. NYC Parks publishes no restroom hours to confirm or contradict; kept as daily, consistent with other city hours (Ashley, 2026-10-14).",
+    "source": "https://www.nycgovparks.org/facilities/restrooms/455",
+    "reviewedOn": "2026-10-14",
+    "hours": { "kind": "weekly", "days": [
+      [[450, 1380]], [[450, 1380]], [[450, 1380]], [[450, 1380]], [[450, 1380]], [[450, 1380]], [[450, 1380]]
     ] }
   }
 }

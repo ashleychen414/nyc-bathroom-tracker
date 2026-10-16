@@ -1,0 +1,45 @@
+{
+  "BPL": {
+    "note": "Brooklyn Public Library holiday closures: 'All Brooklyn Public Library locations will be closed'. [] = closed all day.",
+    "source": "https://www.bklynlibrary.org/locations/closings",
+    "reviewedOn": "2026-10-14",
+    "dates": {
+      "2026-05-23": [], "2026-05-24": [], "2026-05-25": [], "2026-06-19": [],
+      "2026-07-03": [], "2026-07-04": [], "2026-07-05": [],
+      "2026-09-05": [], "2026-09-06": [], "2026-09-07": [], "2026-10-12": [],
+      "2026-11-11": [], "2026-11-26": [], "2026-11-27": [],
+      "2026-12-24": [], "2026-12-25": [], "2026-12-31": [],
+      "2027-01-01": [], "2027-01-18": [], "2027-02-15": [], "2027-03-28": [],
+      "2027-05-29": [], "2027-05-30": [], "2027-05-31": [], "2027-06-18": [], "2027-06-19": []
+    }
+  },
+  "QPL": {
+    "note": "Queens Public Library holiday closures and reduced-hours days. Nov 25 is 'open until 6pm' with no opening time, so it reads as unknown (null).",
+    "source": "https://queenslibrary.org/aux/holiday-schedules",
+    "reviewedOn": "2026-10-14",
+    "dates": {
+      "2026-01-19": [], "2026-02-16": [], "2026-04-05": [],
+      "2026-05-23": [], "2026-05-24": [], "2026-05-25": [], "2026-06-19": [],
+      "2026-07-03": [], "2026-07-04": [], "2026-07-05": [],
+      "2026-09-05": [], "2026-09-06": [], "2026-09-07": [], "2026-10-12": [],
+      "2026-11-11": [], "2026-11-25": null, "2026-11-26": [], "2026-11-27": [],
+      "2026-12-24": [[600, 780]], "2026-12-25": [], "2026-12-26": [], "2026-12-31": [[600, 780]],
+      "2027-01-01": [], "2027-01-02": [], "2027-01-03": []
+    }
+  },
+  "NYC Parks": {
+    "note": "NYC Parks publishes no holiday hours for restrooms, so city holidays read as unknown (null). 2026 from the City's Holiday and Pay Calendar (incl. floating Lincoln's Birthday and July 4 itself). 2027 from the NY State legal holidays list until the City publishes its 2027 calendar, plus Fri Jun 18 and Fri Dec 24 in case the City observes the Saturday holidays on Friday.",
+    "source": "https://www.nyc.gov/assets/opa/downloads/pdf/holiday-and-pay-calendar-2026.pdf, https://www.cs.ny.gov/attendance_leave/2027_legal_holidays.cfm",
+    "reviewedOn": "2026-10-14",
+    "dates": {
+      "2026-01-01": null, "2026-01-19": null, "2026-02-12": null, "2026-02-16": null,
+      "2026-05-25": null, "2026-06-19": null, "2026-07-03": null, "2026-07-04": null,
+      "2026-09-07": null, "2026-10-12": null, "2026-11-03": null, "2026-11-11": null,
+      "2026-11-26": null, "2026-12-25": null,
+      "2027-01-01": null, "2027-01-18": null, "2027-02-12": null, "2027-02-15": null,
+      "2027-05-31": null, "2027-06-18": null, "2027-06-19": null, "2027-07-04": null, "2027-07-05": null,
+      "2027-09-06": null, "2027-10-11": null, "2027-11-02": null, "2027-11-11": null,
+      "2027-11-25": null, "2027-12-24": null, "2027-12-25": null
+    }
+  }
+}

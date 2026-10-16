@@ -10,6 +10,7 @@ import { parseHours } from '../src/lib/hours.js';
 const DATASET = 'https://data.cityofnewyork.us/resource/i7jb-7jku.json?$limit=5000';
 const METADATA = 'https://data.cityofnewyork.us/api/views/i7jb-7jku.json';
 const OVERRIDES = new URL('../data/hours-overrides.json', import.meta.url);
+const SPECIAL_DAYS = new URL('../data/special-days.json', import.meta.url);
 const OUT = new URL('../public/data/bathrooms.json', import.meta.url);
 const REVIEW = new URL('../data/hours-review.md', import.meta.url);
 
@@ -27,11 +28,14 @@ async function fetchJson(url) {
   return res.json();
 }
 
-const [rows, meta, overrides] = await Promise.all([
+const [rows, meta, overrides, specialDayRules] = await Promise.all([
   fetchJson(DATASET),
   fetchJson(METADATA),
   readFile(OVERRIDES, 'utf8').then(JSON.parse),
+  readFile(SPECIAL_DAYS, 'utf8').then(JSON.parse),
 ]);
+// Holidays by operator, kept once at the top level; the app attaches them to each restroom.
+const specialDays = Object.fromEntries(Object.entries(specialDayRules).map(([operator, rule]) => [operator, rule.dates]));
 
 const review = [];
 const byId = new Map();
@@ -83,10 +87,12 @@ const sourceUpdatedAt = new Date(meta.rowsUpdatedAt * 1000).toISOString();
 // identical file and the nightly job has nothing to commit.
 const previous = await readFile(OUT, 'utf8').then(JSON.parse).catch(() => null);
 const unchanged =
-  previous?.sourceUpdatedAt === sourceUpdatedAt && JSON.stringify(previous.bathrooms) === JSON.stringify(bathrooms);
+  previous?.sourceUpdatedAt === sourceUpdatedAt &&
+  JSON.stringify(previous.bathrooms) === JSON.stringify(bathrooms) &&
+  JSON.stringify(previous.specialDays) === JSON.stringify(specialDays);
 const generatedAt = unchanged ? previous.generatedAt : new Date().toISOString();
 await mkdir(new URL('.', OUT), { recursive: true });
-await writeFile(OUT, JSON.stringify({ generatedAt, sourceUpdatedAt, count: bathrooms.length, bathrooms }) + '\n');
+await writeFile(OUT, JSON.stringify({ generatedAt, sourceUpdatedAt, count: bathrooms.length, specialDays, bathrooms }) + '\n');
 
 const byFlag = Map.groupBy(review, (r) => r.flags[0].replace(/-\w+day$/, ''));
 const reviewMd = [
