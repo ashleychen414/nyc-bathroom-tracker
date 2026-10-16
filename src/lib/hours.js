@@ -9,6 +9,10 @@
 //   { kind: 'minimum', range: Range }           open at least this range daily, unknown outside it
 //                                              (e.g. "8am-4pm, Open later seasonally")
 // Range = [startMinute, endMinute]; endMinute may exceed 1440 when closing after midnight.
+//
+// Special days (holidays) come per operator from data/special-days.json, as
+// bathroom.specialDays = { 'YYYY-MM-DD': Range[] | null }. They replace that day's hours:
+// [] = closed, ranges = holiday hours, null = unknown that day.
 
 export const TIME_ZONE = 'America/New_York';
 
@@ -101,6 +105,9 @@ export function nyClock(now) {
     new Intl.DateTimeFormat('en-US', {
       timeZone: TIME_ZONE,
       weekday: 'short',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
       hourCycle: 'h23',
@@ -109,7 +116,8 @@ export function nyClock(now) {
       .map((p) => [p.type, p.value]),
   );
   const day = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(parts.weekday);
-  return { day, minute: Number(parts.hour) * 60 + Number(parts.minute) };
+  const date = `${parts.year}-${parts.month}-${parts.day}`;
+  return { day, date, minute: Number(parts.hour) * 60 + Number(parts.minute) };
 }
 
 // state: 'open' | 'unknown' | 'varies' | 'closed'. 'closed' renders greyed out.
@@ -119,10 +127,13 @@ export function getStatus(bathroom, now = new Date()) {
   if (season === 'Future') return { state: 'closed', label: 'Not open yet' };
   // The source gives no season dates, so a seasonal restroom may be closed right now.
   if (season === 'Seasonal') return { state: 'varies', label: 'Seasonal: may be closed' };
+
+  const { day, date, minute } = nyClock(now);
+  const special = bathroom.specialDays?.[date];
+  if (special !== undefined) return specialDayStatus(special, minute);
+
   if (!hours) return { state: 'unknown', label: 'Hours unknown' };
   if (hours.kind === 'always') return { state: 'open', label: 'Open 24 hours' };
-
-  const { day, minute } = nyClock(now);
 
   if (hours.kind === 'minimum') {
     const [start, end] = hours.range;
@@ -143,6 +154,18 @@ export function getStatus(bathroom, now = new Date()) {
   }
   const next = today.find(([start]) => start > minute);
   return { state: 'closed', label: next ? `Closed now · opens ${formatTime(next[0])}` : 'Closed for today' };
+}
+
+// A holiday replaces the whole day, including any after-midnight hours carried over
+// from yesterday (showing closed when it might be open is the safe mistake).
+function specialDayStatus(ranges, minute) {
+  if (ranges === null) return { state: 'unknown', label: 'Holiday: hours unknown' };
+  for (const [start, end] of ranges) {
+    if (minute >= start && minute < end) return { state: 'open', label: `Holiday hours: open until ${formatTime(end)}` };
+  }
+  const next = ranges.find(([start]) => start > minute);
+  if (next) return { state: 'closed', label: `Holiday hours: opens ${formatTime(next[0])}` };
+  return { state: 'closed', label: ranges.length ? 'Closed for today (holiday hours)' : 'Closed today (holiday)' };
 }
 
 // Sort rank within a radius: open first, then unknown/varies, then greyed-out.

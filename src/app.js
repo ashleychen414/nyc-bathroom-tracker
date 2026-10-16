@@ -9,6 +9,7 @@ import { startSync, syncNow, syncStatus } from './lib/sync.js';
 import { isStandalone, mobilePlatform } from './lib/device.js';
 import { getPosition, distanceMiles, lookupZip } from './lib/geo.js';
 import { buildEntries, nearby } from './lib/nearby.js';
+import { loadBathrooms } from './lib/bathrooms-source.js';
 import { welcomeView, nearbyView, publicDetailView, mineDetailView } from './views/nearby.js';
 import { placesView } from './views/places.js';
 import { openForm, closeForm, isFormOpen, handleFormClick, handleFormInput } from './views/form.js';
@@ -545,18 +546,15 @@ startSync((changed) => {
   if (changed || name === 'places' || state.sheet === 'account') render();
 });
 
-fetch('public/data/bathrooms.json')
-  .then((res) => {
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    return res.json();
-  })
-  .then((data) => {
-    state.data = data;
-  })
-  .catch(() => {
-    state.dataError = true;
-  })
-  .finally(refresh);
+// Restrooms come from the shared Supabase table (phone copy first, then fresh if it changed).
+loadBathrooms((data) => {
+  for (const b of data.bathrooms) b.specialDays = data.specialDays?.[b.operator];
+  state.data = data;
+  refresh();
+}).catch(() => {
+  state.dataError = true;
+  refresh();
+});
 
 (async () => {
   const permission = await navigator.permissions

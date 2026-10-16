@@ -1,4 +1,4 @@
--- Row-level security tests for public.places, public.profiles and public.bathrooms.
+-- Row-level security tests for public.places, public.profiles, public.bathrooms and public.data_sources.
 -- Runs entirely inside a transaction and rolls back: it leaves no users or rows behind.
 -- Run it in the Supabase SQL editor (or via the Supabase connector) after any change to
 -- a table or its policies. Any failed check raises an error naming the check.
@@ -176,5 +176,39 @@ begin
   end if;
 end $$;
 
-select 'places, profiles, bathrooms RLS: all checks passed' as result;
+-- ---------- data_sources ----------
+
+insert into public.data_sources (id, source_updated_at) values ('rls-test', now())
+  on conflict (id) do nothing;
+
+-- Anyone reads the dataset info; nobody but the service role writes it.
+set local role anon;
+do $$ begin
+  assert exists (select 1 from public.data_sources where id = 'rls-test'), 'anon should read data_sources';
+end $$;
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+do $$ begin
+  assert exists (select 1 from public.data_sources where id = 'rls-test'), 'signed-in users should read data_sources';
+  begin
+    insert into public.data_sources (id) values ('rls-test-new');
+    raise exception 'a signed-in user was able to add dataset info';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    update public.data_sources set generated_at = now() where id = 'rls-test';
+    raise exception 'a signed-in user was able to change dataset info';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    delete from public.data_sources where id = 'rls-test';
+    raise exception 'a signed-in user was able to delete dataset info';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+
+reset role;
+
+select 'places, profiles, bathrooms, data_sources RLS: all checks passed' as result;
 rollback;
