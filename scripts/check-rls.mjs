@@ -1,6 +1,6 @@
 // Checks what an anonymous visitor (no sign-in) can do against the live Supabase project.
 // Signed-in, cross-user checks live in supabase/tests/places_rls.sql (needs database access).
-// Covers places, profiles and the shared bathrooms table.
+// Covers places, profiles, the shared bathrooms table and data_sources.
 // Run: npm run test:rls
 
 import assert from 'node:assert/strict';
@@ -59,6 +59,15 @@ const checks = [
   ['anonymous visitors cannot run the bathrooms sync', async () => {
     const r = await call('/rest/v1/rpc/sync_seed_bathrooms', { method: 'POST', body: { rows: [], mark_missing: false } });
     assert.ok([401, 403, 404].includes(r.status), `expected 401/403/404, got ${r.status}`);
+  }],
+  ['anonymous visitors can read the dataset info', async () => {
+    const r = await call('/rest/v1/data_sources?select=id,source_updated_at');
+    assert.equal(r.status, 200);
+    assert.ok(Array.isArray(r.body));
+  }],
+  ['anonymous visitors cannot add or change dataset info', async () => {
+    blocked(await call('/rest/v1/data_sources', { method: 'POST', body: { id: 'rls-check' } }));
+    blocked(await call('/rest/v1/data_sources?id=eq.rls-check-none', { method: 'PATCH', body: { generated_at: new Date().toISOString() } }));
   }],
   ['keep_alive works for the nightly job', async () => {
     const r = await call('/rest/v1/rpc/keep_alive', { method: 'POST', body: {} });
