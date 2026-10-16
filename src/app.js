@@ -548,6 +548,7 @@ startSync((changed) => {
 
 // Restrooms come from the shared Supabase table (phone copy first, then fresh if it changed).
 loadBathrooms((data) => {
+  for (const b of data.bathrooms) b.specialDays = data.specialDays?.[b.operator];
   state.data = data;
   refresh();
 }).catch(() => {
