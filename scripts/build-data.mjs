@@ -38,7 +38,7 @@ const [rows, meta, overrides, specialDayRules] = await Promise.all([
 const specialDays = Object.fromEntries(Object.entries(specialDayRules).map(([operator, rule]) => [operator, rule.dates]));
 
 const review = [];
-const bathrooms = [];
+const byId = new Map();
 for (const r of rows) {
   const lat = Number(r.latitude);
   const lng = Number(r.longitude);
@@ -56,7 +56,7 @@ for (const r of rows) {
     review.push({ id, name: r.facility_name, flags, raw: r.hours_of_operation ?? '' });
   }
 
-  bathrooms.push({
+  const bathroom = {
     id,
     name: r.facility_name,
     type: r.location_type ?? null,
@@ -74,8 +74,13 @@ for (const r of rows) {
     website: r.website?.url ?? null,
     lat,
     lng,
-  });
+  };
+  // The city lists a few restrooms twice (same name and coordinates, so the same id). Keep one;
+  // when the copies disagree, the less-open one wins (accuracy first, as in sync_seed_bathrooms).
+  const kept = byId.get(id);
+  if (!kept || (kept.status === 'Operational' && bathroom.status !== 'Operational')) byId.set(id, bathroom);
 }
+const bathrooms = [...byId.values()];
 
 const sourceUpdatedAt = new Date(meta.rowsUpdatedAt * 1000).toISOString();
 // Keep the previous build time when nothing changed, so an unchanged rebuild writes an
