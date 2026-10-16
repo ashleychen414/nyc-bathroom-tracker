@@ -13,6 +13,8 @@ Updated 2026-10-14. Steps map to the MVP scope in `SPEC.md`. Product improvement
 
 ## Next (MVP build order)
 
+- [ ] **E1 step 2: switch the app to read bathrooms from Supabase**, with an offline cache, after the table has synced for a few nights. Also decide whether the map shows only confirmed + seed rows.
+- [ ] **Dedupe repeated city rows in `scripts/build-data.mjs`** (Tompkins Square Park is listed twice, once Operational and once Not Operational; the `bathrooms` table keeps the Not Operational copy, the app still shows both).
 - [ ] **Decide the remaining open questions in `docs/IMPROVEMENTS-SCOPING.md` §6**: what "private bathroom" means (blocks E2), starting rating dimensions (blocks E3), and milestone order (A → B → C proposed). Decided 2026-10-14: shared database, map-first home, facts on hold, notes private, database counts.
 - [ ] **Better place search when adding a place** (feedback 2026-10-08: restaurants and other private places are hard to find). Today's search (Photon / OpenStreetMap) is weak on businesses. Options to compare:
   - A business-focused search service with a free tier (e.g. Geoapify or Mapbox Search); needs an API key restricted to our domain
@@ -35,14 +37,14 @@ Updated 2026-10-14. Steps map to the MVP scope in `SPEC.md`. Product improvement
 
 ## Later
 
+- [ ] **E7: rule for user corrections to seed rows.** Today a correction survives only until the city changes that row, because the nightly sync overwrites city facts when the city record changes.
+
 ### Future ideas (backlog, Ashley 2026-10-08; spec each before building)
 
 - [ ] **Curated lists** (e.g. "Best bathrooms to cry in") that people can browse and save into their own list. Builds on lists phase 2 (import a list as your own copies) and phase 3 (lists published by NYC Poops).
 - [ ] **Visit log:** "as a user, I want to log when I went to a bathroom." A "I went here" tap that records the time, plus your visit history per place. Data: a separate `visits` table (user, place, visited_at), not inside the place's log, so visits don't overwrite each other.
 - [ ] **Aggregated visits:** "as a user, I want to see how many times people have used this bathroom so I can decide if this is a credible source." Show counts per public restroom (e.g. "Visited 23 times by 9 people"). Needs: visits tied to the city restroom id so counts combine across people; counts only, never who; a minimum number of people before showing a count, for privacy.
 - [ ] Pick the main link to share (Vercel or GitHub Pages) and optionally a nicer Vercel name or custom domain; consider turning the other one off
-
-- [ ] Update GitHub Actions versions before GitHub drops Node 20 for actions (deploy shows a deprecation warning; still works)
 
 - [ ] **Lists phase 2: share your list / import a friend's list** into your own (copies). Decided: snapshot links
 - [ ] **Lists phase 3: Ashley's public list** shown to everyone in Nearby. Needs its own planning/spec conversation first (phase 1 tables already leave room for it)
@@ -52,6 +54,8 @@ Updated 2026-10-14. Steps map to the MVP scope in `SPEC.md`. Product improvement
 
 ## Done
 
+- [x] 2026-10-14: **`SUPABASE_SECRET_KEY` GitHub secret added**; 1,063 restrooms loaded into `bathrooms`
+- [x] 2026-10-14: **E1 step 1**: `profiles` and `bathrooms` tables with row-level security, nightly sync step in the deploy workflow, GitHub Actions updated off Node 20
 - [x] 2026-10-14: **Set up for parallel agents**: tests run on every pull request (`.github/workflows/test.yml`); parallel-work rules in `CLAUDE.md` (worktrees, PR-only, shared docs, one database owner, private docs link)
 - [x] 2026-10-14: **E4 map-first home**: Nearby opens on a full-screen map (list remembered only if chosen); legend strip always visible between the filters and the map; bottom card with the best match (open first, then nearest), Directions + Details, ‹ › to step through results; tapping a pin selects it; compact header (one-line location, radius dropdown in the filter row)
 - [x] 2026-10-14: **E0 quick wins**: hours show the formatted table + "Hours from NYC Open Data · View on Google Maps" (the city's wording only when it couldn't be read); filter by type (Parks, Libraries, Transit, Public plazas, Privately owned public spaces); database access-rule checks (`npm run test:rls` on every deploy, `supabase/tests/places_rls.sql` for signed-in users); migrations saved in `supabase/migrations/`

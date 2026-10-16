@@ -88,3 +88,10 @@ See `docs/IMPROVEMENTS-SCOPING.md` §2.
 - **Parallel branches don't edit `docs/TASKS.md` or `docs/DECISIONS.md`.** Notes go in the PR description and are copied in after merging, because every branch editing those files guarantees merge conflicts.
 - **One agent at a time owns database (Supabase) changes,** so migrations don't collide.
 - **`docs/private/` is linked into worktrees, not copied;** `.gitignore` now ignores the link too, so it can't be committed to the public repo.
+
+## 2026-10-14: Shared bathrooms foundation (E1 step 1)
+
+- **Fixed lists are text columns with check constraints, not Postgres enums.** They're easier to change later.
+- **Seed `access = public` for all city restrooms,** including privately owned public spaces (POPS), which are public by law. `status` is our verification status. The city's Operational/Closed status stays in `source_data` until E7 gives it a home.
+- **The nightly sync never deletes rows or changes `status`.** A row that leaves the city data gets `source_removed_at`, so saved places keep working.
+- **The first GitHub secret is `SUPABASE_SECRET_KEY`:** a new-style Supabase secret key, used only by the deploy workflow.
