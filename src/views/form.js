@@ -2,7 +2,7 @@
 // and repaints only the parts that change so typing never loses focus.
 
 import { getPlace, savePlace, deletePlace, requestPersistence } from '../lib/storage.js';
-import { getPosition, searchAddress, reverseGeocode } from '../lib/geo.js';
+import { getPosition, searchAddress, reverseGeocode, resultMeta } from '../lib/geo.js';
 import { emptyHoursForm, formFromHours, hoursFromForm, DAY_SHORT, DISPLAY_ORDER } from '../lib/hours-form.js';
 import { esc } from '../lib/html.js';
 import { LOG_FIELDS, RATING_WORDS } from './shared.js';
@@ -162,10 +162,14 @@ function renderSuggestions() {
   if (!list) return;
   list.innerHTML = suggestions
     .map(
-      (s, i) => `<li><button type="button" data-suggest="${i}">
+      (s, i) => {
+        // "Café · 0.3 mi · 214 3rd Street, Brooklyn", so the right branch is obvious.
+        const detail = [resultMeta(s), s.name && s.address !== s.name ? s.address : ''].filter(Boolean).join(' · ');
+        return `<li><button type="button" data-suggest="${i}">
         <span class="s-name">${esc(s.name || s.address)}</span>
-        ${s.name && s.address !== s.name ? `<span class="s-addr">${esc(s.address)}</span>` : ''}
-      </button></li>`,
+        ${detail ? `<span class="s-addr">${esc(detail)}</span>` : ''}
+      </button></li>`;
+      },
     )
     .join('');
 }
