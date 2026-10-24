@@ -86,6 +86,31 @@ export async function mountMap(el, { entries, here, radius, approx, zip, selecte
   if (selected) selectPin(selected);
 }
 
+// Welcome screen backdrop: a still map of Park Slope with every city restroom as a grey dot.
+// Grey on purpose: this map has no status, and green would read as "Open".
+export async function mountBackdrop(el, { bathrooms = [] } = {}) {
+  let L;
+  try {
+    L = await loadLeaflet();
+  } catch {
+    return; // the card works without the map
+  }
+  if (!el.isConnected) return;
+  unmountMap();
+  map = L.map(el, {
+    zoomControl: false, attributionControl: false, dragging: false, touchZoom: false,
+    scrollWheelZoom: false, doubleClickZoom: false, boxZoom: false, keyboard: false,
+  }).setView([40.6745, -73.9706], 15);
+  L.control.attribution({ position: 'bottomright', prefix: false }).addTo(map);
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  }).addTo(map);
+  for (const b of bathrooms) {
+    L.circleMarker([b.lat, b.lng], { radius: 7, color: '#fff', weight: 2, fillColor: PIN.unknown, fillOpacity: 1, interactive: false }).addTo(map);
+  }
+}
+
 export function mapLegend({ showClosed }) {
   const item = (color, label, extra = '') => `<span><i style="background:${color}${extra}"></i>${label}</span>`;
   return `

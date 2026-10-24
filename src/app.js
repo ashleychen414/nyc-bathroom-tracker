@@ -15,7 +15,7 @@ import { placesView } from './views/places.js';
 import { openForm, closeForm, isFormOpen, handleFormClick, handleFormInput } from './views/form.js';
 import { tabBar } from './views/shared.js';
 import { homeScreenSheet, backupSheet, backupResult } from './views/sheets.js';
-import { mountMap, unmountMap, selectPin } from './views/map.js';
+import { mountMap, mountBackdrop, unmountMap, selectPin } from './views/map.js';
 import { mapSheet } from './views/nearby.js';
 import { signInSheet, accountSheet } from './views/account.js';
 
@@ -124,7 +124,8 @@ function render() {
 
   switch (name) {
     case 'welcome':
-      return paint(welcomeView(), null);
+      paint(welcomeView(), null);
+      return mountBackdrop(app.querySelector('#welcome-map'), { bathrooms: state.data?.bathrooms });
 
     case 'places':
       return paint(placesView(state, listPlaces()), 'places');
@@ -489,10 +490,9 @@ app.addEventListener('click', (e) => {
       savePrefs({ welcomed: true });
       location.replace('#/nearby');
       return locate();
-    case 'welcome-zip':
+    case 'welcome-places':
       savePrefs({ welcomed: true });
-      location.replace('#/nearby');
-      return requestAnimationFrame(() => app.querySelector('#zip')?.focus());
+      return location.replace('#/places');
   }
 });
 
@@ -551,6 +551,7 @@ loadBathrooms((data) => {
   for (const b of data.bathrooms) b.specialDays = data.specialDays?.[b.operator];
   state.data = data;
   refresh();
+  if (parseRoute().name === 'welcome') render(); // add the restroom dots to the backdrop
 }).catch(() => {
   state.dataError = true;
   refresh();
