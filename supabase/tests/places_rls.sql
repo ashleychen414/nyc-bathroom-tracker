@@ -1,4 +1,5 @@
--- Row-level security tests for public.places, public.profiles, public.bathrooms and public.data_sources.
+-- Row-level security tests for public.places, public.profiles, public.bathrooms, public.data_sources
+-- and public.location_events.
 -- Runs entirely inside a transaction and rolls back: it leaves no users or rows behind.
 -- Run it in the Supabase SQL editor (or via the Supabase connector) after any change to
 -- a table or its policies. Any failed check raises an error naming the check.
@@ -210,5 +211,94 @@ end $$;
 
 reset role;
 
-select 'places, profiles, bathrooms, data_sources RLS: all checks passed' as result;
+
+-- ---------- location_events ----------
+
+-- Anonymous and signed-in visitors can add a row, and nothing else: no reading (table or
+-- views), changing, deleting, or setting the server-side columns.
+set local role anon;
+insert into public.location_events (trigger, permission_before, result, platform, app_version)
+  values ('startup', 'prompt', 'granted', 'ios-safari', 'rls-test');
+do $$ begin
+  begin
+    perform 1 from public.location_events;
+    raise exception 'anon was able to read location_events';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+insert into public.location_events (trigger, permission_before, result, platform, app_version)
+  values ('button', 'denied', 'denied', 'desktop', 'rls-test');
+do $$ begin
+  begin
+    perform 1 from public.location_events;
+    raise exception 'a signed-in user was able to read location_events';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    perform 1 from public.location_events_daily;
+    raise exception 'a signed-in user was able to read location_events_daily';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    perform 1 from public.location_events_weekly;
+    raise exception 'a signed-in user was able to read location_events_weekly';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    update public.location_events set result = 'granted' where app_version = 'rls-test';
+    raise exception 'a signed-in user was able to change location_events';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    delete from public.location_events where app_version = 'rls-test';
+    raise exception 'a signed-in user was able to delete location_events';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    insert into public.location_events (created_at, trigger, permission_before, result, platform)
+      values (now() - interval '30 days', 'button', 'prompt', 'granted', 'desktop');
+    raise exception 'a signed-in user was able to set created_at';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    insert into public.location_events (trigger, permission_before, result, platform)
+      values ('button', 'prompt', 'granted', 'Mozilla/5.0 (iPhone)');
+    raise exception 'location_events accepted a platform outside the list';
+  exception when check_violation then null;
+  end;
+end $$;
+
+set local role anon;
+do $$ begin
+  begin
+    perform 1 from public.location_events_daily;
+    raise exception 'anon was able to read location_events_daily';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    update public.location_events set result = 'granted' where app_version = 'rls-test';
+    raise exception 'anon was able to change location_events';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    delete from public.location_events where app_version = 'rls-test';
+    raise exception 'anon was able to delete location_events';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+
+reset role;
+do $$ begin
+  assert (select count(*) from public.location_events where app_version = 'rls-test') = 2,
+    'both visitor rows should have landed, unchanged';
+  assert (select count(*) from public.location_events where app_version = 'rls-test' and result = 'denied') = 1,
+    'visitors should not have been able to change a row';
+  assert (select coalesce(sum(attempts), 0) from public.location_events_daily where app_versions like '%rls-test%') = 2,
+    'the daily view should count the rows';
+end $$;
+
+select 'places, profiles, bathrooms, data_sources, location_events RLS: all checks passed' as result;
 rollback;

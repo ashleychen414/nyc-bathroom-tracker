@@ -46,7 +46,7 @@ export const welcomeView = () => `
         <button class="btn primary block big" data-action="welcome-locate">Use my location</button>
         <button class="btn block big" data-action="welcome-places">Go to My places</button>
       </div>
-      <p class="welcome-note">Public restrooms from NYC Open Data. We only say "Open" when the listed hours confirm it. Your location stays on this phone.</p>
+      <p class="welcome-note">Public restrooms from NYC Open Data. We only say "Open" when the listed hours confirm it.</p>
     </section>
   </main>`;
 
@@ -77,12 +77,14 @@ function locationBlock(s) {
       ${zipField(s)}
       ${deniedHelp(s)}`;
   }
-  const why =
-    s.locationIssue === 'unavailable'
-        ? "Couldn't get your location, so distances are from the middle of your zip code."
-        : 'Distances are from the middle of your zip code.';
+  const [why, retry] =
+    s.locationIssue === 'timeout'
+      ? ['Taking too long to find you. Distances are from the middle of your zip code.', 'Try again']
+      : s.locationIssue === 'unavailable'
+        ? ["Couldn't get your location, so distances are from the middle of your zip code.", 'Use my location']
+        : ['Distances are from the middle of your zip code.', 'Use my location'];
   return `
-    <div class="banner">${icon.info()}<span>${why} <button class="link" data-action="locate">Use my location</button></span></div>
+    <div class="banner">${icon.info()}<span>${why} <button class="link" data-action="locate">${retry}</button></span></div>
     ${zipField(s)}`;
 }
 

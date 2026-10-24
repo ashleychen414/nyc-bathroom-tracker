@@ -31,3 +31,19 @@ export function locationHelp({ platform, standalone, safari }) {
   }
   return { steps: ["Allow location for this site in your browser's settings, then reload."] };
 }
+
+// One word for the location log (location-log.js), so the user agent string itself never leaves
+// the phone: 'ios-safari' | 'ios-homescreen' | 'ios-other-browser' | 'android' | 'desktop' | 'other'.
+export function platformLabel({ platform, standalone, safari, mobile }) {
+  if (platform === 'ios') return standalone ? 'ios-homescreen' : safari ? 'ios-safari' : 'ios-other-browser';
+  if (platform === 'android') return 'android';
+  return mobile ? 'other' : 'desktop';
+}
+
+export const currentPlatformLabel = () =>
+  platformLabel({
+    platform: mobilePlatform(),
+    standalone: isStandalone(),
+    safari: isIOSSafari(),
+    mobile: /Mobi|Tablet|Silk|KAIOS/i.test(navigator.userAgent),
+  });

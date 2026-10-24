@@ -2,7 +2,9 @@
 // and repaints only the parts that change so typing never loses focus.
 
 import { getPlace, savePlace, deletePlace, requestPersistence } from '../lib/storage.js';
-import { getPosition, searchAddress, reverseGeocode, resultMeta } from '../lib/geo.js';
+import { getPosition, locationPermission, searchAddress, reverseGeocode, resultMeta } from '../lib/geo.js';
+import { logLocation } from '../lib/location-log.js';
+import { currentPlatformLabel } from '../lib/device.js';
 import { emptyHoursForm, formFromHours, hoursFromForm, DAY_SHORT, DISPLAY_ORDER } from '../lib/hours-form.js';
 import { esc } from '../lib/html.js';
 import { LOG_FIELDS, RATING_WORDS } from './shared.js';
@@ -120,16 +122,22 @@ function pickLocation({ lat, lng, address, name }) {
 
 async function useCurrentLocation() {
   setWhereStatus('Finding you…');
+  const permissionBefore = locationPermission();
+  const log = async (result) => logLocation({ trigger: 'button', permissionBefore: await permissionBefore, result, platform: currentPlatformLabel() });
   try {
     const pos = await getPosition();
+    log('granted');
     near = pos;
     const place = await reverseGeocode(pos).catch(() => null);
     if (draft) pickLocation({ lat: pos.lat, lng: pos.lng, address: place?.address, name: place?.name });
   } catch (err) {
+    log(err.message);
     setWhereStatus(
       err.message === 'denied'
         ? 'Location is turned off for this site. Search an address instead.'
-        : "Couldn't get your location. Search an address instead.",
+        : err.message === 'timeout'
+          ? 'Taking too long to find you. Try again, or search an address.'
+          : "Couldn't get your location. Search an address instead.",
     );
   }
 }
