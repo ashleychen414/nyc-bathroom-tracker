@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { placeKind, normalize, rankResults, resultMeta, toResult, scoreResult, positionErrorReason, getPosition, locationPermission } from './geo.js';
+import { placeKind, normalize, rankResults, resultMeta, toResult, scoreResult, positionErrorReason, getPosition, locationPermission, startupLocation, tryPosition, locationAfter } from './geo.js';
 
 const HERE = { lat: 40.6728, lng: -73.9701 }; // Grand Army Plaza
 const MILE_LAT = 1 / 69; // ~1 mile of latitude
@@ -173,4 +173,35 @@ test('locationPermission returns the state, or unknown when the browser cannot s
   await withNavigator(perms({ state: 'weird' }), async () => assert.equal(await locationPermission(), 'unknown'));
   await withNavigator({}, async () => assert.equal(await locationPermission(), 'unknown'));
   await withNavigator({ permissions: { query: async () => { throw new TypeError('no'); } } }, async () => assert.equal(await locationPermission(), 'unknown'));
+});
+
+test('startupLocation still tries when the browser says denied', () => {
+  // iOS 26/27 Home Screen apps can say 'denied' while getCurrentPosition works, so never give up on it alone.
+  assert.equal(startupLocation('denied', { welcomed: true, source: 'zip', zip: '11215' }), 'blocked-retry');
+  assert.equal(startupLocation('denied', {}), 'blocked-retry'); // even on a first visit
+  assert.equal(startupLocation('granted', { source: 'zip', zip: '11215' }), 'locate');
+  assert.equal(startupLocation('prompt', {}), 'welcome');
+  assert.equal(startupLocation('unknown', { welcomed: true, source: 'zip', zip: '11215' }), 'zip');
+  assert.equal(startupLocation('prompt', { welcomed: true, source: 'zip' }), 'locate'); // zip choice but no zip saved
+  assert.equal(startupLocation('unknown', { welcomed: true, source: 'gps' }), 'locate');
+});
+
+test('tryPosition reports the real result and never rejects', async () => {
+  const pos = { lat: 40.67, lng: -73.97, accuracy: 12 };
+  assert.deepEqual(await tryPosition(async () => pos), { result: 'granted', position: pos });
+  const fail = (reason) => async () => { throw new Error(reason); };
+  assert.deepEqual(await tryPosition(fail('denied')), { result: 'denied', issue: 'denied' });
+  assert.deepEqual(await tryPosition(fail('timeout')), { result: 'timeout', issue: 'timeout' });
+  assert.deepEqual(await tryPosition(fail('unsupported')), { result: 'unsupported', issue: 'unavailable' });
+});
+
+test('after a blocked startup, success clears the blocked state and failure keeps it', async () => {
+  const worked = await tryPosition(async () => ({ lat: 40.67, lng: -73.97, accuracy: 12 }));
+  assert.deepEqual(locationAfter(worked, { blocked: true }), { here: { lat: 40.67, lng: -73.97, source: 'gps' }, locationIssue: null });
+  for (const reason of ['denied', 'timeout', 'unavailable']) {
+    const failed = await tryPosition(async () => { throw new Error(reason); });
+    assert.deepEqual(locationAfter(failed, { blocked: true }), { here: null, locationIssue: 'denied' }, reason);
+  }
+  // Not blocked before (a button tap): the failure shows as itself.
+  assert.equal(locationAfter({ result: 'timeout', issue: 'timeout' }).locationIssue, 'timeout');
 });
