@@ -42,6 +42,8 @@ Updated 2026-10-24. Steps map to the MVP scope in `SPEC.md`. Product improvement
 - [ ] **Use the "Share your places?" prompt as a growth hook** (Ashley, 2026-10-24, from the E2/E3 prototype): beyond the one-time migration prompt, periodically invite people to batch-move Private places to Public, to grow the shared map. Decide when it shows and how often.
 - [ ] **Carry into the E2/E3 build:** bottom sheets must sit above the map card (they were hidden under it in the prototype); on the map card, Directions is an icon next to the distance and "I went here" is the main action (Ashley, 2026-10-24).
 
+- [ ] **Location log upkeep:** delete the 7 `dev` test rows (query in PR #16), maybe leave `dev` rows out of the views, and add a rate limit if the public insert ever gets spammed.
+
 ### Future ideas (backlog, Ashley 2026-10-08; spec each before building)
 
 - [ ] **Curated lists** (e.g. "Best bathrooms to cry in") that people can browse and save into their own list. Becomes E10 + public lists on the shared database.
@@ -52,6 +54,7 @@ Updated 2026-10-24. Steps map to the MVP scope in `SPEC.md`. Product improvement
 
 ## Done
 
+- [x] 2026-10-24: **Anonymous location outcome log** (#16): one row per location attempt in `location_events` (no coordinates, user, zip or user agent), daily and 7-day views (see CLAUDE.md "Location log"); timeouts now separate from "unavailable", with Try again; welcome screen no longer says "Your location stays on this phone"
 - [x] 2026-10-24: **Location-blocked dead end fixed** (#10, tester report): when location is blocked, Nearby leads with the zip code and shows how to turn location back on (iPhone Safari, Home Screen app, other browsers)
 - [x] 2026-10-24: **Landing screen** (#9): "Need a restroom now?" card over a still map of Brooklyn with every city restroom as a grey dot; buttons Use my location / Go to My places
 - [x] 2026-10-16: **E1 step 2** (#7): the app reads restrooms from Supabase, with a phone cache (re-downloads only when the data changed) and a `bathrooms.json` fallback. Holiday closures come through the new `data_sources` table
