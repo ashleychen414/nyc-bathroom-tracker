@@ -34,22 +34,20 @@ const SOURCE_URL = 'https://data.cityofnewyork.us/City-Government/Public-Restroo
 
 const radiusLabel = (r) => `${r} mi`;
 
+// First visit: a card over a dimmed map of Brooklyn (the map is decoration; app.js mounts it).
 export const welcomeView = () => `
   <main class="welcome">
-    <div class="welcome-top">
-      <img class="welcome-logo" src="public/brand/logo-badge.jpg" width="168" height="168" alt="NYC Poops: public restrooms, New York City">
-      <h1>Find a restroom near you, fast</h1>
-      <p class="lead">Allow location to see the closest restrooms, sorted by what's open right now.</p>
-      <ol class="points">
-        <li>Public restrooms from NYC Open Data, Brooklyn first</li>
-        <li>We only say "Open" when the listed hours confirm it</li>
-        <li>Your location is used on this phone to sort the list</li>
-      </ol>
-    </div>
-    <div class="welcome-actions">
-      <button class="btn primary block big" data-action="welcome-locate">Use my location</button>
-      <button class="btn block big" data-action="welcome-zip">Enter a zip code instead</button>
-    </div>
+    <div id="welcome-map" class="welcome-map" aria-hidden="true"></div>
+    <section class="welcome-card" aria-labelledby="welcome-title">
+      <img class="welcome-logo" src="public/brand/logo-badge.jpg" width="128" height="128" alt="NYC Poops: public restrooms, New York City">
+      <h1 id="welcome-title">Need a restroom now?</h1>
+      <p class="lead">Share your location to see the closest restrooms, sorted by what's open right now.</p>
+      <div class="welcome-actions">
+        <button class="btn primary block big" data-action="welcome-locate">Use my location</button>
+        <button class="btn block big" data-action="welcome-places">Go to My places</button>
+      </div>
+      <p class="welcome-note">Public restrooms from NYC Open Data. We only say "Open" when the listed hours confirm it. Your location stays on this phone.</p>
+    </section>
   </main>`;
 
 function zipField(s) {
