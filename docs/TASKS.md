@@ -14,6 +14,17 @@ Updated 2026-10-24. Steps map to the MVP scope in `SPEC.md`. Product improvement
 - [ ] **Decide the remaining open question in `docs/IMPROVEMENTS-SCOPING.md` §6**: milestone order (A → B → C proposed). Milestone A is nearly done (E0, E4, E9-lite shipped). Decided 2026-10-24: what "private bathroom" means (unblocks E2) and the rating dimensions (unblocks E3).
 - [ ] **E2: lists + move saved places to the shared database** (unblocked 2026-10-24). Per DECISIONS.md: access labels Available to Public / Customer Only (drop `key_or_code` from the user-facing choices); visibility Public / Private on user-created bathrooms; duplicates shown as they are; today's 2 hand-added places move as Private with a one-time "Make public?" prompt for their owners on next sign-in.
 - [ ] **E3: visits and ratings** (unblocked 2026-10-24, after E2). Per DECISIONS.md: one-tap "I went here", optional Clean / Getting in / Vibes stars with reason tags, a "Rate your last visit" card for skipped ratings, reasons that confirm facts, trust line shown once 3 people have visited, existing ratings carried over.
+- [ ] **E2/E3 prototype: open questions to review before building** (prototype finished 2026-10-24; draft PR #17, closed unmerged; preview: https://nyc-bathroom-tracker-git-prototype-e2-e3-ashley-s-sandbox.vercel.app). Prototyped answers in brackets:
+  - **Visibility default** when adding a place: Private, Public, or a required choice? [required choice, no default]
+  - **Ratings on list cards:** on every list card, or only on the map card and the restroom's page? (Cards got noticeably taller.) [every card]
+  - **Old log fields** (lighting, smell, stalls, trash cans) leave the add/edit form, replaced by private notes plus the quick rating? [removed]
+  - **Directions icon on list cards** too, not just the map card? (Each list card is one big link today.) [map card only]
+  - **Rate right after adding a new place?** Saving a place logs a visit and opens the quick rating. [yes]
+  - **"Rate your last visit" nudge:** how long a skipped rating stays (7 days), and whether it also shows over the map. [7 days, list and map]
+  - **Reasons become facts** ("Code needed") after how many people? [3, same as the trust line]
+  - **Does "I went here" require being nearby?** And one visit per person per bathroom per day? (Open since the scoping doc.) [no check; unlimited]
+  - **Duplicates:** show both entries as decided, or add a "possibly the same place" hint? [both, no hint]
+  - **Lists:** the prototype treats My places as your one list. Do people need more than one list in E2, or does that wait for sharing (E10)? [one list]
 - [ ] **Let hours overrides set `status`**, then mark Gravesend, Ryder and Leonard libraries open and Paerdegat Athletic "Temporarily closed" (today it reads "Closed for today").
 - [ ] **NYPL holiday closures** (Manhattan, Bronx, Staten Island libraries). nypl.org/help/closings blocks automated reading, so copy the list in by hand.
 - [ ] **Bathroom layout: several separate single bathrooms** (feedback 2026-10-08). Becomes E5 on the shared `bathrooms` table (on hold with the other fact fields). Proposal: replace Stalls with **Layout**:
