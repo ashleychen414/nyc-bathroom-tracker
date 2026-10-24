@@ -169,3 +169,7 @@ Designed around two users: the person who needs a bathroom now (Is it open? Can 
 
 - **Location outcomes are logged anonymously to our own Supabase table,** in line with "database counts only" (2026-10-14). The log holds no coordinates, user, zip code or user agent. Visitors can insert only, and it's read with the service role through two views. Opening the app with location already blocked is logged too, so blocked phones show up.
 - **The welcome screen drops "Your location stays on this phone",** because location is shared with Photon (address lookups) and with the map tiles (Ashley).
+
+## 2026-10-24: Startup location check (PR #21)
+
+- **At startup, a "denied" from the browser's permission check isn't trusted on its own.** The app shows the blocked state (zip first), quietly tries to get the location once, and switches to it if that works. Why: on iOS 26/27, Home Screen apps can report "denied" while location actually works (Apple Developer Forums thread 804381). On a phone that really is blocked, the try fails at once with no prompt. `already_blocked` in the location log views keeps its meaning, so no database change.
