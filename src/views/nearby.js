@@ -188,11 +188,16 @@ export function mapSheet(s, list, selectedId) {
         <button class="btn ghost small" data-action="sheet-step" data-value="1" aria-label="Next restroom" ${index === entries.length - 1 ? 'disabled' : ''}>›</button>
       </span>
     </div>
-    <div class="card-head"><h2>${esc(e.name)}</h2><span class="dist">${approx ? '~' : ''}${formatDistance(e.distance)}</span></div>
+    <div class="card-head">
+      <h2>${esc(e.name)}</h2>
+      <span class="dist-dir">
+        <span class="dist">${approx ? '~' : ''}${formatDistance(e.distance)}</span>
+        <a class="btn icon-btn dir" href="${directionsUrl(e)}" target="_blank" rel="noopener" aria-label="Directions to ${esc(e.name)}">${icon.directions(20)}</a>
+      </span>
+    </div>
     <div class="badges">${statusBadge(e.status)}${e.place ? mineBadge : ''}${sub ? `<span class="type">${esc(sub)}</span>` : ''}</div>
     ${e.place ? logChips(e.place.log) : ''}
     <div class="actions">
-      <a class="btn primary" href="${directionsUrl(e)}" target="_blank" rel="noopener">${icon.directions()}Directions</a>
       <a class="btn" href="${href}">Details</a>
     </div>`;
 }
