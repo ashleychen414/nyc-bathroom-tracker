@@ -164,3 +164,8 @@ Designed around two users: the person who needs a bathroom now (Is it open? Can 
 - **Codes stay private.** People can confirm *that* a code is needed; the code itself lives only in private notes. Sharing codes would be a public tip (E6), decided separately.
 - **Trust signal:** "Visited by N people · last visit <date>", shown only once 3 different people have visited, so no one's visits can be singled out.
 - **Existing ratings carry over:** cleanliness → Clean; low smell or trash scores → the matching Clean reasons; lighting → a Vibes reason.
+
+## 2026-10-24: Location outcome log (PR #16)
+
+- **Location outcomes are logged anonymously to our own Supabase table,** in line with "database counts only" (2026-10-14). The log holds no coordinates, user, zip code or user agent. Visitors can insert only, and it's read with the service role through two views. Opening the app with location already blocked is logged too, so blocked phones show up.
+- **The welcome screen drops "Your location stays on this phone",** because location is shared with Photon (address lookups) and with the map tiles (Ashley).
