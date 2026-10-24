@@ -141,3 +141,11 @@ See `docs/IMPROVEMENTS-SCOPING.md` §2.
 - **Duplicates are accepted for now.** The same café can exist as a Public bathroom and as someone's Private one; the UI shows both entries, and nothing is merged automatically. Merging is E8 (duplicates) later.
 
 Unblocks E2. Not decided here: whether the existing `key_or_code` access value stays as a third label, and how today's 2 privately logged places migrate (proposal: Private, so nothing logged privately becomes public without the owner choosing).
+
+## 2026-10-24: Key-or-code access, and moving today's saved places (Ashley)
+
+Follow-ups to "What private bathroom means" above.
+
+- **"Key or code" folds into Customer Only.** Access stays two labels for users: Available to Public and Customer Only. Whether you need to ask for a code or key becomes a yes/no fact on the bathroom (with the other facts, E5). The code itself only ever goes in private notes. `unknown` stays as the internal default when the creator doesn't know; users see no label, or "Access unknown" on the detail screen.
+- **The 2 hand-added saved places move over as Private,** since their owners saved them before Public existed. Their access starts as unknown.
+- **On their next sign-in, each of those owners gets a one-time prompt** asking whether to make those bathrooms Public. Nothing becomes public unless the owner chooses it. The city restroom on a saved list just becomes a list item pointing to the shared record.
