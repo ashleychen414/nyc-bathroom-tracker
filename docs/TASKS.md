@@ -39,6 +39,9 @@ Updated 2026-10-24. Steps map to the MVP scope in `SPEC.md`. Product improvement
 - [ ] "This info is wrong" report link (E7)
 - [ ] Review hours for other boroughs
 
+- [ ] **Use the "Share your places?" prompt as a growth hook** (Ashley, 2026-10-24, from the E2/E3 prototype): beyond the one-time migration prompt, periodically invite people to batch-move Private places to Public, to grow the shared map. Decide when it shows and how often.
+- [ ] **Carry into the E2/E3 build:** bottom sheets must sit above the map card (they were hidden under it in the prototype); on the map card, Directions is an icon next to the distance and "I went here" is the main action (Ashley, 2026-10-24).
+
 ### Future ideas (backlog, Ashley 2026-10-08; spec each before building)
 
 - [ ] **Curated lists** (e.g. "Best bathrooms to cry in") that people can browse and save into their own list. Becomes E10 + public lists on the shared database.
