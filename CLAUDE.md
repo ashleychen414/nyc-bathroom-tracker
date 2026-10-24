@@ -45,7 +45,7 @@ never to "Open". Closed and non-operational restrooms are shown greyed out, not 
 ## Location log (database counts only)
 
 - `public.location_events`: one anonymous row per location attempt (`src/lib/location-log.js`): trigger, permission before, result, platform word, app version (short commit sha; `dev` = a local copy). No coordinates, user, zip or user agent. Visitors can only insert; reading needs the service role.
-- **To read it**, in the Supabase SQL editor: `select * from location_events_daily limit 50;` (per New York day and platform: attempts, success_pct, counts by result) and `select * from location_events_weekly;` (last 7 days vs the 7 before, per platform and `all`; a big negative `success_change_pts` after a deploy = look at that deploy). `already_blocked` = location was already denied for the site; on startup those are logged without asking.
+- **To read it**, in the Supabase SQL editor: `select * from location_events_daily limit 50;` (per New York day and platform: attempts, success_pct, counts by result) and `select * from location_events_weekly;` (last 7 days vs the 7 before, per platform and `all`; a big negative `success_change_pts` after a deploy = look at that deploy). `already_blocked` = the browser said location was denied for the site before the attempt; on startup the app still tries once, quietly, and logs the real result (iOS Home Screen apps can say denied while location works).
 - Rows tagged `rls-check` come from `npm run test:rls` (one per deploy) and are left out of both views.
 
 ## Commands
