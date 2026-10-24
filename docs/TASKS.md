@@ -1,59 +1,58 @@
 # Tasks
 
-Updated 2026-10-14. Steps map to the MVP scope in `SPEC.md`. Product improvements (Ashley, Oct 12) are sized and cross-referenced in `docs/IMPROVEMENTS-SCOPING.md`; epic numbers (E0–E13) refer to that doc.
+Updated 2026-10-24. Steps map to the MVP scope in `SPEC.md`. Product improvements (Ashley, Oct 12) are sized and cross-referenced in `docs/IMPROVEMENTS-SCOPING.md`; epic numbers (E0–E13) refer to that doc.
 
 ## Now
 
+- [ ] **Fix the location-blocked dead end on Nearby** (tester report 2026-10-24): when the phone blocks location, explain how to turn it back on (Safari / Home Screen app) and make the zip code the obvious way forward. In progress.
+- [ ] **Brooklyn hours: Ashley's calls** on what's left after PR #2 (review list is down from 52 rows to 22):
+  - Gravesend, Ryder and Leonard libraries are open per BPL but "Closed for Construction" in city data. They stay greyed out until overrides can set `status` (below).
+  - Carver Playground is "Not Operational" in city data, but NYC Parks rated it "Acceptable" in Sept 2025. It may be open.
+  - McCarren Indoor Tennis: operator site wouldn't load. It's Seasonal, so it never shows Open either way.
 
-- [ ] **Review Brooklyn hours** (`data/hours-review.md`, 52 rows). Owner: Ashley + Claude.
-  - `assumed-daily` (18): confirm they really are daily (check operator websites)
-  - `missing` (27): find hours or leave as "Hours unknown"
-  - `unparsed` (7): write structured hours into `data/hours-overrides.json`
-  - Watch for: "Temp Closed" (Paerdegat Athletic Facility) is listed as hours, not status
+## Next
 
-## Next (MVP build order)
-
-- [ ] **E1 step 2: switch the app to read bathrooms from Supabase**, with an offline cache, after the table has synced for a few nights. Also decide whether the map shows only confirmed + seed rows.
-- [ ] **Dedupe repeated city rows in `scripts/build-data.mjs`** (Tompkins Square Park is listed twice, once Operational and once Not Operational; the `bathrooms` table keeps the Not Operational copy, the app still shows both).
-- [ ] **Decide the remaining open questions in `docs/IMPROVEMENTS-SCOPING.md` §6**: what "private bathroom" means (blocks E2), starting rating dimensions (blocks E3), and milestone order (A → B → C proposed). Decided 2026-10-14: shared database, map-first home, facts on hold, notes private, database counts.
-- [ ] **Better place search when adding a place** (feedback 2026-10-08: restaurants and other private places are hard to find). Today's search (Photon / OpenStreetMap) is weak on businesses. Options to compare:
-  - A business-focused search service with a free tier (e.g. Geoapify or Mapbox Search); needs an API key restricted to our domain
-  - Google Places autocomplete: best coverage, but billed per search beyond a free allowance and needs a billing account
-  - Bias results harder to the person's location and show business type ("Café · 0.1 mi") so the right one is obvious
-  - Decide: which service, and the cost ceiling. Check current free-tier limits before choosing.
-- [ ] **Bathroom layout: several separate single bathrooms** (feedback 2026-10-08). Today the log only has "Stalls: yes/no + how many", which can't express "3 separate single-stall bathrooms" (common in NYC cafés), which is different from "one bathroom with 3 stalls". Proposal: replace Stalls with **Layout**:
+- [ ] **Decide the remaining open questions in `docs/IMPROVEMENTS-SCOPING.md` §6**: what "private bathroom" means (blocks E2), starting rating dimensions (blocks E3), and milestone order (A → B → C proposed). Milestone A is nearly done (E0, E4, E9-lite shipped).
+- [ ] **Let hours overrides set `status`**, then mark Gravesend, Ryder and Leonard libraries open and Paerdegat Athletic "Temporarily closed" (today it reads "Closed for today").
+- [ ] **NYPL holiday closures** (Manhattan, Bronx, Staten Island libraries). nypl.org/help/closings blocks automated reading, so copy the list in by hand.
+- [ ] **Bathroom layout: several separate single bathrooms** (feedback 2026-10-08). Becomes E5 on the shared `bathrooms` table (on hold with the other fact fields). Proposal: replace Stalls with **Layout**:
   - One single bathroom
   - Several single bathrooms → how many?
   - One bathroom with stalls → how many stalls?
-  - Card chips like "3 single bathrooms" / "1 bathroom, 4 stalls". Existing logs convert automatically (Stalls = yes + count → "with stalls"; Stalls = no → "one single bathroom"). Public restroom data already has "Single-stall / Multi-stall" types to show alongside.
-- [ ] **Saving without a confirmation step** (likely solved by lists phase 1; re-check with the tester after) (feedback 2026-10-08: "the save confirmation screen is confusing i wish i could just have it saved all the time"). First confirm which screen they meant:
-  - The "Keep your places safe" sheet after saving → make it less interruptive (e.g. a small banner on My places instead of a pop-up), or show it only once.
-  - The Save button on the log form → save changes automatically as you tap ratings/type notes (no Save/Cancel).
-  - Or they want places kept without any extra steps → that's Follow-up #1 (places last forever), which removes the need for the Home Screen prompt.
-- [ ] **Easier edit / delete for saved places** (Ashley, 2026-10-08; lower priority). Today it exists but is buried: My places → Edit log → "Delete place" at the bottom of the form. Make it obvious: e.g. Edit and Delete on each My places card and on the place's detail screen, with a confirm (or an Undo toast) for delete.
+  - Card chips like "3 single bathrooms" / "1 bathroom, 4 stalls". Existing logs convert automatically.
+- [ ] **Saving without a confirmation step** (feedback 2026-10-08). The pop-up is gone since lists phase 1; re-check with the tester. The rest is answered by E2 (save = list item) and E3 (log = visit).
+- [ ] **Easier edit / delete for saved places** (Ashley, 2026-10-08; lower priority; folds into E2). Today: My places → Edit log → "Delete place" at the bottom of the form.
 - [ ] Map follow-ups: tap a spot on the map to add a place; remember the map position between visits; show your live location dot moving as you walk
-- [ ] Test on a real iPhone once hosted: GPS, first-launch flow, time pickers, emoji tap targets (location only works on https)
-- [ ] Launch to friends; start logging in `FEEDBACK.md`
+- [ ] Test on a real iPhone: GPS, first-launch flow (new landing screen), time pickers, emoji tap targets, location blocked
+- [ ] Launch to friends; keep logging in `FEEDBACK.md`
 
 ## Later
 
+- [ ] **Needs-based onboarding** (Ashley, 2026-10-16, note on the landing screen mockup): ask about needs (medical/accessibility, pregnant, with toddlers) and shape the experience from it. Spec first.
+- [ ] **E9 full: search our own `bathrooms` table first**, then a provider comparison (after E2). Non-food places OpenStreetMap is missing (e.g. GP-81, a Bushwick climbing gym) need another source (Overture Maps / Foursquare open places) or "drop a pin and type the name".
 - [ ] **E7: rule for user corrections to seed rows.** Today a correction survives only until the city changes that row, because the nightly sync overwrites city facts when the city record changes.
+- [ ] **Each December: next year's holiday dates** in `data/special-days.json` (City 2027 calendar, QPL after Jan 3 2027, BPL after June 2027).
+- [ ] **Each spring: recheck seasonal rows**: Abe Stark season dates, Brooklyn Bridge Park restroom hours, Adventurer's Park, Luna Park.
+- [ ] Decide whether to keep publishing `bathrooms.json` once Supabase reads have been reliable for a while (today it's the fallback and the sync's input).
+- [ ] Turn off the GitHub Pages copy (www.nycpoops.com is the main link)
+- [ ] "This info is wrong" report link (E7)
+- [ ] Review hours for other boroughs
 
 ### Future ideas (backlog, Ashley 2026-10-08; spec each before building)
 
-- [ ] **Curated lists** (e.g. "Best bathrooms to cry in") that people can browse and save into their own list. Builds on lists phase 2 (import a list as your own copies) and phase 3 (lists published by NYC Poops).
-- [ ] **Visit log:** "as a user, I want to log when I went to a bathroom." A "I went here" tap that records the time, plus your visit history per place. Data: a separate `visits` table (user, place, visited_at), not inside the place's log, so visits don't overwrite each other.
-- [ ] **Aggregated visits:** "as a user, I want to see how many times people have used this bathroom so I can decide if this is a credible source." Show counts per public restroom (e.g. "Visited 23 times by 9 people"). Needs: visits tied to the city restroom id so counts combine across people; counts only, never who; a minimum number of people before showing a count, for privacy.
-- [ ] Pick the main link to share (Vercel or GitHub Pages) and optionally a nicer Vercel name or custom domain; consider turning the other one off
-
-- [ ] **Lists phase 2: share your list / import a friend's list** into your own (copies). Decided: snapshot links
-- [ ] **Lists phase 3: Ashley's public list** shown to everyone in Nearby. Needs its own planning/spec conversation first (phase 1 tables already leave room for it)
-- [ ] Shrink `bathrooms.json` (522 KB uncompressed): drop non-essential fields or split by borough
-- [ ] "This info is wrong" report link
-- [ ] Review hours for other boroughs
+- [ ] **Curated lists** (e.g. "Best bathrooms to cry in") that people can browse and save into their own list. Becomes E10 + public lists on the shared database.
+- [ ] **Visit log** (E3): an "I went here" tap that records the time, plus your visit history per place, in a separate `visits` table.
+- [ ] **Aggregated visits** (E3): "Visited 23 times by 9 people" per public restroom; counts only, never who; a minimum number of people before showing a count.
+- [ ] **Lists phase 2: share your list / import a friend's** (E10). Now references to shared bathrooms, not copies; share links are snapshots of which bathrooms.
+- [ ] **Lists phase 3: Ashley's public list** shown to everyone in Nearby. Needs its own planning conversation first.
 
 ## Done
 
+- [x] 2026-10-24: **Landing screen** (#9): "Need a restroom now?" card over a still map of Brooklyn with every city restroom as a grey dot; buttons Use my location / Go to My places
+- [x] 2026-10-16: **E1 step 2** (#7): the app reads restrooms from Supabase, with a phone cache (re-downloads only when the data changed) and a `bathrooms.json` fallback. Holiday closures come through the new `data_sources` table
+- [x] 2026-10-16: **Repeated city rows dropped** (#6): 1,066 rows → 1,063 restrooms; Tompkins Square Park shows Not Operational
+- [x] 2026-10-16: **Brooklyn hours review** (#2): 29 hand-checked overrides with source URLs (review list 52 → 22), Paerdegat Athletic closed, holiday closures for Brooklyn and Queens libraries and NYC Parks restrooms
+- [x] 2026-10-16: **E9-lite place search** (#3, #8): nearby businesses first, type and distance labels ("Café · 0.7 mi"), plus restaurants from the city's inspection data that OpenStreetMap is missing (Brooklyn sample: 12/30 found before, 27/30 after)
 - [x] 2026-10-14: **`SUPABASE_SECRET_KEY` GitHub secret added**; 1,063 restrooms loaded into `bathrooms`
 - [x] 2026-10-14: **E1 step 1**: `profiles` and `bathrooms` tables with row-level security, nightly sync step in the deploy workflow, GitHub Actions updated off Node 20
 - [x] 2026-10-14: **Set up for parallel agents**: tests run on every pull request (`.github/workflows/test.yml`); parallel-work rules in `CLAUDE.md` (worktrees, PR-only, shared docs, one database owner, private docs link)

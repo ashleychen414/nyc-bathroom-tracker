@@ -95,3 +95,29 @@ See `docs/IMPROVEMENTS-SCOPING.md` §2.
 - **Seed `access = public` for all city restrooms,** including privately owned public spaces (POPS), which are public by law. `status` is our verification status. The city's Operational/Closed status stays in `source_data` until E7 gives it a home.
 - **The nightly sync never deletes rows or changes `status`.** A row that leaves the city data gets `source_removed_at`, so saved places keep working.
 - **The first GitHub secret is `SUPABASE_SECRET_KEY`:** a new-style Supabase secret key, used only by the deploy workflow.
+
+## 2026-10-14: Hours review (PR #2)
+
+- **Seasonal hours: use the shorter season's hours all year.** It may show closed when it's open, never the reverse.
+- **A city time range that is really the park's hours** (Brooklyn Bridge Park 6am–1am) is replaced by the restroom's published hours.
+- **`hours: null` with a note means "reviewed, no reliable hours":** the row leaves the review list but still shows "Hours unknown". Overrides now carry a `source` URL.
+- **City hours with no days stated stay daily** when nothing contradicts them (McCarren Park Zone 3, Ashley's call).
+- **Holidays:** libraries follow each system's published closure list (closed). NYC Parks restrooms read "hours unknown" on city holidays, because Parks publishes no holiday policy. A holiday never makes a closed or Seasonal restroom open.
+- **Reopened libraries** (Gravesend, Ryder, Leonard) get hours but stay greyed out until the city updates their status, or overrides can set status.
+
+## 2026-10-14: Place search (PRs #3, #8)
+
+- **E9-lite keeps Photon/OpenStreetMap and re-ranks results in the app** (stronger location bias, then name match, kind of place, distance) instead of adding a paid provider. The main complaint was ranking, not coverage.
+- **Restaurants come from a live query to the city's inspection data**, not a shipped file: about 5 KB per search versus a ~2 MB file that would change nightly. City results are a bonus: capped at 4 seconds, and Photon results show alone if the query fails.
+
+## 2026-10-14: Reading restrooms from Supabase (PRs #6, #7)
+
+- **Repeated city rows: the less-open copy wins**, in both `build-data` and the database sync (accuracy first).
+- **Dataset-level info** (city "last updated" date, build time, holiday closures) lives in a `data_sources` table, not on each row.
+- **Phones cache the restrooms** and re-download only when `data_sources` or any bathroom's `updated_at` changes. If Supabase fails, the app falls back to `bathrooms.json`, then the phone copy.
+- **The map shows only seed and confirmed rows:** enforced by row-level security, so `needs_details` rows never reach the app.
+
+## 2026-10-24: Landing screen (PR #9)
+
+- **The welcome backdrop map shows restrooms as grey dots,** because it has no status and green would read as "Open".
+- **The second welcome button goes to My places, not a zip code.** The zip code field still appears on Nearby whenever location isn't available.
