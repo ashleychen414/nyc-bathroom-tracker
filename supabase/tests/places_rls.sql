@@ -1,5 +1,5 @@
--- Row-level security tests for public.places, public.profiles, public.bathrooms, public.data_sources
--- and public.location_events.
+-- Row-level security tests for public.places, public.profiles, public.bathrooms, public.lists,
+-- public.list_items, public.data_sources and public.location_events.
 -- Runs entirely inside a transaction and rolls back: it leaves no users or rows behind.
 -- Run it in the Supabase SQL editor (or via the Supabase connector) after any change to
 -- a table or its policies. Any failed check raises an error naming the check.
@@ -10,39 +10,39 @@ insert into auth.users (id, email, aud, role) values
   ('11111111-1111-1111-1111-111111111111', 'rls-test-a@example.invalid', 'authenticated', 'authenticated'),
   ('22222222-2222-2222-2222-222222222222', 'rls-test-b@example.invalid', 'authenticated', 'authenticated');
 
+-- ---------- places (read-only since E2) ----------
+
+-- A place from before E2 (as the database owner).
+insert into public.places (id, user_id, data, updated_at)
+  values ('aaaaaaaa-0000-0000-0000-000000000001', '11111111-1111-1111-1111-111111111111', '{"name":"A place"}', now());
+
 set local role authenticated;
 
--- User A adds a place; the owner is filled in from their sign-in.
+-- User A still reads their own places, and can no longer add or change them.
 set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
-insert into public.places (id, data, updated_at) values ('aaaaaaaa-0000-0000-0000-000000000001', '{"name":"A place"}', now());
 do $$ begin
   assert (select count(*) from public.places) = 1, 'A should see exactly their own place';
-  assert (select user_id from public.places limit 1) = '11111111-1111-1111-1111-111111111111', 'owner should default to the signed-in user';
-end $$;
-
--- User A can't create a place owned by someone else.
-do $$ begin
   begin
-    insert into public.places (id, user_id, data, updated_at)
-      values ('aaaaaaaa-0000-0000-0000-000000000002', '22222222-2222-2222-2222-222222222222', '{}', now());
-    raise exception 'A was able to insert a place owned by B';
-  exception when insufficient_privilege then null; -- expected: blocked by the insert policy
+    insert into public.places (id, data, updated_at) values ('aaaaaaaa-0000-0000-0000-000000000002', '{}', now());
+    raise exception 'A was able to add a place (places is read-only)';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    update public.places set data = '{"name":"changed"}' where id = 'aaaaaaaa-0000-0000-0000-000000000001';
+    raise exception 'A was able to change a place (places is read-only)';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    delete from public.places where id = 'aaaaaaaa-0000-0000-0000-000000000001';
+    raise exception 'A was able to delete a place';
+  exception when insufficient_privilege then null;
   end;
 end $$;
 
--- User B sees nothing of A's and can't change it.
+-- User B sees nothing of A's.
 set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}';
-update public.places set data = '{"name":"changed by B"}' where id = 'aaaaaaaa-0000-0000-0000-000000000001';
 do $$ begin
   assert (select count(*) from public.places) = 0, 'B should not see A''s places';
-end $$;
-
--- Nobody can hard-delete (deletes are tombstones), not even the owner.
-set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
-delete from public.places where id = 'aaaaaaaa-0000-0000-0000-000000000001';
-do $$ begin
-  assert (select data->>'name' from public.places where id = 'aaaaaaaa-0000-0000-0000-000000000001') = 'A place',
-    'A''s place should be unchanged by B and not hard-deletable';
 end $$;
 
 reset role;
@@ -95,39 +95,110 @@ end $$;
 
 -- ---------- bathrooms ----------
 
--- Test rows (as the database owner): one seed row, one confirmed user row, one unverified user row.
-insert into public.bathrooms (id, name, source, status, lat, lng) values
-  ('rls-test-seed', 'RLS test seed', 'seed', 'unverified', 40.7, -73.9),
-  ('rls-test-confirmed', 'RLS test confirmed', 'user', 'confirmed', 40.7, -73.9),
-  ('rls-test-unverified', 'RLS test unverified', 'user', 'unverified', 40.7, -73.9);
+set local request.jwt.claims = '{"role":"service_role"}'; -- as the nightly job: no signed-in user
+-- Test rows (as the database owner): a seed row, a confirmed and an unverified Public user row,
+-- a removed Public user row, and a Private row owned by A.
+insert into public.bathrooms (id, name, source, status, visibility, created_by, lat, lng) values
+  ('rls-test-seed', 'RLS test seed', 'seed', 'unverified', 'public', null, 40.7, -73.9),
+  ('rls-test-confirmed', 'RLS test confirmed', 'user', 'confirmed', 'public', '22222222-2222-2222-2222-222222222222', 40.7, -73.9),
+  ('rls-test-unverified', 'RLS test unverified', 'user', 'unverified', 'public', '22222222-2222-2222-2222-222222222222', 40.7, -73.9),
+  ('rls-test-removed', 'RLS test removed', 'user', 'removed', 'public', '22222222-2222-2222-2222-222222222222', 40.7, -73.9),
+  ('rls-test-private-a', 'RLS test private', 'user', 'unverified', 'private', '11111111-1111-1111-1111-111111111111', 40.7, -73.9);
 
--- Anonymous visitors and signed-in users read seed and confirmed bathrooms only.
-set local role anon;
+-- The table refuses user rows without an owner, and Private seed rows.
 do $$ begin
-  assert (select count(*) from public.bathrooms where id like 'rls-test-%') = 2, 'anon should see seed and confirmed rows only';
-  assert not exists (select 1 from public.bathrooms where id = 'rls-test-unverified'), 'anon should not see unverified user rows';
+  begin
+    insert into public.bathrooms (id, name, source, created_by, lat, lng) values ('rls-test-no-owner', 'x', 'user', null, 40.7, -73.9);
+    raise exception 'a user row without an owner was accepted';
+  exception when check_violation then null;
+  end;
+  begin
+    insert into public.bathrooms (id, name, source, visibility, lat, lng) values ('rls-test-private-seed', 'x', 'seed', 'private', 40.7, -73.9);
+    raise exception 'a Private seed row was accepted';
+  exception when check_violation then null;
+  end;
 end $$;
 
+-- Anonymous visitors read Public bathrooms (seed, and user rows we haven't removed), never Private ones.
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
+do $$ begin
+  assert (select string_agg(id, ',' order by id) from public.bathrooms where id like 'rls-test-%') = 'rls-test-confirmed,rls-test-seed,rls-test-unverified',
+    'anon should see seed and Public user rows, not removed or Private ones';
+end $$;
+
+-- A sees the Public rows plus their own Private one; B doesn't see A's Private one.
 set local role authenticated;
 set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
 do $$ begin
-  assert (select count(*) from public.bathrooms where id like 'rls-test-%') = 2, 'signed-in users should see seed and confirmed rows only';
+  assert (select count(*) from public.bathrooms where id like 'rls-test-%') = 4, 'A should see 3 Public rows and their Private one';
+  assert exists (select 1 from public.bathrooms where id = 'rls-test-private-a'), 'A should see their own Private bathroom';
+end $$;
+set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}';
+do $$ begin
+  assert not exists (select 1 from public.bathrooms where id = 'rls-test-private-a'), 'B should not see A''s Private bathroom';
+  assert exists (select 1 from public.bathrooms where id = 'rls-test-removed'), 'B should still see the row they own, even when removed';
 end $$;
 
--- Nobody but the service role writes: no insert, update, delete, or calling the sync function.
+-- A adds bathrooms: owner, source and status are filled in and can't be chosen.
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+insert into public.bathrooms (id, name, access, visibility, lat, lng) values
+  ('rls-test-new-private', 'A private', 'unknown', 'private', 40.7, -73.9),
+  ('rls-test-new-public', 'A public cafe', 'customers_only', 'public', 40.7, -73.9);
+do $$ begin
+  assert (select created_by || '/' || source || '/' || status from public.bathrooms where id = 'rls-test-new-private')
+    = '11111111-1111-1111-1111-111111111111/user/unverified', 'a new bathroom should be A''s, user, unverified';
+  begin
+    insert into public.bathrooms (id, name, lat, lng, status) values ('rls-test-x', 'x', 40.7, -73.9, 'confirmed');
+    raise exception 'A was able to set status';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    insert into public.bathrooms (id, name, lat, lng, source) values ('rls-test-x', 'x', 40.7, -73.9, 'seed');
+    raise exception 'A was able to add a seed row';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    insert into public.bathrooms (id, name, lat, lng, created_by) values ('rls-test-x', 'x', 40.7, -73.9, '22222222-2222-2222-2222-222222222222');
+    raise exception 'A was able to add a bathroom owned by B';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+
+-- A edits their own rows, can make Private → Public but not back, and deletes only Private ones.
+update public.bathrooms set name = 'A private renamed', deleted_at = now() where id = 'rls-test-new-private';
+do $$ begin
+  assert (select name from public.bathrooms where id = 'rls-test-new-private') = 'A private renamed', 'A should edit their own bathroom';
+  assert (select deleted_at is not null from public.bathrooms where id = 'rls-test-new-private'), 'A should delete their own Private bathroom';
+  begin
+    update public.bathrooms set visibility = 'private' where id = 'rls-test-new-public';
+    raise exception 'A was able to make a Public bathroom Private';
+  exception when check_violation then null;
+  end;
+  begin
+    update public.bathrooms set deleted_at = now() where id = 'rls-test-new-public';
+    raise exception 'A was able to delete a Public bathroom';
+  exception when check_violation then null;
+  end;
+  begin
+    update public.bathrooms set status = 'confirmed' where id = 'rls-test-new-public';
+    raise exception 'A was able to change status';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+update public.bathrooms set visibility = 'public' where id = 'rls-test-private-a';
+
+-- A can't change anyone else's rows (seed or B's): the update matches nothing. Nobody deletes or runs the sync.
+update public.bathrooms set name = 'changed by A' where id in ('rls-test-seed', 'rls-test-confirmed');
 do $$ begin
   begin
-    insert into public.bathrooms (id, name, source, lat, lng) values ('rls-test-new', 'x', 'user', 40.7, -73.9);
-    raise exception 'a signed-in user was able to add a bathroom';
+    insert into public.bathrooms (id, name, lat, lng) values ('rls-test-seed', 'taken over', 40.7, -73.9)
+      on conflict (id) do update set name = excluded.name;
+    raise exception 'A was able to upsert over a seed row';
   exception when insufficient_privilege then null;
   end;
   begin
-    update public.bathrooms set name = 'changed' where id = 'rls-test-seed';
-    raise exception 'a signed-in user was able to change a bathroom';
-  exception when insufficient_privilege then null;
-  end;
-  begin
-    delete from public.bathrooms where id = 'rls-test-seed';
+    delete from public.bathrooms where id = 'rls-test-new-public';
     raise exception 'a signed-in user was able to delete a bathroom';
   exception when insufficient_privilege then null;
   end;
@@ -139,9 +210,102 @@ do $$ begin
 end $$;
 
 reset role;
+do $$ begin
+  assert (select count(*) from public.bathrooms where id in ('rls-test-seed', 'rls-test-confirmed') and name like 'changed%') = 0,
+    'A should not be able to change seed rows or B''s rows';
+  assert (select name from public.bathrooms where id = 'rls-test-seed') = 'RLS test seed', 'the upsert should not have changed the seed row';
+  assert (select visibility from public.bathrooms where id = 'rls-test-private-a') = 'public', 'A should be able to make their Private bathroom Public';
+end $$;
+
+-- ---------- lists and list_items ----------
+
+-- Every account gets one default list at sign-up.
+do $$ begin
+  assert (select count(*) from public.lists where user_id = '11111111-1111-1111-1111-111111111111' and is_default) = 1,
+    'a new account should get one default list';
+  assert (select count(*) from auth.users u where not exists (select 1 from public.lists l where l.user_id = u.id and l.is_default)) = 0,
+    'every account should have a default list';
+end $$;
+insert into public.bathrooms (id, name, source, visibility, created_by, lat, lng)
+  values ('rls-test-private-b', 'B private', 'user', 'private', '22222222-2222-2222-2222-222222222222', 40.7, -73.9);
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+do $$
+declare
+  mine uuid := (select id from public.lists where is_default);
+begin
+  assert (select count(*) from public.lists) = 1, 'A should see only their own list';
+  -- A saves a seed row and their own bathroom, with notes; the owner is filled in.
+  insert into public.list_items (list_id, bathroom_id, notes) values (mine, 'rls-test-seed', 'code 1234'), (mine, 'rls-test-new-public', null);
+  assert (select count(*) from public.list_items where user_id = '11111111-1111-1111-1111-111111111111') = 2, 'A should see their 2 list items';
+  -- Removing is a tombstone; the same bathroom twice on one list lands on one row.
+  update public.list_items set deleted_at = now() where bathroom_id = 'rls-test-new-public';
+  insert into public.list_items (list_id, bathroom_id, notes) values (mine, 'rls-test-seed', 'newer')
+    on conflict (list_id, bathroom_id) do update set notes = excluded.notes;
+  assert (select notes from public.list_items where bathroom_id = 'rls-test-seed') = 'newer', 'upsert should update the existing item';
+  begin
+    insert into public.list_items (list_id, bathroom_id) values (mine, 'rls-test-private-b');
+    raise exception 'A was able to save B''s Private bathroom';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    delete from public.list_items where bathroom_id = 'rls-test-seed';
+    raise exception 'A was able to hard-delete a list item';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    insert into public.lists (user_id, name) values ('11111111-1111-1111-1111-111111111111', 'Another');
+    raise exception 'A was able to add a list';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+
+-- B can't see A's list or items, add to A's list, or change A's items.
+reset role;
+select set_config('rls_test.a_list', (select id::text from public.lists where user_id = '11111111-1111-1111-1111-111111111111' and is_default), true);
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}';
+do $$
+declare
+  a_list uuid := current_setting('rls_test.a_list')::uuid;
+begin
+  assert (select count(*) from public.lists) = 1, 'B should see only their own list';
+  assert (select count(*) from public.list_items) = 0, 'B should not see A''s list items';
+  begin
+    insert into public.list_items (list_id, bathroom_id) values (a_list, 'rls-test-seed');
+    raise exception 'B was able to add to A''s list';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    insert into public.list_items (list_id, bathroom_id, user_id) values (a_list, 'rls-test-confirmed', '11111111-1111-1111-1111-111111111111');
+    raise exception 'B was able to add an item as A';
+  exception when insufficient_privilege then null;
+  end;
+  update public.list_items set notes = 'changed by B' where list_id = a_list;
+end $$;
+
+reset role;
+do $$ begin
+  assert (select notes from public.list_items where bathroom_id = 'rls-test-seed' and user_id = '11111111-1111-1111-1111-111111111111') = 'newer',
+    'B should not be able to change A''s list items';
+end $$;
+
+-- The share prompt flag: users can clear their own, not set anyone else's.
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+update public.profiles set share_prompt_due = true where id = '22222222-2222-2222-2222-222222222222';
+update public.profiles set share_prompt_due = false where id = '11111111-1111-1111-1111-111111111111';
+reset role;
+do $$ begin
+  assert (select share_prompt_due from public.profiles where id = '22222222-2222-2222-2222-222222222222') = false,
+    'A should not be able to change B''s share prompt';
+end $$;
+
 
 -- The sync: adds new rows, keeps our status, picks the less-open copy of a duplicated id,
 -- updates only changed rows, and refuses a list that would mark most rows missing.
+set local request.jwt.claims = '{"role":"service_role"}';
 delete from public.bathrooms where id like 'rls-test-%';
 do $$
 declare
@@ -153,8 +317,8 @@ begin
     {"id":"rls-test-b","name":"Test B","type":"Park","borough":"Queens","status":"Not Operational","hours":null,"hoursReviewed":false,"lat":40.75,"lng":-73.85}
   ]'::jsonb, false);
   assert (r->>'inserted')::int = 2 and (r->>'unique')::int = 2, 'sync should add 2 rows from 3 with a duplicated id: ' || r;
-  assert (select venue_type || '/' || access || '/' || status || '/' || source from public.bathrooms where id = 'rls-test-a') = 'library/public/unverified/seed',
-    'seed rows should be library/public/unverified/seed';
+  assert (select venue_type || '/' || access || '/' || status || '/' || source || '/' || visibility || '/' || coalesce(created_by::text, 'no owner') from public.bathrooms where id = 'rls-test-a')
+    = 'library/public/unverified/seed/public/no owner', 'seed rows should be library/public/unverified/seed, Public, with no owner';
   assert (select source_data->>'status' from public.bathrooms where id = 'rls-test-b') = 'Not Operational',
     'for a duplicated id the less-open copy should win';
 
@@ -184,6 +348,7 @@ insert into public.data_sources (id, source_updated_at) values ('rls-test', now(
 
 -- Anyone reads the dataset info; nobody but the service role writes it.
 set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
 do $$ begin
   assert exists (select 1 from public.data_sources where id = 'rls-test'), 'anon should read data_sources';
 end $$;
@@ -217,6 +382,7 @@ reset role;
 -- Anonymous and signed-in visitors can add a row, and nothing else: no reading (table or
 -- views), changing, deleting, or setting the server-side columns.
 set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
 insert into public.location_events (trigger, permission_before, result, platform, app_version)
   values ('startup', 'prompt', 'granted', 'ios-safari', 'rls-test');
 do $$ begin
@@ -272,6 +438,7 @@ do $$ begin
 end $$;
 
 set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
 do $$ begin
   begin
     perform 1 from public.location_events_daily;
@@ -296,9 +463,14 @@ do $$ begin
     'both visitor rows should have landed, unchanged';
   assert (select count(*) from public.location_events where app_version = 'rls-test' and result = 'denied') = 1,
     'visitors should not have been able to change a row';
-  assert (select coalesce(sum(attempts), 0) from public.location_events_daily where app_versions like '%rls-test%') = 2,
+  -- The test rows share a day and platform with real visits, so compare with what the view should count.
+  assert (select coalesce(sum(attempts), 0) from public.location_events_daily where app_versions like '%rls-test%')
+    = (select count(*) from public.location_events
+       where app_version is distinct from 'rls-check'
+         and (created_at at time zone 'America/New_York')::date = (now() at time zone 'America/New_York')::date
+         and platform in ('ios-safari', 'desktop')),
     'the daily view should count the rows';
 end $$;
 
-select 'places, profiles, bathrooms, data_sources, location_events RLS: all checks passed' as result;
+select 'places, profiles, bathrooms, lists, list_items, data_sources, location_events RLS: all checks passed' as result;
 rollback;
