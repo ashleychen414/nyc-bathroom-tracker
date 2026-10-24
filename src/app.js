@@ -137,6 +137,8 @@ const loading = () => paint('<main class="list"><p class="meta">Loading…</p></
 function render() {
   const { name, id } = parseRoute();
   if (state.here) seed(state.here); // prototype: sample places saved "before sharing"
+  // The share prompt belongs to My places: leaving without answering closes it, and it comes back next visit.
+  if (state.sheet === 'proto-share' && name !== 'places') state.sheet = null;
   const formRoutes = { add: 'add', edit: `edit:${id}`, log: `log:${id}` };
   if (!formRoutes[name]) closeForm();
 
