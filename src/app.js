@@ -46,6 +46,7 @@ const state = {
   here: null, // { lat, lng, source: 'gps' | 'zip', zip?, area? }
   locating: false,
   locationIssue: null, // 'denied' | 'unavailable'
+  locationHelpOpen: false, // how to unblock location, opened when a tap on "Use my location" was refused
   zipDraft: prefs.zip ?? '',
   zipStatus: '',
   zipEditing: false, // showing the zip field while already using a zip
@@ -381,6 +382,7 @@ async function locate() {
     savePrefs({ source: 'gps' });
   } catch (err) {
     state.locationIssue = err.message === 'denied' ? 'denied' : 'unavailable';
+    state.locationHelpOpen = state.locationIssue === 'denied';
     if (state.here?.source === 'gps') state.here = null;
     if (!state.here && prefs.zip) applyZip(prefs.zip);
   }
@@ -486,6 +488,8 @@ app.addEventListener('click', (e) => {
       return locate();
     case 'use-zip':
       return useZip();
+    case 'reload':
+      return location.reload();
     case 'welcome-locate':
       savePrefs({ welcomed: true });
       location.replace('#/nearby');
@@ -558,6 +562,7 @@ loadBathrooms((data) => {
 });
 
 (async () => {
+  let focusZip = false;
   const permission = await navigator.permissions
     ?.query({ name: 'geolocation' })
     .then((p) => p.state)
@@ -567,9 +572,12 @@ loadBathrooms((data) => {
   else if (permission === 'denied') {
     state.locationIssue = 'denied';
     if (prefs.zip) applyZip(prefs.zip);
+    else focusZip = true;
   } else if (!prefs.welcomed) {
     if (parseRoute().name === 'nearby') location.replace('#/welcome');
   } else if (prefs.source === 'zip' && prefs.zip) applyZip(prefs.zip);
   else locate();
   render();
+  // Blocked with no saved zip: the zip field is the only way forward, so put the cursor there.
+  if (focusZip) app.querySelector('#zip')?.focus();
 })();

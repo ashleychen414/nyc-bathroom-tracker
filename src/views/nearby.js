@@ -6,6 +6,7 @@ import { getStatus, describeHours } from '../lib/hours.js';
 import { RADII, placeStatus } from '../lib/nearby.js';
 import { statusBadge, mineBadge, logChips, hasLog, publicTags, restroomType, backBar, sourceDate } from './shared.js';
 import { mapLegend } from './map.js';
+import { locationHelp, mobilePlatform, isStandalone, isIOSSafari } from '../lib/device.js';
 
 const KINDS = [
   ['all', 'All'],
@@ -69,15 +70,31 @@ function locationBlock(s) {
     return `<p class="loc">${icon.pin()} Near ${esc(s.here.zip)} <span class="muted">(approx.)</span>
       <span class="loc-actions"><button class="link" data-action="edit-zip">Change</button></span></p>`;
   }
+  // Blocked: the browser won't ask again, so "Use my location" would do nothing. Zip first, how-to below.
+  if (s.locationIssue === 'denied') {
+    return `
+      <div class="banner">${icon.info()}<span>Location is blocked for this site. Enter a zip code to see restrooms now.</span></div>
+      ${zipField(s)}
+      ${deniedHelp(s)}`;
+  }
   const why =
-    s.locationIssue === 'denied'
-      ? 'Location is off for this site, so distances are from the middle of your zip code.'
-      : s.locationIssue === 'unavailable'
+    s.locationIssue === 'unavailable'
         ? "Couldn't get your location, so distances are from the middle of your zip code."
         : 'Distances are from the middle of your zip code.';
   return `
     <div class="banner">${icon.info()}<span>${why} <button class="link" data-action="locate">Use my location</button></span></div>
     ${zipField(s)}`;
+}
+
+function deniedHelp(s) {
+  const help = locationHelp({ platform: mobilePlatform(), standalone: isStandalone(), safari: isIOSSafari() });
+  return `
+    <details class="loc-help" id="loc-help" ${s.locationHelpOpen ? 'open' : ''}>
+      <summary>Turn location back on</summary>
+      <ol>${help.steps.map((step) => `<li>${esc(step)}</li>`).join('')}</ol>
+      ${help.also ? `<p class="hint">${esc(help.also)}</p>` : ''}
+      <button class="btn small" data-action="reload">Reload</button>
+    </details>`;
 }
 
 function controls(s) {
@@ -200,7 +217,7 @@ export function nearbyView(s, list) {
   let body;
   if (s.dataError) body = '<p class="error">Couldn\'t load restrooms. Check your connection and reload.</p>';
   else if (!s.data) body = '<p class="meta">Loading restrooms…</p>';
-  else if (!s.here) body = s.locating ? '' : '<p class="meta">Enter a zip code to see restrooms near it.</p>';
+  else if (!s.here) body = s.locating ? '' : '<p class="meta">Enter a zip code above to see restrooms near it.</p>';
   else body = results(s, list);
   return `${header}
     <main class="list">
