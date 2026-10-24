@@ -6,6 +6,7 @@ import { getStatus, describeHours } from '../lib/hours.js';
 import { RADII, placeStatus } from '../lib/nearby.js';
 import { statusBadge, mineBadge, logChips, hasLog, publicTags, restroomType, backBar, sourceDate } from './shared.js';
 import { mapLegend } from './map.js';
+import { cardExtras, wentHereButton, communitySection, accessSection, nudge } from '../proto/proto.js';
 import { locationHelp, mobilePlatform, isStandalone, isIOSSafari } from '../lib/device.js';
 
 const KINDS = [
@@ -130,7 +131,7 @@ function entryCard(e, approx) {
       <div class="card-head"><h2>${esc(e.name)}</h2><span class="dist">${approx ? '~' : ''}${formatDistance(e.distance)}</span></div>
       <div class="badges">${statusBadge(e.status)}${e.place ? mineBadge : ''}${sub ? `<span class="type">${sub}</span>` : ''}</div>
       ${b ? publicTags(b) : ''}
-      ${e.place ? logChips(e.place.log) : ''}
+      ${cardExtras(e)}
     </a>`;
 }
 
@@ -188,7 +189,7 @@ export function mapSheet(s, list, selectedId) {
     </div>
     <div class="card-head"><h2>${esc(e.name)}</h2><span class="dist">${approx ? '~' : ''}${formatDistance(e.distance)}</span></div>
     <div class="badges">${statusBadge(e.status)}${e.place ? mineBadge : ''}${sub ? `<span class="type">${esc(sub)}</span>` : ''}</div>
-    ${e.place ? logChips(e.place.log) : ''}
+    ${cardExtras(e)}
     <div class="actions">
       <a class="btn primary" href="${directionsUrl(e)}" target="_blank" rel="noopener">${icon.directions()}Directions</a>
       <a class="btn" href="${href}">Details</a>
@@ -204,6 +205,7 @@ export function nearbyView(s, list) {
       </div>
       ${locationBlock(s)}
       ${controls(s)}
+      ${nudge(s.findName)}
     </header>`;
   // Map view (default): legend always visible above the map, map fills the rest, card on top.
   if (s.view === 'map' && s.data && s.here && list) {
@@ -245,7 +247,7 @@ function notesCard(place, addHref) {
   return `
     <section class="group notes-card">
       <div class="kv-head"><h2 class="label">Your notes</h2><span class="muted small">Not logged yet</span></div>
-      <p>Been here? Log lighting, cleanliness, smell, stalls and trash so you know what to expect next time.</p>
+      <p>Only you see these. A good place for door codes and tips for next time.</p>
       <a class="btn outline block" href="${place ? `#/edit/${encodeURIComponent(place.id)}` : addHref}">${icon.pencil()}Add notes</a>
       ${place ? '' : '<p class="hint">Adding notes also saves this restroom to My places.</p>'}
     </section>`;
@@ -283,6 +285,9 @@ export function publicDetailView(s, b, place, distance) {
         <div class="badges">${statusBadge(status)}${place ? mineBadge : ''}</div>
       </div>
       <a class="btn primary block big" href="${directionsUrl(b)}" target="_blank" rel="noopener">${icon.directions()}Directions</a>
+      ${wentHereButton(b.id)}
+      ${communitySection(b.id)}
+      ${b.source === 'user' ? accessSection(b) : ''}
       ${notesCard(place, `#/log/${encodeURIComponent(b.id)}`)}
       <section class="group">
         <h2 class="label">Hours</h2>
@@ -314,6 +319,9 @@ export function mineDetailView(s, place, distance) {
         <div class="badges">${statusBadge(placeStatus(place))}${mineBadge}</div>
       </div>
       <a class="btn primary block big" href="${directionsUrl(place)}" target="_blank" rel="noopener">${icon.directions()}Directions</a>
+      ${wentHereButton(place.id)}
+      ${communitySection(place.id)}
+      ${accessSection(place, { editHref: `#/edit/${encodeURIComponent(place.id)}` })}
       ${notesCard(place)}
       <section class="group">
         <div class="kv-head"><h2 class="label">Hours</h2><span class="muted small">Your hours</span></div>

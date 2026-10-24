@@ -66,13 +66,13 @@ function render() {
         <label class="field-label" for="name">Name</label>
         <input id="name" class="input" value="${esc(draft.name)}" placeholder="e.g. Whole Foods Gowanus" autocomplete="off">
       </section>
+      ${draft.publicId ? '' : `<section class="group" id="access-group">${accessHtml()}</section>`}
       ${draft.publicId ? '' : `<section class="group" id="hours-group">${hoursHtml()}</section>`}
       <section class="group">
-        <h2>How was it?</h2>
-        <p class="hint">Log only what you want. Tap a selected answer again to clear it.</p>
-        ${LOG_FIELDS.map(fieldHtml).join('')}
-        <label class="field-label" for="notes">Other notes</label>
-        <textarea id="notes" class="input" rows="4" placeholder="e.g. Ask for the code at the counter">${esc(draft.log.notes)}</textarea>
+        <label class="field-label" for="notes">Private notes</label>
+        <p class="hint">Only you see these. A good place for door codes.</p>
+        <textarea id="notes" class="input" rows="3" placeholder="e.g. Code is on the receipt">${esc(draft.log.notes)}</textarea>
+        <p class="hint">${draft.id ? 'Rate it with "I went here" on its page.' : "After saving, you'll get a quick rating: clean, getting in, vibes."}</p>
       </section>
       <p class="error" id="form-error" role="alert"></p>
       ${draft.id ? `<button class="btn danger block" data-action="delete">${draft.publicId ? 'Remove from My places' : 'Delete place'}</button>` : ''}
@@ -209,6 +209,25 @@ function hoursHtml() {
     ${detail}`;
 }
 
+// Prototype (E2): who can use it, and who can see it. Visibility has no default: you choose.
+function accessHtml() {
+  const seg = (field, value, text) =>
+    `<button type="button" class="seg ${draft[field] === value ? 'on' : ''}" aria-pressed="${draft[field] === value}" data-proto-field="${field}" data-value="${value}">${text}</button>`;
+  return `
+    <div class="field">
+      <div class="field-row"><span class="field-label">Who can use it?</span></div>
+      <div class="segmented">${seg('access', 'public', 'Available to Public')}${seg('access', 'customers_only', 'Customer Only')}</div>
+      <p class="hint">${draft.access === 'customers_only' ? 'You may need to buy something or ask staff. Codes go in your private notes.' : draft.access === 'public' ? 'Anyone can walk in and use it.' : 'Skip if you\'re not sure.'}</p>
+    </div>
+    <div class="field">
+      <div class="field-row"><span class="field-label">Who can see it?</span></div>
+      <div class="segmented">${seg('visibility', 'public', 'Public')}${seg('visibility', 'private', '🔒 Private')}</div>
+      <p class="hint">${draft.visibility === 'public' ? 'Added to the NYC Poops map for everyone. Your notes stay private.' : draft.visibility === 'private' ? 'Only you can see it, e.g. your office or a friend\'s place.' : 'Public adds it to the map for everyone. Private keeps it to you.'}</p>
+    </div>`;
+}
+
+const refreshAccess = () => (root.querySelector('#access-group').innerHTML = accessHtml());
+
 const refreshHours = () => (root.querySelector('#hours-group').innerHTML = hoursHtml());
 
 // ---------- Log fields ----------
@@ -262,6 +281,7 @@ function save() {
   draft.name = draft.name.trim();
   if (draft.lat === null) return (error.textContent = 'Add where this bathroom is.');
   if (!draft.name) return (error.textContent = 'Give this place a name.');
+  if (!draft.publicId && !draft.visibility) return (error.textContent = 'Choose who can see it: Public or Private.');
 
   let hours = null;
   if (!draft.publicId) {
@@ -278,13 +298,14 @@ function save() {
   if (!log.notes) delete log.notes;
 
   const { hoursForm, publicType, ...place } = draft;
+  let saved;
   try {
-    savePlace({ ...place, hours, log });
+    saved = savePlace({ ...place, hours, log });
     requestPersistence();
   } catch {
     return (error.textContent = "Couldn't save on this phone. Check that your browser allows site data.");
   }
-  onSaved?.({ isNew: !draft.id });
+  onSaved?.({ isNew: !draft.id, place: saved });
   finish();
 }
 
@@ -310,6 +331,12 @@ export function handleFormClick(target) {
     draft.log[key] = draft.log[key] === value ? undefined : value;
     // Refresh fields whose visibility depends on this answer (stall count, trash cleanliness).
     for (const f of LOG_FIELDS) if (f.key === key || f.showIf) refreshField(f.key);
+    return true;
+  }
+  if (target.dataset.protoField) {
+    const field = target.dataset.protoField;
+    draft[field] = draft[field] === target.dataset.value ? undefined : target.dataset.value;
+    refreshAccess();
     return true;
   }
   if (target.dataset.hoursMode) {

@@ -6,6 +6,7 @@ import { getStatus } from '../lib/hours.js';
 import { placeStatus } from '../lib/nearby.js';
 import { statusBadge, logChips } from './shared.js';
 import { signInBanner, syncLine } from './account.js';
+import { cardExtras } from '../proto/proto.js';
 
 function placeCard(p, bathroom, approx) {
   const status = bathroom ? getStatus(bathroom) : placeStatus(p);
@@ -18,12 +19,12 @@ function placeCard(p, bathroom, approx) {
       </div>
       ${p.address ? `<p class="addr">${esc(p.address)}</p>` : ''}
       <div class="badges">${statusBadge(status)}<span class="type">${bathroom ? 'Saved public restroom' : p.hours ? 'Your hours' : ''}</span></div>
-      ${logChips(p.log) || '<p class="meta">Nothing logged yet</p>'}
+      ${cardExtras({ kind: bathroom ? 'public' : 'mine', id: bathroom ? bathroom.id : p.id, bathroom, place: p })}
       ${p.log?.notes ? `<p class="notes">${esc(p.log.notes)}</p>` : ''}
       <p class="meta">Updated ${formatDate(p.updatedAt)}</p>
       <div class="actions">
         <a class="btn primary" href="${directionsUrl(p)}" target="_blank" rel="noopener">Directions</a>
-        <a class="btn" href="#/edit/${encodeURIComponent(p.id)}">Edit log</a>
+        <a class="btn" href="#/edit/${encodeURIComponent(p.id)}">Edit</a>
       </div>
     </article>`;
 }
@@ -43,7 +44,7 @@ export function placesView(s, places) {
       </div>
     </header>
     <main class="list">
-      ${s.user ? '' : signInBanner}
+      
       ${
         list.length
           ? `<p class="meta">${list.length} place${list.length === 1 ? '' : 's'}${s.here ? ' · nearest first' : ''}</p>` +

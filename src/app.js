@@ -18,6 +18,7 @@ import { homeScreenSheet, backupSheet, backupResult } from './views/sheets.js';
 import { mountMap, mountBackdrop, unmountMap, selectPin } from './views/map.js';
 import { mapSheet } from './views/nearby.js';
 import { signInSheet, accountSheet } from './views/account.js';
+import { sharedBathrooms, protoSheet, protoStrip, handleProtoClick, seed, shouldPromptShare, afterNewPlace } from './proto/proto.js';
 
 const app = document.getElementById('app');
 
@@ -91,6 +92,7 @@ function goBack(fallback) {
 }
 
 function sheetHtml() {
+  if (state.sheet?.startsWith('proto-')) return protoSheet(state.sheet);
   if (state.sheet === 'homescreen') return homeScreenSheet(mobilePlatform() ?? 'ios');
   if (state.sheet === 'signin') return signInSheet(state.signin);
   if (state.sheet === 'account' && state.user) {
@@ -105,7 +107,7 @@ function sheetHtml() {
 function paint(html, tab) {
   const hadSheet = Boolean(app.querySelector('.sheet'));
   unmountMap();
-  app.innerHTML = html + (tab ? tabBar(tab) : '') + sheetHtml() + (state.toast ? `<div class="toast" role="status">${state.toast}</div>` : '');
+  app.innerHTML = protoStrip + html + (tab ? tabBar(tab) : '') + sheetHtml() + (state.toast ? `<div class="toast" role="status">${state.toast}</div>` : '');
   document.body.classList.toggle('sheet-open', Boolean(state.sheet));
   if (state.sheet && !hadSheet) app.querySelector('.sheet')?.focus();
   app.classList.toggle('has-tabbar', Boolean(tab));
@@ -114,12 +116,27 @@ function paint(html, tab) {
   paintedHash = location.hash;
 }
 
-const findBathroom = (id) => state.data?.bathrooms.find((b) => b.id === id) ?? null;
+// Prototype: city restrooms plus sample bathrooms other people shared (placed around you).
+const allBathrooms = () => [...(state.data?.bathrooms ?? []), ...sharedBathrooms(state.here)];
+const findBathroom = (id) => allBathrooms().find((b) => b.id === id) ?? null;
+state.findName = (id) => findBathroom(id)?.name ?? getPlace(id)?.name ?? null;
+const protoApi = {
+  state,
+  render: () => render(),
+  toast: (text) => {
+    toast(text);
+    render();
+  },
+  get findName() {
+    return state.findName;
+  },
+};
 const distanceTo = (p) => (state.here ? distanceMiles(state.here, p) : null);
 const loading = () => paint('<main class="list"><p class="meta">Loading…</p></main>', null);
 
 function render() {
   const { name, id } = parseRoute();
+  if (state.here) seed(state.here); // prototype: sample places saved "before sharing"
   const formRoutes = { add: 'add', edit: `edit:${id}`, log: `log:${id}` };
   if (!formRoutes[name]) closeForm();
 
@@ -129,6 +146,7 @@ function render() {
       return mountBackdrop(app.querySelector('#welcome-map'), { bathrooms: state.data?.bathrooms });
 
     case 'places':
+      if (shouldPromptShare() && !state.sheet) state.sheet = 'proto-share';
       return paint(placesView(state, listPlaces()), 'places');
 
     case 'r': {
@@ -165,6 +183,7 @@ function render() {
       window.scrollTo(0, 0);
       return openForm(app, opts, {
         here: state.here,
+        saved: ({ isNew, place }) => isNew && !place.publicId && afterNewPlace(place, protoApi),
         done: () => goBack(name === 'log' ? `#/r/${encodeURIComponent(id)}` : '#/places'),
       });
     }
@@ -172,7 +191,7 @@ function render() {
     default: {
       const list =
         state.data && state.here
-          ? nearby(buildEntries(state.data.bathrooms, listPlaces()), state.here, { radius: state.radius, ...state.filters })
+          ? nearby(buildEntries(allBathrooms(), listPlaces()), state.here, { radius: state.radius, ...state.filters })
           : null;
       currentList = list;
       if (list && state.selectedId && ![...list.inside, ...list.outside].some((e) => e.id === state.selectedId)) state.selectedId = null;
@@ -434,6 +453,7 @@ app.addEventListener('click', (e) => {
   const target = e.target.closest('button, [data-action="close-sheet"]');
   if (!target) return;
   if (handleFormClick(target)) return;
+  if (handleProtoClick(target, protoApi)) return;
 
   const { action, value } = target.dataset;
   switch (action) {
@@ -544,7 +564,8 @@ app.addEventListener('input', (e) => {
 // ---------- Start ----------
 
 // Re-render after a sync only where it shows: My places, the account sheet, or when places changed.
-startSync((changed) => {
+// Prototype: no sign-in or sync, so sample data never reaches the real database.
+if (false) startSync((changed) => {
   const { name } = parseRoute();
   if (['add', 'edit', 'log', 'welcome'].includes(name)) return;
   if (changed || name === 'places' || state.sheet === 'account') render();
