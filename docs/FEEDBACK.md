@@ -10,6 +10,7 @@ Triage: link the resulting task in `TASKS.md`, or mark `won't do` with a reason.
 | 2026-10-08 | Ashley | Mac (localhost) | Sign in button on the "Keep your places forever" banner wraps onto two lines | bug | Fixed same day (button no longer shrinks/wraps) |
 | 2026-10-08 | Ashley | ? | "finding a restaurant/private location is hard - the search results in the current my places section is not very good" | UX | TASKS.md → Next: Better place search |
 | 2026-10-08 | Ashley | ? | "some private locations have multiple, one stall bathrooms - that is tracking case that is not captured but necessary in NYC. this is different than one bathroom, many stalls" | feature request | TASKS.md → Next: Bathroom layout |
+| 2026-10-16 | Ashley (note on the landing screen mockup) | design mockup | "Is there a quick onboarding experience here, like "I have medical/accessibility needs, versus pregnant/mom looking with toddlers, etc." If they onboard with a persona of needs, the rest of the experience could b…" [rest cut off in the screenshot] | feature request | TASKS.md → Later: Needs-based onboarding (added after the landing-screen PR merges) |
 
 Categories:
 - **bug**: something broke
