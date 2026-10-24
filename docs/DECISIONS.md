@@ -121,3 +121,8 @@ See `docs/IMPROVEMENTS-SCOPING.md` §2.
 
 - **The welcome backdrop map shows restrooms as grey dots,** because it has no status and green would read as "Open".
 - **The second welcome button goes to My places, not a zip code.** The zip code field still appears on Nearby whenever location isn't available.
+
+## 2026-10-24: Location blocked (PR #10)
+
+- **When location is denied, Nearby leads with the zip code and shows how to turn location back on,** instead of a "Use my location" button that can't work (iOS never asks again once a site is denied).
+- **Safari's address-bar button is named loosely ("aA" or "⋯")** because Apple renames it between iOS versions.

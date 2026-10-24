@@ -4,7 +4,6 @@ Updated 2026-10-24. Steps map to the MVP scope in `SPEC.md`. Product improvement
 
 ## Now
 
-- [ ] **Fix the location-blocked dead end on Nearby** (tester report 2026-10-24): when the phone blocks location, explain how to turn it back on (Safari / Home Screen app) and make the zip code the obvious way forward. In progress.
 - [ ] **Brooklyn hours: Ashley's calls** on what's left after PR #2 (review list is down from 52 rows to 22):
   - Gravesend, Ryder and Leonard libraries are open per BPL but "Closed for Construction" in city data. They stay greyed out until overrides can set `status` (below).
   - Carver Playground is "Not Operational" in city data, but NYC Parks rated it "Acceptable" in Sept 2025. It may be open.
@@ -48,6 +47,7 @@ Updated 2026-10-24. Steps map to the MVP scope in `SPEC.md`. Product improvement
 
 ## Done
 
+- [x] 2026-10-24: **Location-blocked dead end fixed** (#10, tester report): when location is blocked, Nearby leads with the zip code and shows how to turn location back on (iPhone Safari, Home Screen app, other browsers)
 - [x] 2026-10-24: **Landing screen** (#9): "Need a restroom now?" card over a still map of Brooklyn with every city restroom as a grey dot; buttons Use my location / Go to My places
 - [x] 2026-10-16: **E1 step 2** (#7): the app reads restrooms from Supabase, with a phone cache (re-downloads only when the data changed) and a `bathrooms.json` fallback. Holiday closures come through the new `data_sources` table
 - [x] 2026-10-16: **Repeated city rows dropped** (#6): 1,066 rows → 1,063 restrooms; Tompkins Square Park shows Not Operational
