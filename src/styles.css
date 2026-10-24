@@ -397,8 +397,9 @@ a.card:active { transform: scale(.99); }
 #hours-group .seg { padding: 0 6px; white-space: nowrap; font-size: 15px; }
 
 /* ---------- Bottom sheets ---------- */
+/* Above the map card (z-index 500) and Leaflet's panes, so a sheet opened on the map view isn't hidden. */
 body.sheet-open { overflow: hidden; }
-.sheet-backdrop { position: fixed; inset: 0; z-index: 1000; background: rgba(0, 0, 0, .45); } /* above the map card (500) */
+.sheet-backdrop { position: fixed; inset: 0; z-index: 1000; background: rgba(0, 0, 0, .45); }
 .sheet {
   position: fixed; z-index: 1001; bottom: 0; left: 50%; transform: translateX(-50%);
   width: 100%; max-width: 560px; max-height: 90dvh; overflow-y: auto;
@@ -547,4 +548,12 @@ body.sheet-open { overflow: hidden; }
 .segmented.compact .seg { padding: 0 10px; font-size: 14px; min-height: 36px; }
 @media (prefers-color-scheme: dark) {
   .tag.access { background: #3d2f10; color: #ffd98a; }
+}
+
+/* Map card: directions as a round icon next to the distance. */
+.map-sheet .card-head { align-items: center; }
+.dist-dir { display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; }
+.btn.icon-btn.dir {
+  width: 44px; min-height: 44px; padding: 0; border-radius: 50%;
+  background: var(--accent); border-color: var(--accent); color: var(--accent-text);
 }

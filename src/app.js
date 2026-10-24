@@ -7,7 +7,7 @@ import { listPlaces, getPlace, privatePlaces, makePublic, exportPlaces, importPl
 import { currentUser, sendCode, verifyCode, signOut, deleteAccount } from './lib/auth.js';
 import { startSync, syncNow, syncStatus, clearSharePrompt } from './lib/sync.js';
 import { isStandalone, mobilePlatform, currentPlatformLabel } from './lib/device.js';
-import { getPosition, locationPermission, distanceMiles, lookupZip } from './lib/geo.js';
+import { locationPermission, startupLocation, tryPosition, locationAfter, distanceMiles, lookupZip } from './lib/geo.js';
 import { logLocation } from './lib/location-log.js';
 import { buildEntries, nearby } from './lib/nearby.js';
 import { loadBathrooms } from './lib/bathrooms-source.js';
@@ -412,21 +412,37 @@ async function locate(trigger, knownPermission) {
   state.locationIssue = null;
   refresh();
   const permissionBefore = knownPermission ?? locationPermission(); // asked before the prompt can change it
-  let result = 'granted';
-  try {
-    const pos = await getPosition();
-    state.here = { lat: pos.lat, lng: pos.lng, source: 'gps' };
+  const outcome = await tryPosition();
+  const next = locationAfter(outcome);
+  state.locationIssue = next.locationIssue;
+  if (next.here) {
+    state.here = next.here;
     savePrefs({ source: 'gps' });
-  } catch (err) {
-    result = err.message;
-    state.locationIssue = ['denied', 'timeout'].includes(err.message) ? err.message : 'unavailable';
+  } else {
     state.locationHelpOpen = state.locationIssue === 'denied';
     if (state.here?.source === 'gps') state.here = null;
     if (!state.here && prefs.zip) applyZip(prefs.zip);
   }
   state.locating = false;
   refresh();
-  logLocation({ trigger, permissionBefore: await permissionBefore, result, platform: currentPlatformLabel() });
+  logLocation({ trigger, permissionBefore: await permissionBefore, result: outcome.result, platform: currentPlatformLabel() });
+}
+
+// Startup when the browser says location is denied: the blocked state is already showing (zip
+// first), so try once without "Finding you…" and switch to the real location if it works.
+async function retryBlocked() {
+  const outcome = await tryPosition();
+  const next = locationAfter(outcome, { blocked: true });
+  if (next.here) {
+    zipAbort?.abort(); // the saved zip may still be looking up: the real location wins
+    state.here = next.here;
+    state.locationIssue = null;
+    state.zipEditing = false;
+    savePrefs({ source: 'gps' });
+    refresh();
+  }
+  // The real result, with what the browser had said: shows "said denied, but worked" in the log.
+  logLocation({ trigger: 'startup', permissionBefore: 'denied', result: outcome.result, platform: currentPlatformLabel() });
 }
 
 let zipAbort = null;
@@ -609,19 +625,18 @@ loadBathrooms((data) => {
 (async () => {
   let focusZip = false;
   const permission = await locationPermission();
+  const plan = startupLocation(permission, prefs);
 
-  if (permission === 'granted') locate('startup', permission);
-  else if (permission === 'denied') {
+  if (plan === 'locate') locate('startup', permission);
+  else if (plan === 'blocked-retry') {
     state.locationIssue = 'denied';
-    // No attempt is made (the browser won't ask again), but log it: otherwise blocked phones never show up.
-    logLocation({ trigger: 'startup', permissionBefore: permission, result: 'denied', platform: currentPlatformLabel() });
     if (prefs.zip) applyZip(prefs.zip);
     else focusZip = true;
-  } else if (!prefs.welcomed) {
+  } else if (plan === 'welcome') {
     if (parseRoute().name === 'nearby') location.replace('#/welcome');
-  } else if (prefs.source === 'zip' && prefs.zip) applyZip(prefs.zip);
-  else locate('startup', permission);
+  } else applyZip(prefs.zip);
   render();
   // Blocked with no saved zip: the zip field is the only way forward, so put the cursor there.
   if (focusZip) app.querySelector('#zip')?.focus();
+  if (plan === 'blocked-retry') retryBlocked();
 })();

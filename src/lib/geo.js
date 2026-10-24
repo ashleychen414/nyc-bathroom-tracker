@@ -40,6 +40,40 @@ export async function locationPermission() {
   }
 }
 
+// What to do about location when the app opens:
+//   'locate'        ask for the position (shows "Finding you…")
+//   'blocked-retry' show the blocked state (zip first) right away, and quietly try once anyway
+//   'welcome'       first visit: the welcome screen asks
+//   'zip'           they chose a zip code last time
+// 'denied' isn't trusted on its own: on iOS 26/27 Home Screen apps can get 'denied' from the
+// Permissions API while getCurrentPosition works (Apple Developer Forums thread 804381). On a
+// truly blocked phone the try fails at once, without a prompt.
+export function startupLocation(permission, { welcomed, source, zip } = {}) {
+  if (permission === 'granted') return 'locate';
+  if (permission === 'denied') return 'blocked-retry';
+  if (!welcomed) return 'welcome';
+  if (source === 'zip' && zip) return 'zip';
+  return 'locate';
+}
+
+// One try at the position. Never rejects: { result: 'granted', position } or { result, issue },
+// where result is what the location log records and issue is what the app shows.
+export async function tryPosition(get = getPosition) {
+  try {
+    return { result: 'granted', position: await get() };
+  } catch (err) {
+    const result = err.message;
+    return { result, issue: ['denied', 'timeout'].includes(result) ? result : 'unavailable' };
+  }
+}
+
+// How a try changes what the app shows. blocked: the browser had already said 'denied', so a
+// failure of any kind keeps the blocked state and its how-to.
+export function locationAfter(outcome, { blocked = false } = {}) {
+  if (outcome.position) return { here: { lat: outcome.position.lat, lng: outcome.position.lng, source: 'gps' }, locationIssue: null };
+  return { here: null, locationIssue: blocked ? 'denied' : outcome.issue };
+}
+
 export function distanceMiles(a, b) {
   const rad = (d) => (d * Math.PI) / 180;
   const dLat = rad(b.lat - a.lat);
