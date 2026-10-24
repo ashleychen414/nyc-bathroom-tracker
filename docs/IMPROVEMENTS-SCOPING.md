@@ -120,7 +120,7 @@ Photos (E12), public tips (E6), filter by type (E0), hours source line (E0), map
 
 1. ~~References instead of copies~~ **Decided: shared database (references).**
 2. ~~Map-first home~~ **Decided: map-first, list toggle.**
-3. **What "private bathroom" means**, and whether private ones are visible only to their owner. *Blocks E2.*
+3. ~~What "private bathroom" means~~ **Decided 2026-10-24: two separate fields, access ("Available to Public" / "Customer Only") and visibility (Public / Private).** See `DECISIONS.md`.
 4. **Starting rating dimensions** (recommend the four 1–5 ratings). How facts like stalls/layout display is **on hold** until that work starts. *Blocks E3.*
 5. ~~Analytics approach~~ **Decided: database counts only.**
 6. **Milestone order:** A → B → C, or B first.

@@ -126,3 +126,18 @@ See `docs/IMPROVEMENTS-SCOPING.md` §2.
 
 - **When location is denied, Nearby leads with the zip code and shows how to turn location back on,** instead of a "Use my location" button that can't work (iOS never asks again once a site is denied).
 - **Safari's address-bar button is named loosely ("aA" or "⋯")** because Apple renames it between iOS versions.
+
+## 2026-10-24: What "private bathroom" means (Ashley)
+
+"Private" was two different ideas. They are now two separate fields on a bathroom:
+
+- **Access** (who can use it), shown to users as:
+  - **Available to Public**: today's city restrooms (`access = public` in the `bathrooms` table).
+  - **Customer Only**: cafés, restaurants, stores and the like (`access = customers_only`). Customer Only bathrooms are **visible to everyone** on the map; the label tells people they may need to buy something.
+- **Visibility** (who can see it), chosen by the user when they create a bathroom:
+  - **Public**: saved to the shared NYC Poops database, visible to everyone.
+  - **Private**: visible only to the person who created it (an office, a friend's apartment).
+- **Users can create Customer Only bathrooms and mark each one Public or Private.**
+- **Duplicates are accepted for now.** The same café can exist as a Public bathroom and as someone's Private one; the UI shows both entries, and nothing is merged automatically. Merging is E8 (duplicates) later.
+
+Unblocks E2. Not decided here: whether the existing `key_or_code` access value stays as a third label, and how today's 2 privately logged places migrate (proposal: Private, so nothing logged privately becomes public without the owner choosing).
