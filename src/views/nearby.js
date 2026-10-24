@@ -46,7 +46,7 @@ export const welcomeView = () => `
         <button class="btn primary block big" data-action="welcome-locate">Use my location</button>
         <button class="btn block big" data-action="welcome-places">Go to My places</button>
       </div>
-      <p class="welcome-note">Public restrooms from NYC Open Data. We only say "Open" when the listed hours confirm it. Your location stays on this phone.</p>
+      <p class="welcome-note">Public restrooms from NYC Open Data. We only say "Open" when the listed hours confirm it.</p>
     </section>
   </main>`;
 
