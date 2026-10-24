@@ -2,14 +2,14 @@
 
 import { esc, formatDate, icon } from '../lib/html.js';
 import { distanceMiles, formatDistance, directionsUrl } from '../lib/geo.js';
-import { getStatus } from '../lib/hours.js';
-import { placeStatus } from '../lib/nearby.js';
-import { statusBadge, logChips } from './shared.js';
+import { placeStatus, bathroomStatus } from '../lib/nearby.js';
+import { statusBadge, placeTags, notesLine } from './shared.js';
 import { signInBanner, syncLine } from './account.js';
 
 function placeCard(p, bathroom, approx) {
-  const status = bathroom ? getStatus(bathroom) : placeStatus(p);
+  const status = bathroom ? bathroomStatus(bathroom) : placeStatus(p);
   const detail = bathroom ? `#/r/${encodeURIComponent(bathroom.id)}` : `#/mine/${encodeURIComponent(p.id)}`;
+  const kind = bathroom ? (bathroom.source === 'user' ? 'Shared by NYC Poops users' : 'Saved public restroom') : p.own && p.hours ? 'Your hours' : '';
   return `
     <article class="card">
       <div class="card-head">
@@ -17,21 +17,25 @@ function placeCard(p, bathroom, approx) {
         ${p.distance !== undefined ? `<span class="dist">${approx ? '~' : ''}${formatDistance(p.distance)}</span>` : ''}
       </div>
       ${p.address ? `<p class="addr">${esc(p.address)}</p>` : ''}
-      <div class="badges">${statusBadge(status)}<span class="type">${bathroom ? 'Saved public restroom' : p.hours ? 'Your hours' : ''}</span></div>
-      ${logChips(p.log) || '<p class="meta">Nothing logged yet</p>'}
-      ${p.log?.notes ? `<p class="notes">${esc(p.log.notes)}</p>` : ''}
+      <div class="badges">${statusBadge(status)}${kind ? `<span class="type">${kind}</span>` : ''}</div>
+      ${placeTags(bathroom, p)}
+      ${notesLine(p)}
       <p class="meta">Updated ${formatDate(p.updatedAt)}</p>
       <div class="actions">
         <a class="btn primary" href="${directionsUrl(p)}" target="_blank" rel="noopener">Directions</a>
-        <a class="btn" href="#/edit/${encodeURIComponent(p.id)}">Edit log</a>
+        <a class="btn" href="#/edit/${encodeURIComponent(p.id)}">Edit</a>
       </div>
     </article>`;
 }
 
 export function placesView(s, places) {
   const byId = new Map((s.data?.bathrooms ?? []).map((b) => [b.id, b]));
-  let list = places;
-  if (s.here) list = places.map((p) => ({ ...p, distance: distanceMiles(s.here, p) })).sort((a, b) => a.distance - b.distance);
+  // A saved shared bathroom takes its name and location from the shared data when it's loaded.
+  let list = places.map((p) => {
+    const b = p.own ? null : byId.get(p.id);
+    return b ? { ...p, name: b.name, lat: b.lat, lng: b.lng } : p;
+  });
+  if (s.here) list = list.map((p) => ({ ...p, distance: distanceMiles(s.here, p) })).sort((a, b) => (a.distance || 0) - (b.distance || 0));
   const approx = s.here?.source === 'zip';
 
   return `
@@ -47,12 +51,12 @@ export function placesView(s, places) {
       ${
         list.length
           ? `<p class="meta">${list.length} place${list.length === 1 ? '' : 's'}${s.here ? ' · nearest first' : ''}</p>` +
-            list.map((p) => placeCard(p, p.publicId ? byId.get(p.publicId) : null, approx)).join('')
+            list.map((p) => placeCard(p, p.own ? null : byId.get(p.id) ?? null, approx)).join('')
           : `<div class="empty">
                <p class="empty-title">No saved places yet</p>
-               <p>Save the bathrooms you've used, like a café or store, and log how they were so you know what to expect next time.</p>
+               <p>Save the bathrooms you've used, like a café or store. Share them on the map, or keep them private.</p>
                <a class="btn primary" href="#/add">Add your first place</a>
-               <p class="hint">You can also add notes to a public restroom from its detail page.</p>
+               <p class="hint">You can also save a public restroom, with private notes, from its detail page.</p>
              </div>`
       }
       <p class="fineprint">${syncLine(s.user, s.sync)}</p>

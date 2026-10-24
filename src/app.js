@@ -3,9 +3,9 @@
 // Routes: #/nearby (default), #/places, #/welcome, #/r/<restroom id>, #/mine/<place id>,
 //         #/add, #/edit/<place id>, #/log/<restroom id>
 
-import { listPlaces, getPlace, exportPlaces, importPlaces, clearLocal } from './lib/storage.js';
+import { listPlaces, getPlace, privatePlaces, makePublic, exportPlaces, importPlaces, clearLocal } from './lib/storage.js';
 import { currentUser, sendCode, verifyCode, signOut, deleteAccount } from './lib/auth.js';
-import { startSync, syncNow, syncStatus } from './lib/sync.js';
+import { startSync, syncNow, syncStatus, clearSharePrompt } from './lib/sync.js';
 import { isStandalone, mobilePlatform, currentPlatformLabel } from './lib/device.js';
 import { getPosition, locationPermission, distanceMiles, lookupZip } from './lib/geo.js';
 import { logLocation } from './lib/location-log.js';
@@ -18,7 +18,7 @@ import { tabBar } from './views/shared.js';
 import { homeScreenSheet, backupSheet, backupResult } from './views/sheets.js';
 import { mountMap, mountBackdrop, unmountMap, selectPin } from './views/map.js';
 import { mapSheet } from './views/nearby.js';
-import { signInSheet, accountSheet } from './views/account.js';
+import { signInSheet, accountSheet, shareSheet } from './views/account.js';
 
 const app = document.getElementById('app');
 
@@ -57,7 +57,9 @@ const state = {
   selectedId: null, // pin selected on the map; null = best match
   // Closed restrooms are hidden by default; the "Hide closed" chip turns that off.
   filters: { kind: 'all', type: '', hideClosed: true, openNow: false, accessible: false, changing: false },
-  sheet: null, // 'homescreen' | 'backup' | 'signin' | 'account'
+  sheet: null, // 'homescreen' | 'backup' | 'signin' | 'account' | 'share'
+  shareChoices: {}, // "Share your places?": place id → 'public' (default Private)
+  shareAnswered: false, // this session, so the prompt doesn't come back before the account hears
   signin: { step: 'email', email: '', code: '', busy: false, error: '', message: '' },
   toast: '',
   sync: syncStatus,
@@ -93,6 +95,7 @@ function goBack(fallback) {
 
 function sheetHtml() {
   if (state.sheet === 'homescreen') return homeScreenSheet(mobilePlatform() ?? 'ios');
+  if (state.sheet === 'share') return shareSheet({ places: privatePlaces(), choices: state.shareChoices });
   if (state.sheet === 'signin') return signInSheet(state.signin);
   if (state.sheet === 'account' && state.user) {
     return accountSheet({ user: state.user, status: syncStatus, count: listPlaces().length, homeScreenTip: Boolean(mobilePlatform()) && !isStandalone() });
@@ -134,9 +137,10 @@ function render() {
 
     case 'r': {
       if (!state.data) return state.dataError ? paint(nearbyView(state), 'nearby') : loading();
+      const place = getPlace(id);
+      if (place?.own) return location.replace(`#/mine/${encodeURIComponent(id)}`); // your own: your latest copy
       const b = findBathroom(id);
       if (!b) return paint('<main class="list"><p class="error">That restroom is no longer in the city data.</p></main>', 'nearby');
-      const place = listPlaces().find((p) => p.publicId === id) ?? null;
       return paint(publicDetailView(state, b, place, distanceTo(b)), null);
     }
 
@@ -154,7 +158,7 @@ function render() {
       let opts = { key };
       if (name === 'edit') opts.placeId = id;
       if (name === 'log') {
-        const saved = listPlaces().find((p) => p.publicId === id);
+        const saved = getPlace(id);
         if (saved) return location.replace(`#/edit/${encodeURIComponent(saved.id)}`);
         if (!state.data) return loading();
         const bathroom = findBathroom(id);
@@ -313,7 +317,7 @@ async function handleSignOut() {
   if (!confirm(message)) return;
   signOut();
   clearLocal();
-  Object.assign(syncStatus, { state: 'off', at: null, error: '' });
+  Object.assign(syncStatus, { state: 'off', at: null, error: '', sharePromptDue: false });
   state.sheet = null;
   toast('Signed out.');
   render();
@@ -369,6 +373,35 @@ async function importBackup(file) {
     state.backupError = err.message;
   }
   render();
+}
+
+// ---------- "Share your places?" (once, for places moved over as Private) ----------
+
+function maybePromptShare() {
+  if (!syncStatus.sharePromptDue || state.shareAnswered || state.sheet) return;
+  if (['add', 'edit', 'log', 'welcome'].includes(parseRoute().name)) return;
+  if (!privatePlaces().length) {
+    state.shareAnswered = true;
+    clearSharePrompt().catch(() => {});
+    return;
+  }
+  state.shareChoices = {};
+  state.sheet = 'share';
+  render();
+}
+
+async function answerSharePrompt(save) {
+  const chosen = save ? privatePlaces().filter((p) => state.shareChoices[p.id] === 'public').map((p) => p.id) : [];
+  if (chosen.length) makePublic(chosen); // syncs like any edit
+  state.shareAnswered = true;
+  state.sheet = null;
+  toast(chosen.length ? `Shared ${chosen.length === 1 ? '1 place' : `${chosen.length} places`} with everyone.` : 'Kept private. You can change this on each place.');
+  render();
+  try {
+    await clearSharePrompt();
+  } catch {
+    // Offline: it shows again next time, with whatever is still Private.
+  }
 }
 
 // ---------- Location ----------
@@ -465,6 +498,11 @@ app.addEventListener('click', (e) => {
       return handleDeleteAccount();
     case 'sync-now':
       return syncNow();
+    case 'share-choice':
+      state.shareChoices[target.dataset.id] = value;
+      return render();
+    case 'share-done':
+      return answerSharePrompt(value === 'save');
     case 'export':
       return exportBackup();
     case 'back':
@@ -554,6 +592,7 @@ startSync((changed) => {
   const { name } = parseRoute();
   if (['add', 'edit', 'log', 'welcome'].includes(name)) return;
   if (changed || name === 'places' || state.sheet === 'account') render();
+  maybePromptShare();
 });
 
 // Restrooms come from the shared Supabase table (phone copy first, then fresh if it changed).

@@ -3,10 +3,11 @@
 import { esc, icon } from '../lib/html.js';
 import { formatDistance, directionsUrl, googleMapsUrl } from '../lib/geo.js';
 import { getStatus, describeHours } from '../lib/hours.js';
-import { RADII, placeStatus } from '../lib/nearby.js';
-import { statusBadge, mineBadge, logChips, hasLog, publicTags, restroomType, backBar, sourceDate } from './shared.js';
+import { RADII, placeStatus, bathroomStatus } from '../lib/nearby.js';
+import { statusBadge, mineBadge, placeTags, ACCESS, publicTags, restroomType, backBar, sourceDate } from './shared.js';
 import { mapLegend } from './map.js';
 import { locationHelp, mobilePlatform, isStandalone, isIOSSafari } from '../lib/device.js';
+import { currentUser } from '../lib/auth.js';
 
 const KINDS = [
   ['all', 'All'],
@@ -123,16 +124,19 @@ const viewToggle = (view) => `
     ${['list', 'map'].map((v) => `<button type="button" class="${view === v ? 'on' : ''}" aria-pressed="${view === v}" data-action="view" data-value="${v}">${v === 'list' ? 'List' : 'Map'}</button>`).join('')}
   </div>`;
 
+// City restrooms show their type; bathrooms people added show their address.
+const entrySub = (e) => (e.bathroom ? (e.bathroom.source === 'user' ? e.bathroom.address : e.bathroom.type) : e.place.address) ?? '';
+
 function entryCard(e, approx) {
   const b = e.bathroom;
   const href = e.kind === 'public' ? `#/r/${encodeURIComponent(e.id)}` : `#/mine/${encodeURIComponent(e.id)}`;
-  const sub = b ? esc(b.type ?? '') : esc(e.place.address ?? '');
+  const sub = esc(entrySub(e));
   return `
     <a class="card ${e.status.state === 'closed' ? 'dim' : ''}" href="${href}">
       <div class="card-head"><h2>${esc(e.name)}</h2><span class="dist">${approx ? '~' : ''}${formatDistance(e.distance)}</span></div>
       <div class="badges">${statusBadge(e.status)}${e.place ? mineBadge : ''}${sub ? `<span class="type">${sub}</span>` : ''}</div>
       ${b ? publicTags(b) : ''}
-      ${e.place ? logChips(e.place.log) : ''}
+      ${placeTags(b, e.place)}
     </a>`;
 }
 
@@ -179,7 +183,7 @@ export function mapSheet(s, list, selectedId) {
       ? `Outside ${radiusLabel(s.radius)}`
       : `${index + 1} of ${list.inside.length} within ${radiusLabel(s.radius)}`;
   const href = e.kind === 'public' ? `#/r/${encodeURIComponent(e.id)}` : `#/mine/${encodeURIComponent(e.id)}`;
-  const sub = e.bathroom ? e.bathroom.type : e.place.address;
+  const sub = entrySub(e);
   return `
     <div class="sheet-head">
       <span class="section-label">${esc(label)}</span>
@@ -190,7 +194,7 @@ export function mapSheet(s, list, selectedId) {
     </div>
     <div class="card-head"><h2>${esc(e.name)}</h2><span class="dist">${approx ? '~' : ''}${formatDistance(e.distance)}</span></div>
     <div class="badges">${statusBadge(e.status)}${e.place ? mineBadge : ''}${sub ? `<span class="type">${esc(sub)}</span>` : ''}</div>
-    ${e.place ? logChips(e.place.log) : ''}
+    ${placeTags(e.bathroom, e.place)}
     <div class="actions">
       <a class="btn primary" href="${directionsUrl(e)}" target="_blank" rel="noopener">${icon.directions()}Directions</a>
       <a class="btn" href="${href}">Details</a>
@@ -235,22 +239,34 @@ function hoursRows(hours) {
 }
 
 function notesCard(place, addHref) {
-  if (place && hasLog(place.log)) {
+  if (place?.notes) {
     return `
       <section class="group notes-card">
-        <div class="kv-head"><h2 class="label">Your notes</h2></div>
-        ${logChips(place.log)}
-        ${place.log.notes ? `<p class="notes">${esc(place.log.notes)}</p>` : ''}
+        <div class="kv-head"><h2 class="label">Private notes</h2><span class="muted small">Only you see these</span></div>
+        <p class="notes">${esc(place.notes)}</p>
         <a class="btn outline block" href="#/edit/${encodeURIComponent(place.id)}">${icon.pencil()}Edit notes</a>
       </section>`;
   }
   return `
     <section class="group notes-card">
-      <div class="kv-head"><h2 class="label">Your notes</h2><span class="muted small">Not logged yet</span></div>
-      <p>Been here? Log lighting, cleanliness, smell, stalls and trash so you know what to expect next time.</p>
-      <a class="btn outline block" href="${place ? `#/edit/${encodeURIComponent(place.id)}` : addHref}">${icon.pencil()}Add notes</a>
-      ${place ? '' : '<p class="hint">Adding notes also saves this restroom to My places.</p>'}
+      <div class="kv-head"><h2 class="label">Private notes</h2><span class="muted small">${place ? 'None yet' : 'Not saved'}</span></div>
+      <p>Only you see these. A good place for door codes and tips for next time.</p>
+      <a class="btn outline block" href="${place ? `#/edit/${encodeURIComponent(place.id)}` : addHref}">${icon.pencil()}${place ? 'Add notes' : 'Save to My places'}</a>
+      ${place ? '' : '<p class="hint">Saves this restroom to My places, with notes if you like.</p>'}
     </section>`;
+}
+
+// Who can use it, and (for your own bathrooms) who can see it.
+function accessSection(item, { own = false, editHref } = {}) {
+  const rows = [`<div class="kv"><span>Who can use it</span><span>${esc(ACCESS[item.access] ?? 'Access unknown')}</span></div>`];
+  if (item.access === 'customers_only') rows.push('<p class="hint">You may need to buy something or ask staff.</p>');
+  if (own) {
+    const who = item.visibility !== 'public' ? 'Only you (Private)' : currentUser() ? 'Everyone (Public)' : 'Everyone, once you sign in';
+    rows.push(`<div class="kv"><span>Who can see it</span><span>${who}</span></div>`);
+  } else {
+    rows.push('<p class="hint">Added by someone on NYC Poops and shared with everyone.</p>');
+  }
+  return `<section class="group"><h2 class="label">Access</h2>${rows.join('')}${editHref ? `<a class="link-out" href="${editHref}">Change</a>` : ''}</section>`;
 }
 
 // Structured hours when we could read them; otherwise the city's wording once, so it's never shown twice.
@@ -272,6 +288,7 @@ function publicHours(b) {
 const kv = (label, value) => (value ? `<div class="kv"><span>${esc(label)}</span><span>${esc(value)}</span></div>` : '');
 
 export function publicDetailView(s, b, place, distance) {
+  if (b.source === 'user') return sharedDetailView(s, b, place, distance);
   const status = getStatus(b);
   const sub = [b.type, b.operator, distance !== null ? `${s.here?.source === 'zip' ? '~' : ''}${formatDistance(distance)} away` : null]
     .filter(Boolean)
@@ -303,6 +320,30 @@ export function publicDetailView(s, b, place, distance) {
     </main>`;
 }
 
+// A Public bathroom someone added on NYC Poops: its hours are theirs, not the city's.
+function sharedDetailView(s, b, place, distance) {
+  const sub = [b.address, distance !== null ? `${s.here?.source === 'zip' ? '~' : ''}${formatDistance(distance)} away` : null]
+    .filter(Boolean)
+    .join(' · ');
+  return `
+    ${backBar('Back')}
+    <main class="detail">
+      <div class="detail-head">
+        <h1>${esc(b.name)}</h1>
+        ${sub ? `<p class="muted">${esc(sub)}</p>` : ''}
+        <div class="badges">${statusBadge(bathroomStatus(b))}${place ? mineBadge : ''}</div>
+        ${placeTags(b, null)}
+      </div>
+      <a class="btn primary block big" href="${directionsUrl(b)}" target="_blank" rel="noopener">${icon.directions()}Directions</a>
+      ${accessSection(b)}
+      ${notesCard(place, `#/log/${encodeURIComponent(b.id)}`)}
+      <section class="group">
+        <div class="kv-head"><h2 class="label">Hours</h2><span class="muted small">Added by NYC Poops users</span></div>
+        ${b.hours ? hoursRows(b.hours) : '<p class="muted">Hours unknown</p>'}
+      </section>
+    </main>`;
+}
+
 export function mineDetailView(s, place, distance) {
   const sub = [place.address, distance !== null ? `${s.here?.source === 'zip' ? '~' : ''}${formatDistance(distance)} away` : null]
     .filter(Boolean)
@@ -314,13 +355,19 @@ export function mineDetailView(s, place, distance) {
         <h1>${esc(place.name)}</h1>
         ${sub ? `<p class="muted">${esc(sub)}</p>` : ''}
         <div class="badges">${statusBadge(placeStatus(place))}${mineBadge}</div>
+        ${placeTags(null, place)}
       </div>
       <a class="btn primary block big" href="${directionsUrl(place)}" target="_blank" rel="noopener">${icon.directions()}Directions</a>
+      ${place.own ? accessSection(place, { own: true, editHref: `#/edit/${encodeURIComponent(place.id)}` }) : ''}
       ${notesCard(place)}
-      <section class="group">
+      ${
+        place.own
+          ? `<section class="group">
         <div class="kv-head"><h2 class="label">Hours</h2><span class="muted small">Your hours</span></div>
         ${place.hours ? hoursRows(place.hours) : '<p class="muted">You haven\'t added hours yet.</p>'}
         <a class="link-out" href="#/edit/${encodeURIComponent(place.id)}">${place.hours ? 'Edit hours' : 'Add hours'}</a>
-      </section>
+      </section>`
+          : '<p class="hint">This restroom is no longer in the city data.</p>'
+      }
     </main>`;
 }

@@ -1,5 +1,5 @@
-// Add / edit a place, and log a public restroom. Owns its draft and its own events,
-// and repaints only the parts that change so typing never loses focus.
+// Add / edit a place, and save a shared restroom with private notes. Owns its draft and its own
+// events, and repaints only the parts that change so typing never loses focus.
 
 import { getPlace, savePlace, deletePlace, requestPersistence } from '../lib/storage.js';
 import { getPosition, locationPermission, searchAddress, reverseGeocode, resultMeta } from '../lib/geo.js';
@@ -7,7 +7,7 @@ import { logLocation } from '../lib/location-log.js';
 import { currentPlatformLabel } from '../lib/device.js';
 import { emptyHoursForm, formFromHours, hoursFromForm, DAY_SHORT, DISPLAY_ORDER } from '../lib/hours-form.js';
 import { esc } from '../lib/html.js';
-import { LOG_FIELDS, RATING_WORDS } from './shared.js';
+import { currentUser } from '../lib/auth.js';
 
 let root = null;
 let draft = null;
@@ -26,7 +26,7 @@ export function closeForm() {
   formKey = null;
 }
 
-// opts: { key, placeId } to edit, { key, bathroom } to log a public restroom, { key } to add.
+// opts: { key, placeId } to edit, { key, bathroom } to save a shared restroom, { key } to add.
 export function openForm(container, opts, { here, done, saved }) {
   root = container;
   formKey = opts.key;
@@ -36,12 +36,13 @@ export function openForm(container, opts, { here, done, saved }) {
   suggestions = [];
   const existing = opts.placeId ? getPlace(opts.placeId) : null;
   if (existing) {
-    draft = { ...structuredClone(existing), hoursForm: formFromHours(existing.hours) };
+    draft = { ...structuredClone(existing), savedVisibility: existing.visibility, hoursForm: formFromHours(existing.hours) };
   } else if (opts.bathroom) {
     const b = opts.bathroom;
-    draft = { name: b.name, lat: b.lat, lng: b.lng, address: '', publicId: b.id, publicType: b.type, log: {}, hoursForm: emptyHoursForm() };
+    draft = { name: b.name, lat: b.lat, lng: b.lng, address: '', publicId: b.id, publicType: b.source === 'user' ? b.address : b.type, notes: '', hoursForm: emptyHoursForm() };
   } else {
-    draft = { name: '', lat: null, lng: null, address: '', log: {}, hoursForm: emptyHoursForm() };
+    // New places start Public, to grow the shared map (Ashley, 2026-10-24); one tap makes it Private.
+    draft = { name: '', lat: null, lng: null, address: '', notes: '', access: undefined, visibility: 'public', hoursForm: emptyHoursForm() };
   }
   if (opts.placeId && !existing) {
     root.innerHTML = '<main class="list"><p class="error">That place no longer exists.</p></main>';
@@ -50,7 +51,7 @@ export function openForm(container, opts, { here, done, saved }) {
   render();
 }
 
-const title = () => (draft.id ? (draft.publicId ? 'Edit notes' : 'Edit place') : draft.publicId ? 'Add notes' : 'Add a place');
+const title = () => (draft.id ? (draft.publicId ? 'Edit notes' : 'Edit place') : draft.publicId ? 'Save restroom' : 'Add a place');
 
 function render() {
   root.innerHTML = `
@@ -64,20 +65,23 @@ function render() {
         <h2>Where</h2>
         <div id="where">${whereHtml()}</div>
       </section>
-      <section class="group">
+      ${
+        draft.publicId
+          ? ''
+          : `<section class="group">
         <label class="field-label" for="name">Name</label>
-        <input id="name" class="input" value="${esc(draft.name)}" placeholder="e.g. Whole Foods Gowanus" autocomplete="off">
+        <input id="name" class="input" value="${esc(draft.name)}" maxlength="200" placeholder="e.g. Whole Foods Gowanus" autocomplete="off">
       </section>
+      <section class="group" id="access-group">${accessHtml()}</section>`
+      }
       ${draft.publicId ? '' : `<section class="group" id="hours-group">${hoursHtml()}</section>`}
       <section class="group">
-        <h2>How was it?</h2>
-        <p class="hint">Log only what you want. Tap a selected answer again to clear it.</p>
-        ${LOG_FIELDS.map(fieldHtml).join('')}
-        <label class="field-label" for="notes">Other notes</label>
-        <textarea id="notes" class="input" rows="4" placeholder="e.g. Ask for the code at the counter">${esc(draft.log.notes)}</textarea>
+        <label class="field-label" for="notes">Private notes</label>
+        <p class="hint">Only you see these. A good place for door codes.</p>
+        <textarea id="notes" class="input" rows="3" maxlength="2000" placeholder="e.g. Code is on the receipt">${esc(draft.notes)}</textarea>
       </section>
       <p class="error" id="form-error" role="alert"></p>
-      ${draft.id ? `<button class="btn danger block" data-action="delete">${draft.publicId ? 'Remove from My places' : 'Delete place'}</button>` : ''}
+      ${draft.id ? `<button class="btn danger block" data-action="delete">${draft.publicId || draft.savedVisibility === 'public' ? 'Remove from My places' : 'Delete place'}</button>` : ''}
     </main>`;
 }
 
@@ -85,7 +89,7 @@ function render() {
 
 function whereHtml() {
   if (draft.publicId) {
-    return `<div class="picked"><span class="picked-text">Public restroom${draft.publicType ? ` · ${esc(draft.publicType)}` : ''}</span></div>`;
+    return `<div class="picked"><span class="picked-text"><b>${esc(draft.name)}</b><br>${draft.publicType ? esc(draft.publicType) : 'Shared restroom'}</span></div>`;
   }
   if (draft.lat !== null) {
     return `
@@ -219,57 +223,49 @@ function hoursHtml() {
 
 const refreshHours = () => (root.querySelector('#hours-group').innerHTML = hoursHtml());
 
-// ---------- Log fields ----------
+// ---------- Who can use it / who can see it ----------
 
-function fieldHtml(f) {
-  const v = draft.log[f.key];
-  const hidden = f.showIf && !f.showIf(draft.log) ? 'hidden' : '';
-  if (f.type === 'rating') {
-    const stars = [1, 2, 3, 4, 5]
-      .map(
-        (n) => `<button type="button" class="star ${v >= n ? 'on' : ''}" role="radio" aria-checked="${v === n}"
-                 aria-label="${n} of 5: ${RATING_WORDS[n]}" data-rate="${f.key}" data-value="${n}">${f.emoji}</button>`,
-      )
-      .join('');
-    return `
-      <div class="field" data-field="${f.key}" ${hidden}>
-        <div class="field-row">
-          <span class="field-label" id="lbl-${f.key}">${f.label}</span>
-          <span class="rating-word">${v ? RATING_WORDS[v] : 'Not logged'}</span>
-        </div>
-        <div class="stars" role="radiogroup" aria-labelledby="lbl-${f.key}">${stars}</div>
-        <div class="scale"><span>Very bad</span><span>Very good</span></div>
-      </div>`;
-  }
-  if (f.type === 'count') {
-    return `
-      <div class="field sub" data-field="${f.key}" ${hidden}>
-        <label class="field-label" for="stall-count">${f.label}</label>
-        <input id="stall-count" class="input count" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2"
-               value="${esc(v)}" placeholder="e.g. 3" autocomplete="off">
-      </div>`;
-  }
-  const opt = (value, text) =>
-    `<button type="button" class="seg ${v === value ? 'on' : ''}" aria-pressed="${v === value}" data-yesno="${f.key}" data-value="${value}">${text}</button>`;
+// Public is one-way once saved (others may have it on their list), so an existing Public place is locked.
+function accessHtml() {
+  const locked = draft.id && draft.savedVisibility === 'public';
+  const seg = (field, value, text) =>
+    `<button type="button" class="seg ${draft[field] === value ? 'on' : ''}" aria-pressed="${draft[field] === value}" data-choice="${field}" data-value="${value}" ${field === 'visibility' && locked ? 'disabled' : ''}>${text}</button>`;
+  const accessHint =
+    draft.access === 'customers_only'
+      ? 'You may need to buy something or ask staff. Codes go in your private notes.'
+      : draft.access === 'public'
+        ? 'Anyone can walk in and use it.'
+        : "Skip if you're not sure.";
+  const visibilityHint = locked
+    ? "It's on the map for everyone. Public places can't be made private again, since others may have saved them."
+    : draft.visibility === 'public'
+      ? currentUser()
+        ? 'Added to the NYC Poops map for everyone. Your notes stay private.'
+        : 'Added to the map for everyone once you sign in. Until then it stays on this phone. Your notes stay private.'
+      : "Only you can see it, e.g. your office or a friend's place.";
   return `
-    <div class="field" data-field="${f.key}" ${hidden}>
-      <div class="field-row"><span class="field-label">${f.label}</span></div>
-      <div class="segmented">${opt(true, 'Yes')}${opt(false, 'No')}</div>
+    <div class="field">
+      <div class="field-row"><span class="field-label">Who can use it?</span></div>
+      <div class="segmented">${seg('access', 'public', 'Available to Public')}${seg('access', 'customers_only', 'Customer Only')}</div>
+      <p class="hint">${accessHint}</p>
+    </div>
+    <div class="field">
+      <div class="field-row"><span class="field-label">Who can see it?</span></div>
+      <div class="segmented">${seg('visibility', 'public', 'Public')}${seg('visibility', 'private', '🔒 Private')}</div>
+      <p class="hint">${visibilityHint}</p>
     </div>`;
 }
 
-function refreshField(key) {
-  const f = LOG_FIELDS.find((x) => x.key === key);
-  root.querySelector(`[data-field="${key}"]`).outerHTML = fieldHtml(f);
-}
+const refreshAccess = () => (root.querySelector('#access-group').innerHTML = accessHtml());
 
 // ---------- Save / delete ----------
 
 function save() {
   const error = root.querySelector('#form-error');
-  draft.name = draft.name.trim();
-  if (draft.lat === null) return (error.textContent = 'Add where this bathroom is.');
-  if (!draft.name) return (error.textContent = 'Give this place a name.');
+  draft.name = (draft.name ?? '').trim();
+  // A shared restroom's name and location are its own; only your notes are saved.
+  if (!draft.publicId && draft.lat === null) return (error.textContent = 'Add where this bathroom is.');
+  if (!draft.publicId && !draft.name) return (error.textContent = 'Give this place a name.');
 
   let hours = null;
   if (!draft.publicId) {
@@ -278,16 +274,9 @@ function save() {
     hours = result.hours;
   }
 
-  const log = Object.fromEntries(Object.entries(draft.log).filter(([, v]) => v !== undefined && v !== ''));
-  if (log.hasTrash === false) delete log.trashCleanliness;
-  if (log.hasStalls === true && Number(log.stallCount) > 0) log.stallCount = Number(log.stallCount);
-  else delete log.stallCount;
-  if (log.notes) log.notes = log.notes.trim();
-  if (!log.notes) delete log.notes;
-
-  const { hoursForm, publicType, ...place } = draft;
+  const { hoursForm, publicType, savedVisibility, ...place } = draft;
   try {
-    savePlace({ ...place, hours, log });
+    savePlace({ ...place, hours });
     requestPersistence();
   } catch {
     return (error.textContent = "Couldn't save on this phone. Check that your browser allows site data.");
@@ -305,19 +294,12 @@ function finish() {
 
 export function handleFormClick(target) {
   if (!draft) return false;
-  if (target.dataset.rate) {
-    const key = target.dataset.rate;
-    const value = Number(target.dataset.value);
-    draft.log[key] = draft.log[key] === value ? undefined : value;
-    refreshField(key);
-    return true;
-  }
-  if (target.dataset.yesno) {
-    const key = target.dataset.yesno;
-    const value = target.dataset.value === 'true';
-    draft.log[key] = draft.log[key] === value ? undefined : value;
-    // Refresh fields whose visibility depends on this answer (stall count, trash cleanliness).
-    for (const f of LOG_FIELDS) if (f.key === key || f.showIf) refreshField(f.key);
+  if (target.dataset.choice) {
+    const field = target.dataset.choice;
+    const value = target.dataset.value;
+    // Access can be left unanswered (tap again to clear); visibility always has a value.
+    draft[field] = field === 'access' && draft[field] === value ? undefined : value;
+    refreshAccess();
     return true;
   }
   if (target.dataset.hoursMode) {
@@ -345,7 +327,11 @@ export function handleFormClick(target) {
       root.querySelector('#address').focus();
       return true;
     case 'delete': {
-      const what = draft.publicId ? `Remove "${draft.name}" and your notes from My places?` : `Delete "${draft.name}" and its log?`;
+      const what = draft.publicId
+        ? `Remove "${draft.name}" and your notes from My places?`
+        : draft.savedVisibility === 'public'
+          ? `Remove "${draft.name}" and your notes from My places? It stays on the map for everyone.`
+          : `Delete "${draft.name}" and your notes?`;
       if (confirm(`${what} This can't be undone.`)) {
         deletePlace(draft.id);
         finish();
@@ -361,11 +347,8 @@ export function handleFormInput(e) {
   const t = e.target;
   const h = draft.hoursForm;
   if (t.id === 'name') draft.name = t.value;
-  else if (t.id === 'notes') draft.log.notes = t.value;
-  else if (t.id === 'stall-count') {
-    t.value = t.value.replace(/\D/g, '');
-    draft.log.stallCount = t.value;
-  } else if (t.id === 'address') onAddressInput(t.value);
+  else if (t.id === 'notes') draft.notes = t.value;
+  else if (t.id === 'address') onAddressInput(t.value);
   else if (t.dataset.hours) h[t.dataset.hours] = t.value;
   else if (t.dataset.dayOpen) h.days[t.dataset.dayOpen].open = t.value;
   else if (t.dataset.dayClose) h.days[t.dataset.dayClose].close = t.value;

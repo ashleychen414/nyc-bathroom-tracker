@@ -398,9 +398,9 @@ a.card:active { transform: scale(.99); }
 
 /* ---------- Bottom sheets ---------- */
 body.sheet-open { overflow: hidden; }
-.sheet-backdrop { position: fixed; inset: 0; z-index: 10; background: rgba(0, 0, 0, .45); }
+.sheet-backdrop { position: fixed; inset: 0; z-index: 1000; background: rgba(0, 0, 0, .45); } /* above the map card (500) */
 .sheet {
-  position: fixed; z-index: 11; bottom: 0; left: 50%; transform: translateX(-50%);
+  position: fixed; z-index: 1001; bottom: 0; left: 50%; transform: translateX(-50%);
   width: 100%; max-width: 560px; max-height: 90dvh; overflow-y: auto;
   background: var(--surface); border-radius: 22px 22px 0 0;
   padding: 10px 20px calc(24px + env(safe-area-inset-bottom));
@@ -479,7 +479,7 @@ body.sheet-open { overflow: hidden; }
 .signin-form { display: grid; gap: 10px; }
 .code-input { font-size: 24px; letter-spacing: .3em; text-align: center; font-variant-numeric: tabular-nums; }
 .toast {
-  position: fixed; z-index: 20; left: 50%; transform: translateX(-50%);
+  position: fixed; z-index: 1002; left: 50%; transform: translateX(-50%);
   bottom: calc(84px + env(safe-area-inset-bottom)); width: max-content; max-width: calc(100% - 32px);
   padding: 12px 16px; border-radius: 12px; background: var(--dark); color: var(--dark-text);
   font-weight: 600; font-size: 14px; box-shadow: 0 6px 20px rgba(0, 0, 0, .2);
@@ -532,3 +532,19 @@ body.sheet-open { overflow: hidden; }
 
 .loc-actions { display: inline-flex; gap: 12px; margin-left: auto; }
 .loc .muted { font-weight: 500; }
+
+/* ---------- Access and visibility (E2) ---------- */
+.tag.access { background: #fdecc8; color: #6b4a00; font-weight: 600; }
+.tag.vis-private { background: var(--dim-bg); color: var(--text); }
+.tag.vis-public { background: var(--accent-soft); color: var(--accent); }
+.detail-head .tags { margin-top: 6px; }
+#access-group .seg { padding: 0 6px; white-space: nowrap; font-size: 15px; }
+#access-group .field:first-child { border-top: none; padding-top: 0; }
+.seg:disabled { opacity: .5; cursor: not-allowed; }
+.share-list { display: grid; gap: 10px; }
+.share-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px; border-radius: 12px; background: var(--bg); }
+.share-row .addr { margin: 2px 0 0; }
+.segmented.compact .seg { padding: 0 10px; font-size: 14px; min-height: 36px; }
+@media (prefers-color-scheme: dark) {
+  .tag.access { background: #3d2f10; color: #ffd98a; }
+}

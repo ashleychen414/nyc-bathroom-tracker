@@ -5,15 +5,20 @@
 
 import { SUPABASE_URL, SUPABASE_KEY } from './supabase-config.js';
 
-const CACHE_KEY = 'nbt.bathrooms';
+const CACHE_KEY = 'nbt.bathrooms.v2'; // v2: source, access and address (E2)
+const OLD_CACHE_KEYS = ['nbt.bathrooms'];
 const SOURCE_ID = 'nyc-open-data';
 const FILE = 'public/data/bathrooms.json';
 export const PAGE = 1000; // Supabase returns at most 1,000 rows per request
 
 // The city's own facts stay in source_data until they get columns of their own.
 const CITY_FIELDS = ['type', 'operator', 'status', 'season', 'hoursText', 'accessibility', 'restroomType', 'changingStations', 'notes', 'website'];
+// source: 'seed' (city) or 'user' (added by someone in NYC Poops and made Public); access:
+// 'public' | 'customers_only' | 'unknown'; recordStatus: our verification status (closed shows closed).
+// Visitors only ever get Public bathrooms here: Private ones come with your own places (sync.js).
 export const BATHROOM_SELECT = [
   'id', 'name', 'borough', 'lat', 'lng', 'hours', 'hoursReviewed:hours_reviewed',
+  'source', 'access', 'address', 'recordStatus:status',
   ...CITY_FIELDS.map((f) => `${f}:source_data->>${f}`),
 ].join(',');
 
@@ -65,6 +70,7 @@ const defaultStorage = () => {
 export async function loadBathrooms(onData, { fetchImpl = fetch, storage = defaultStorage() } = {}) {
   let cached = null;
   try {
+    for (const key of OLD_CACHE_KEYS) storage?.removeItem?.(key);
     cached = JSON.parse(storage?.getItem(CACHE_KEY));
   } catch {}
   const hasCache = Boolean(cached?.data?.bathrooms?.length);

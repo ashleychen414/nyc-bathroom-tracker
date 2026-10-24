@@ -1,49 +1,53 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mergePlaces, planSync } from './storage.js';
+import { fromV1, mergeBy, mergeBackup, planSync } from './storage.js';
 
-const place = (id, updatedAt, extra = {}) => ({ id, name: id, lat: 40.7, lng: -73.9, updatedAt, log: {}, ...extra });
+const item = (bathroomId, updatedAt, extra = {}) => ({ bathroomId, createdAt: updatedAt, updatedAt, ...extra });
+const mine = (id, updatedAt, extra = {}) => ({ id, name: id, lat: 40.7, lng: -73.9, address: '', hours: null, access: 'unknown', visibility: 'private', createdAt: updatedAt, updatedAt, ...extra });
 
-test('import adds new places and keeps the newer edit', () => {
-  const current = [place('a', '2026-10-01T00:00:00Z', { name: 'old a' }), place('b', '2026-10-05T00:00:00Z', { name: 'mine b' })];
-  const incoming = [
-    place('a', '2026-10-03T00:00:00Z', { name: 'new a' }),
-    place('b', '2026-10-02T00:00:00Z', { name: 'older b' }),
-    place('c', '2026-10-04T00:00:00Z'),
-  ];
-  const { places, counts } = mergePlaces(current, incoming);
-  assert.deepEqual(counts, { added: 1, updated: 1, unchanged: 1, skipped: 0 });
-  const byId = Object.fromEntries(places.map((p) => [p.id, p.name]));
-  assert.deepEqual(byId, { a: 'new a', b: 'mine b', c: 'c' });
+test('v1 places move over: city restrooms become items, hand-added ones Private bathrooms with the same id', () => {
+  const data = fromV1([
+    { id: 'u1', name: 'My café', lat: 40.7, lng: -73.9, address: '1 Main St', hours: { kind: 'always' }, log: { lighting: 4, notes: ' code 12 ' }, createdAt: '2026-10-01T00:00:00Z', updatedAt: '2026-10-02T00:00:00Z' },
+    { id: 'u2', name: 'Park', publicId: 'nyc-abc', lat: 40.6, lng: -73.8, log: { cleanliness: 2 }, createdAt: '2026-10-03T00:00:00Z', updatedAt: '2026-10-03T00:00:00Z' },
+    { id: 'u3', name: 'Gone', lat: 40.6, lng: -73.8, log: {}, updatedAt: '2026-10-04T00:00:00Z', deletedAt: '2026-10-04T00:00:00Z' },
+  ]);
+  assert.deepEqual(data.mine, [
+    { id: 'u1', name: 'My café', lat: 40.7, lng: -73.9, address: '1 Main St', hours: { kind: 'always' }, access: 'unknown', visibility: 'private', createdAt: '2026-10-01T00:00:00Z', updatedAt: '2026-10-02T00:00:00Z' },
+  ]);
+  assert.deepEqual(data.items.map((i) => [i.bathroomId, i.notes]), [['u1', 'code 12'], ['nyc-abc', undefined]]);
+  assert.deepEqual(data.items[1].snapshot, { name: 'Park', lat: 40.6, lng: -73.8 });
+  // Moved-over bathrooms aren't "changed on this phone": the account already has them.
+  assert.equal(data.mine[0].dirty, undefined);
 });
 
-test('import skips malformed entries', () => {
-  const { places, counts } = mergePlaces([], [{ id: 'x' }, null, place('ok', '2026-10-01T00:00:00Z'), { ...place('bad', 'x'), lat: 'nope' }]);
-  assert.equal(counts.skipped, 3);
-  assert.deepEqual(places.map((p) => p.id), ['ok']);
+test('merge keeps the newer edit per key and counts what changed', () => {
+  const current = [item('a', '2026-10-01T00:00:00Z', { notes: 'old a' }), item('b', '2026-10-05T00:00:00Z', { notes: 'mine b' })];
+  const incoming = [item('a', '2026-10-03T00:00:00Z', { notes: 'new a' }), item('b', '2026-10-02T00:00:00Z'), item('c', '2026-10-04T00:00:00Z')];
+  const { list, counts } = mergeBy(current, incoming, 'bathroomId');
+  assert.deepEqual(counts, { added: 1, updated: 1, unchanged: 1 });
+  assert.deepEqual(Object.fromEntries(list.map((i) => [i.bathroomId, i.notes])), { a: 'new a', b: 'mine b', c: undefined });
 });
 
-test('sync: newer edit wins per place, in both directions', () => {
-  const server = [place('a', '2026-10-05T00:00:00Z', { name: 'server a' }), place('b', '2026-10-01T00:00:00Z', { name: 'server b' })];
-  const local = [place('a', '2026-10-02T00:00:00Z', { name: 'phone a' }), place('b', '2026-10-06T00:00:00Z', { name: 'phone b' }), place('c', '2026-10-07T00:00:00Z')];
-  const { merged, toPush } = planSync(server, local);
-  assert.deepEqual(Object.fromEntries(merged.map((p) => [p.id, p.name])), { a: 'server a', b: 'phone b', c: 'c' });
-  assert.deepEqual(toPush.map((p) => p.id).sort(), ['b', 'c']);
+test('list items sync: newer edit wins in both directions, and a newer delete beats an older edit', () => {
+  const server = [item('a', '2026-10-05T00:00:00Z', { notes: 'server' }), item('b', '2026-10-01T00:00:00Z')];
+  const local = [item('a', '2026-10-02T00:00:00Z', { notes: 'phone' }), item('b', '2026-10-06T00:00:00Z', { deletedAt: '2026-10-06T00:00:00Z' }), item('c', '2026-10-07T00:00:00Z')];
+  const { merged, toPush } = planSync(server, local, 'bathroomId');
+  const byId = Object.fromEntries(merged.map((i) => [i.bathroomId, i]));
+  assert.equal(byId.a.notes, 'server');
+  assert.equal(byId.b.deletedAt, '2026-10-06T00:00:00Z');
+  assert.deepEqual(toPush.map((i) => i.bathroomId).sort(), ['b', 'c']);
+  assert.equal(planSync(server, server, 'bathroomId').toPush.length, 0);
 });
 
-test('sync: a delete on one phone beats an older edit elsewhere', () => {
-  const server = [place('a', '2026-10-05T00:00:00Z')];
-  const local = [place('a', '2026-10-06T00:00:00Z', { deletedAt: '2026-10-06T00:00:00Z' })];
-  const { merged, toPush } = planSync(server, local);
-  assert.equal(merged[0].deletedAt, '2026-10-06T00:00:00Z');
-  assert.equal(toPush.length, 1);
-  // ...and a newer edit elsewhere beats an older delete.
-  const again = planSync([place('a', '2026-10-08T00:00:00Z', { name: 'kept' })], local);
-  assert.equal(again.merged[0].deletedAt, undefined);
-  assert.equal(again.toPush.length, 0);
-});
+test('backups: v2 merges items and bathrooms; v1 backups are moved over first', () => {
+  const current = { items: [item('x', '2026-10-01T00:00:00Z')], mine: [] };
+  const v2 = { version: 2, items: [item('u1', '2026-10-02T00:00:00Z'), { bad: true }], mine: [mine('u1', '2026-10-02T00:00:00Z')] };
+  const a = mergeBackup(current, v2);
+  assert.deepEqual(a.counts, { added: 1, updated: 0, unchanged: 0, skipped: 1 });
+  assert.equal(a.data.mine[0].dirty, true); // imported: send to the account when signed in
 
-test('sync: nothing to push when both sides match', () => {
-  const both = [place('a', '2026-10-05T00:00:00Z')];
-  assert.equal(planSync(both, both).toPush.length, 0);
+  const v1 = { version: 1, places: [{ id: 'u9', name: 'Old', lat: 40.7, lng: -73.9, log: {}, updatedAt: '2026-10-02T00:00:00Z' }, { id: 'broken' }] };
+  const b = mergeBackup(current, v1);
+  assert.deepEqual(b.counts, { added: 1, updated: 0, unchanged: 0, skipped: 1 });
+  assert.equal(b.data.mine.find((m) => m.id === 'u9').visibility, 'private');
 });
