@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { placeKind, normalize, rankResults, resultMeta, toResult, scoreResult } from './geo.js';
+import { placeKind, normalize, rankResults, resultMeta, toResult, scoreResult, positionErrorReason, getPosition, locationPermission } from './geo.js';
 
 const HERE = { lat: 40.6728, lng: -73.9701 }; // Grand Army Plaza
 const MILE_LAT = 1 / 69; // ~1 mile of latitude
@@ -130,4 +130,47 @@ test('duplicates are dropped and the list is capped', () => {
   const ranked = rankResults(list, 'cafe', HERE);
   assert.equal(ranked.length, 6);
   assert.equal(new Set(names(ranked)).size, 6);
+});
+
+// Swaps in a fake navigator for one test (Node has a read-only one of its own).
+async function withNavigator(fake, fn) {
+  const before = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+  Object.defineProperty(globalThis, 'navigator', { value: fake, configurable: true, writable: true });
+  try {
+    return await fn();
+  } finally {
+    if (before) Object.defineProperty(globalThis, 'navigator', before);
+    else delete globalThis.navigator;
+  }
+}
+
+const failingGeo = (code) => ({ geolocation: { getCurrentPosition: (_ok, fail) => fail({ code }) } });
+
+test('positionErrorReason tells denied, timeout and unavailable apart', () => {
+  assert.equal(positionErrorReason({ code: 1 }), 'denied');
+  assert.equal(positionErrorReason({ code: 2 }), 'unavailable');
+  assert.equal(positionErrorReason({ code: 3 }), 'timeout');
+  assert.equal(positionErrorReason(undefined), 'unavailable');
+});
+
+test('getPosition rejects with denied, unavailable, timeout or unsupported', async () => {
+  for (const [code, reason] of [[1, 'denied'], [2, 'unavailable'], [3, 'timeout']]) {
+    await withNavigator(failingGeo(code), () => assert.rejects(getPosition(), { message: reason }));
+  }
+  await withNavigator({}, () => assert.rejects(getPosition(), { message: 'unsupported' }));
+});
+
+test('getPosition resolves with the coordinates', async () => {
+  const geo = { geolocation: { getCurrentPosition: (ok) => ok({ coords: { latitude: 40.67, longitude: -73.97, accuracy: 12 } }) } };
+  await withNavigator(geo, async () => assert.deepEqual(await getPosition(), { lat: 40.67, lng: -73.97, accuracy: 12 }));
+});
+
+test('locationPermission returns the state, or unknown when the browser cannot say', async () => {
+  const perms = (result) => ({ permissions: { query: async () => result } });
+  await withNavigator(perms({ state: 'granted' }), async () => assert.equal(await locationPermission(), 'granted'));
+  await withNavigator(perms({ state: 'prompt' }), async () => assert.equal(await locationPermission(), 'prompt'));
+  await withNavigator(perms({ state: 'denied' }), async () => assert.equal(await locationPermission(), 'denied'));
+  await withNavigator(perms({ state: 'weird' }), async () => assert.equal(await locationPermission(), 'unknown'));
+  await withNavigator({}, async () => assert.equal(await locationPermission(), 'unknown'));
+  await withNavigator({ permissions: { query: async () => { throw new TypeError('no'); } } }, async () => assert.equal(await locationPermission(), 'unknown'));
 });

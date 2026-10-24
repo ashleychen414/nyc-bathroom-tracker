@@ -77,12 +77,14 @@ function locationBlock(s) {
       ${zipField(s)}
       ${deniedHelp(s)}`;
   }
-  const why =
-    s.locationIssue === 'unavailable'
-        ? "Couldn't get your location, so distances are from the middle of your zip code."
-        : 'Distances are from the middle of your zip code.';
+  const [why, retry] =
+    s.locationIssue === 'timeout'
+      ? ['Taking too long to find you. Distances are from the middle of your zip code.', 'Try again']
+      : s.locationIssue === 'unavailable'
+        ? ["Couldn't get your location, so distances are from the middle of your zip code.", 'Use my location']
+        : ['Distances are from the middle of your zip code.', 'Use my location'];
   return `
-    <div class="banner">${icon.info()}<span>${why} <button class="link" data-action="locate">Use my location</button></span></div>
+    <div class="banner">${icon.info()}<span>${why} <button class="link" data-action="locate">${retry}</button></span></div>
     ${zipField(s)}`;
 }
 

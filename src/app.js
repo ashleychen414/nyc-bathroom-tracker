@@ -6,8 +6,9 @@
 import { listPlaces, getPlace, exportPlaces, importPlaces, clearLocal } from './lib/storage.js';
 import { currentUser, sendCode, verifyCode, signOut, deleteAccount } from './lib/auth.js';
 import { startSync, syncNow, syncStatus } from './lib/sync.js';
-import { isStandalone, mobilePlatform } from './lib/device.js';
-import { getPosition, distanceMiles, lookupZip } from './lib/geo.js';
+import { isStandalone, mobilePlatform, currentPlatformLabel } from './lib/device.js';
+import { getPosition, locationPermission, distanceMiles, lookupZip } from './lib/geo.js';
+import { logLocation } from './lib/location-log.js';
 import { buildEntries, nearby } from './lib/nearby.js';
 import { loadBathrooms } from './lib/bathrooms-source.js';
 import { welcomeView, nearbyView, publicDetailView, mineDetailView } from './views/nearby.js';
@@ -45,7 +46,7 @@ const state = {
   dataError: false,
   here: null, // { lat, lng, source: 'gps' | 'zip', zip?, area? }
   locating: false,
-  locationIssue: null, // 'denied' | 'unavailable'
+  locationIssue: null, // 'denied' | 'timeout' | 'unavailable'
   locationHelpOpen: false, // how to unblock location, opened when a tap on "Use my location" was refused
   zipDraft: prefs.zip ?? '',
   zipStatus: '',
@@ -372,22 +373,27 @@ async function importBackup(file) {
 
 // ---------- Location ----------
 
-async function locate() {
+// trigger: 'startup' | 'button' | 'welcome', for the anonymous location log (no coordinates).
+async function locate(trigger, knownPermission) {
   state.locating = true;
   state.locationIssue = null;
   refresh();
+  const permissionBefore = knownPermission ?? locationPermission(); // asked before the prompt can change it
+  let result = 'granted';
   try {
     const pos = await getPosition();
     state.here = { lat: pos.lat, lng: pos.lng, source: 'gps' };
     savePrefs({ source: 'gps' });
   } catch (err) {
-    state.locationIssue = err.message === 'denied' ? 'denied' : 'unavailable';
+    result = err.message;
+    state.locationIssue = ['denied', 'timeout'].includes(err.message) ? err.message : 'unavailable';
     state.locationHelpOpen = state.locationIssue === 'denied';
     if (state.here?.source === 'gps') state.here = null;
     if (!state.here && prefs.zip) applyZip(prefs.zip);
   }
   state.locating = false;
   refresh();
+  logLocation({ trigger, permissionBefore: await permissionBefore, result, platform: currentPlatformLabel() });
 }
 
 let zipAbort = null;
@@ -485,7 +491,7 @@ app.addEventListener('click', (e) => {
       state.filters[value] = !state.filters[value];
       return render();
     case 'locate':
-      return locate();
+      return locate('button');
     case 'use-zip':
       return useZip();
     case 'reload':
@@ -493,7 +499,7 @@ app.addEventListener('click', (e) => {
     case 'welcome-locate':
       savePrefs({ welcomed: true });
       location.replace('#/nearby');
-      return locate();
+      return locate('welcome');
     case 'welcome-places':
       savePrefs({ welcomed: true });
       return location.replace('#/places');
@@ -563,20 +569,19 @@ loadBathrooms((data) => {
 
 (async () => {
   let focusZip = false;
-  const permission = await navigator.permissions
-    ?.query({ name: 'geolocation' })
-    .then((p) => p.state)
-    .catch(() => null);
+  const permission = await locationPermission();
 
-  if (permission === 'granted') locate();
+  if (permission === 'granted') locate('startup', permission);
   else if (permission === 'denied') {
     state.locationIssue = 'denied';
+    // No attempt is made (the browser won't ask again), but log it: otherwise blocked phones never show up.
+    logLocation({ trigger: 'startup', permissionBefore: permission, result: 'denied', platform: currentPlatformLabel() });
     if (prefs.zip) applyZip(prefs.zip);
     else focusZip = true;
   } else if (!prefs.welcomed) {
     if (parseRoute().name === 'nearby') location.replace('#/welcome');
   } else if (prefs.source === 'zip' && prefs.zip) applyZip(prefs.zip);
-  else locate();
+  else locate('startup', permission);
   render();
   // Blocked with no saved zip: the zip field is the only way forward, so put the cursor there.
   if (focusZip) app.querySelector('#zip')?.focus();

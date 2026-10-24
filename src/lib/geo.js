@@ -9,15 +9,35 @@ const PHOTON = 'https://photon.komoot.io';
 const NYC_BBOX = '-74.26,40.49,-73.70,40.92';
 const BROOKLYN = { lat: 40.65, lng: -73.95 };
 
+// Why getting a position failed: 'denied' | 'timeout' | 'unavailable'. Error codes per the
+// Geolocation spec (1 permission denied, 2 position unavailable, 3 timeout).
+export function positionErrorReason(err) {
+  if (err?.code === 1) return 'denied';
+  if (err?.code === 3) return 'timeout';
+  return 'unavailable';
+}
+
+// Rejects with Error('denied' | 'timeout' | 'unavailable' | 'unsupported').
 export function getPosition({ timeout = 10000 } = {}) {
   return new Promise((resolve, reject) => {
-    if (!navigator.geolocation) return reject(new Error('unsupported'));
+    if (!globalThis.navigator?.geolocation) return reject(new Error('unsupported'));
     navigator.geolocation.getCurrentPosition(
       (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, accuracy: pos.coords.accuracy }),
-      (err) => reject(new Error(err.code === err.PERMISSION_DENIED ? 'denied' : 'unavailable')),
+      (err) => reject(new Error(positionErrorReason(err))),
       { enableHighAccuracy: true, timeout, maximumAge: 60000 },
     );
   });
+}
+
+// The browser's location permission for this site: 'granted' | 'prompt' | 'denied' | 'unknown'
+// (older browsers have no Permissions API; iPhone Safari has it from iOS 16).
+export async function locationPermission() {
+  try {
+    const { state } = await navigator.permissions.query({ name: 'geolocation' });
+    return ['granted', 'prompt', 'denied'].includes(state) ? state : 'unknown';
+  } catch {
+    return 'unknown';
+  }
 }
 
 export function distanceMiles(a, b) {

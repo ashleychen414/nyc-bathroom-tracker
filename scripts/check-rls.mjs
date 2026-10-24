@@ -1,6 +1,6 @@
 // Checks what an anonymous visitor (no sign-in) can do against the live Supabase project.
 // Signed-in, cross-user checks live in supabase/tests/places_rls.sql (needs database access).
-// Covers places, profiles, the shared bathrooms table and data_sources.
+// Covers places, profiles, the shared bathrooms table, data_sources and location_events.
 // Run: npm run test:rls
 
 import assert from 'node:assert/strict';
@@ -68,6 +68,30 @@ const checks = [
   ['anonymous visitors cannot add or change dataset info', async () => {
     blocked(await call('/rest/v1/data_sources', { method: 'POST', body: { id: 'rls-check' } }));
     blocked(await call('/rest/v1/data_sources?id=eq.rls-check-none', { method: 'PATCH', body: { generated_at: new Date().toISOString() } }));
+  }],
+  // Leaves one real row per run, tagged app_version 'rls-check'; the reading views skip those.
+  ['anonymous visitors can add a location event', async () => {
+    const r = await call('/rest/v1/location_events', {
+      method: 'POST',
+      headers: { Prefer: 'return=minimal' },
+      body: { trigger: 'startup', permission_before: 'unknown', result: 'unsupported', platform: 'other', app_version: 'rls-check' },
+    });
+    assert.equal(r.status, 201);
+  }],
+  ['location events refuse values outside the lists and extra fields', async () => {
+    const event = { trigger: 'startup', permission_before: 'unknown', result: 'unsupported', platform: 'other', app_version: 'rls-check' };
+    const bad = await call('/rest/v1/location_events', { method: 'POST', body: { ...event, platform: 'Mozilla/5.0' } });
+    assert.equal(bad.status, 400);
+    const extra = await call('/rest/v1/location_events', { method: 'POST', body: { ...event, lat: 40.7, lng: -73.9 } });
+    assert.equal(extra.status, 400);
+    blocked(await call('/rest/v1/location_events', { method: 'POST', body: { ...event, created_at: '2020-01-01T00:00:00Z' } }));
+  }],
+  ['anonymous visitors cannot read, change or delete location events', async () => {
+    blocked(await call('/rest/v1/location_events?select=id&limit=1'));
+    blocked(await call('/rest/v1/location_events_daily?select=day&limit=1'));
+    blocked(await call('/rest/v1/location_events_weekly?select=platform&limit=1'));
+    blocked(await call('/rest/v1/location_events?app_version=eq.rls-check', { method: 'PATCH', body: { result: 'granted' } }));
+    blocked(await call('/rest/v1/location_events?app_version=eq.rls-check', { method: 'DELETE' }));
   }],
   ['keep_alive works for the nightly job', async () => {
     const r = await call('/rest/v1/rpc/keep_alive', { method: 'POST', body: {} });

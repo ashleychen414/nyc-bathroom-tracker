@@ -19,6 +19,7 @@ never to "Open". Closed and non-operational restrooms are shown greyed out, not 
 - `docs/TASKS.md`: Now / Next / Later / Done. Keep it current at the end of every work session.
 - `docs/private/` (git-ignored, on Ashley's Mac only): private product docs. `improvements.md` = product vision, target users, goals, friend feedback, proposed data model (Ashley, Oct 12). Read it for product context; never commit or quote it into public files. Sized and cross-referenced in `docs/IMPROVEMENTS-SCOPING.md`.
 - `docs/FEEDBACK.md`: user feedback, logged verbatim with date and who. Triage into TASKS.md.
+- `src/lib/location-log.js`: anonymous location outcomes → `location_events` (see Location log).
 - `src/lib/hours.js`: hours parser + open/closed status (shared by build script and app).
 - `src/lib/nearby.js`: builds the Nearby list (mix, filter, sort, top-up). `src/lib/hours-form.js`: Hours form ↔ hours model.
 - `src/app.js`: state, hash routing, location. `src/views/*`: screens (nearby, places, form, shared pieces).
@@ -40,6 +41,12 @@ never to "Open". Closed and non-operational restrooms are shown greyed out, not 
 - Table `public.places` (id, user_id, data jsonb, updated_at, deleted_at) with row-level security: users read/insert/update only their own rows; no delete policy (deletes are tombstones). RPCs: `delete_my_account()`, `keep_alive()` (nightly GitHub Action).
 - Sign-in is a one-time **code** by email (not a link: links open Safari instead of the Home Screen app). Needs `{{ .Token }}` in the Supabase email templates.
 - `src/lib/auth.js` (plain fetch to Supabase Auth), `src/lib/sync.js` (local-first; newer edit wins per place via `planSync` in storage.js). The publishable key in `src/lib/supabase-config.js` is public by design.
+
+## Location log (database counts only)
+
+- `public.location_events`: one anonymous row per location attempt (`src/lib/location-log.js`): trigger, permission before, result, platform word, app version (short commit sha; `dev` = a local copy). No coordinates, user, zip or user agent. Visitors can only insert; reading needs the service role.
+- **To read it**, in the Supabase SQL editor: `select * from location_events_daily limit 50;` (per New York day and platform: attempts, success_pct, counts by result) and `select * from location_events_weekly;` (last 7 days vs the 7 before, per platform and `all`; a big negative `success_change_pts` after a deploy = look at that deploy). `already_blocked` = location was already denied for the site; on startup those are logged without asking.
+- Rows tagged `rls-check` come from `npm run test:rls` (one per deploy) and are left out of both views.
 
 ## Commands
 
