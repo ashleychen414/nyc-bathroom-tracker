@@ -149,3 +149,18 @@ Follow-ups to "What private bathroom means" above.
 - **"Key or code" folds into Customer Only.** Access stays two labels for users: Available to Public and Customer Only. Whether you need to ask for a code or key becomes a yes/no fact on the bathroom (with the other facts, E5). The code itself only ever goes in private notes. `unknown` stays as the internal default when the creator doesn't know; users see no label, or "Access unknown" on the detail screen.
 - **The 2 hand-added saved places move over as Private,** since their owners saved them before Public existed. Their access starts as unknown.
 - **On their next sign-in, each of those owners gets a one-time prompt** asking whether to make those bathrooms Public. Nothing becomes public unless the owner chooses it. The city restroom on a saved list just becomes a list item pointing to the shared record.
+
+## 2026-10-24: Visits and ratings (Ashley)
+
+Designed around two users: the person who needs a bathroom now (Is it open? Can I get in? Is it clean? Can I trust this?) and the person who just used one and can tell others.
+
+- **Flow:** "I went here" is always one tap; it counts as a visit even with no rating. Quick star ratings appear right after and can be skipped. Skipped ratings come back later as a small "Rate your last visit" card in the app. No push notifications for now (on iPhone they only work after adding the app to the Home Screen).
+- **Ratings (1–5): Clean, Getting in, Vibes.** "Getting in" replaces "Accessible", which mixed capacity, amenities and entry, and would mislead people who need step-free access. Vibes is optional and shown last.
+- **Below 5 stars, tap what was missing:**
+  - *Clean:* dirty floors, smells bad, not enough trash cans
+  - *Getting in:* needs a code, had to buy something, had to wait, hard to find
+  - *Vibes:* lighting, music
+- **Reasons double as facts.** When enough people tap one (e.g. "Needs a code"), the bathroom shows it ("Code needed"). Stalls, baby changing and step-free are facts about the bathroom (E5), not ratings.
+- **Codes stay private.** People can confirm *that* a code is needed; the code itself lives only in private notes. Sharing codes would be a public tip (E6), decided separately.
+- **Trust signal:** "Visited by N people · last visit <date>", shown only once 3 different people have visited, so no one's visits can be singled out.
+- **Existing ratings carry over:** cleanliness → Clean; low smell or trash scores → the matching Clean reasons; lighting → a Vibes reason.
