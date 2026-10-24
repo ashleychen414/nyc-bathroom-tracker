@@ -11,8 +11,9 @@ Updated 2026-10-24. Steps map to the MVP scope in `SPEC.md`. Product improvement
 
 ## Next
 
-- [ ] **Decide the remaining open questions in `docs/IMPROVEMENTS-SCOPING.md` §6**: starting rating dimensions (blocks E3), and milestone order (A → B → C proposed). Milestone A is nearly done (E0, E4, E9-lite shipped). Decided 2026-10-24: what "private bathroom" means, which unblocks E2.
+- [ ] **Decide the remaining open question in `docs/IMPROVEMENTS-SCOPING.md` §6**: milestone order (A → B → C proposed). Milestone A is nearly done (E0, E4, E9-lite shipped). Decided 2026-10-24: what "private bathroom" means (unblocks E2) and the rating dimensions (unblocks E3).
 - [ ] **E2: lists + move saved places to the shared database** (unblocked 2026-10-24). Per DECISIONS.md: access labels Available to Public / Customer Only (drop `key_or_code` from the user-facing choices); visibility Public / Private on user-created bathrooms; duplicates shown as they are; today's 2 hand-added places move as Private with a one-time "Make public?" prompt for their owners on next sign-in.
+- [ ] **E3: visits and ratings** (unblocked 2026-10-24, after E2). Per DECISIONS.md: one-tap "I went here", optional Clean / Getting in / Vibes stars with reason tags, a "Rate your last visit" card for skipped ratings, reasons that confirm facts, trust line shown once 3 people have visited, existing ratings carried over.
 - [ ] **Let hours overrides set `status`**, then mark Gravesend, Ryder and Leonard libraries open and Paerdegat Athletic "Temporarily closed" (today it reads "Closed for today").
 - [ ] **NYPL holiday closures** (Manhattan, Bronx, Staten Island libraries). nypl.org/help/closings blocks automated reading, so copy the list in by hand.
 - [ ] **Bathroom layout: several separate single bathrooms** (feedback 2026-10-08). Becomes E5 on the shared `bathrooms` table (on hold with the other fact fields). Proposal: replace Stalls with **Layout**:
