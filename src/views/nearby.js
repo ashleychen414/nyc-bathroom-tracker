@@ -140,9 +140,9 @@ function entryCard(e, approx) {
     </a>`;
 }
 
-function emptyBox(s, { inside, outside }) {
+function emptyBox(s, { inside, outside, area }) {
   if (inside.length) return '';
-  const near = s.here.source === 'zip' ? ` of ${esc(s.here.zip)}` : '';
+  const near = area ? ' of the map center' : s.here.source === 'zip' ? ` of ${esc(s.here.zip)}` : '';
   const next = RADII.find((r) => r > s.radius);
   const what = s.filters.openNow ? 'open ' : '';
   return `<div class="empty-box">
@@ -170,14 +170,16 @@ function results(s, list) {
 // The card over the map: the selected bathroom (default: the best match, open first then nearest).
 export function mapSheet(s, list, selectedId) {
   const entries = [...list.inside, ...list.outside];
-  if (!entries.length) return emptyBox(s, list) || '<p class="muted">No restrooms match these filters.</p>';
+  // After the user dragged the map: results are around the map center, with a way back.
+  const home = list.area ? '<button class="btn" data-action="map-home">Back to me</button>' : '';
+  if (!entries.length) return (emptyBox(s, list) || '<p class="muted">No restrooms match these filters.</p>') + (home && `<div class="actions">${home}</div>`);
   const index = Math.max(0, entries.findIndex((e) => e.id === selectedId));
   const e = entries[index];
   const approx = s.here.source === 'zip';
   const outside = index >= list.inside.length;
   const label = !selectedId
     ? list.inside.length
-      ? `Best match · ${list.inside.length} within ${radiusLabel(s.radius)}`
+      ? `${list.area ? 'Closest here' : 'Best match'} · ${list.inside.length} within ${radiusLabel(s.radius)}`
       : `Nothing within ${radiusLabel(s.radius)} · nearest outside`
     : outside
       ? `Outside ${radiusLabel(s.radius)}`
@@ -203,6 +205,7 @@ export function mapSheet(s, list, selectedId) {
     ${placeTags(e.bathroom, e.place)}
     <div class="actions">
       <a class="btn" href="${href}">Details</a>
+      ${home}
     </div>`;
 }
 

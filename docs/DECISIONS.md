@@ -191,3 +191,8 @@ Designed around two users: the person who needs a bathroom now (Is it open? Can 
 - **One set of chips per rating, no separate tags.** Tapping a chip marks it as a problem. Chips for the old log fields (Clean: Trash cans, Smell; Getting in: Number of stalls; Vibes: Lighting) also open that field's own 1–5 rating. The full chip list per rating: *Clean:* dirty floors, smell, trash cans; *Getting in:* needs a code, had to buy something, had to wait, hard to find, number of stalls; *Vibes:* lighting, music.
 - **Signed-out visits are allowed.** "I went here" and ratings work without an account; they're kept on the phone and count toward public numbers only after sign-in, so "3 different people" stays reliable.
 - **Only signed-in users can add new places or keep their own list (My places).** This replaces "Signed out, a Public place stays on the phone until sign-in" from the 2026-10-26 E2 entry. Places already saved on a signed-out phone are kept and move to the account at sign-in.
+
+## 2026-10-26: Map searches where you drag it (user feedback)
+
+- **The map searches the new area on its own, no "Search this area" button.** Someone who needs a restroom urgently shouldn't need an extra tap. Only moves made by hand count, and only once the map center is half the radius or more from the last search, so zooming in place or a small nudge keeps the current results and selected card.
+- **Distances on the card stay measured from you,** not from the map center: the map decides which restrooms show and their order, but "how far is it" is always about the walk from where you are. "Back to me" returns to the search around you; a new location does the same. The list view always shows results around you.
