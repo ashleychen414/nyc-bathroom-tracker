@@ -1,9 +1,11 @@
 # Tasks
 
-Updated 2026-10-26 (after #29, backlog cleanup, and reordering the epics around the data). Steps map to the MVP scope in `SPEC.md`. Product improvements (Ashley, Oct 12) are sized and cross-referenced in `docs/IMPROVEMENTS-SCOPING.md`; epic numbers (E0–E13) refer to that doc.
+Updated 2026-10-26 (after #34, confirm and correct; Tier 1 #1 done). Steps map to the MVP scope in `SPEC.md`. Product improvements (Ashley, Oct 12) are sized and cross-referenced in `docs/IMPROVEMENTS-SCOPING.md`; epic numbers (E0–E13) refer to that doc.
 
 ## Now
 
+- [ ] **Make your account an admin** so you can undo anyone's edit (#34): in the Supabase SQL editor, `update profiles set role = 'admin' where id = '<your user id>';`
+- [ ] **Try confirm and correct on a real iPhone, signed in and signed out** (#34): "Was it open?" / "Hours right?" after "I went here", Suggest an edit, Report closed, Undo.
 - [ ] **Brooklyn hours: Ashley's calls** (Ashley will do these later) on what's left after PR #2 (review list is down from 52 rows to 22):
   - Gravesend, Ryder and Leonard libraries are open per BPL but "Closed for Construction" in city data. They stay greyed out until overrides can set `status` (below).
   - Carver Playground is "Not Operational" in city data, but NYC Parks rated it "Acceptable" in Sept 2025. It may be open.
@@ -13,10 +15,9 @@ Updated 2026-10-26 (after #29, backlog cleanup, and reordering the epics around 
 
 Order set 2026-10-26 by two principles (see `DECISIONS.md` and `IMPROVEMENTS-SCOPING.md` §5): the app is only as good as its database, and users must be able to rate, confirm and edit incomplete information quickly.
 
-- [ ] **Confirm and correct any bathroom** (smaller E7): after "I went here", one-tap "Was it open?" and "Hours right?" ("No" opens a short fix form); "Report closed" and "Suggest an edit" on every bathroom, city rows included. Edits live right away with an undoable history; "Closed" after two reports; user-entered hours can show "Open". The nightly sync must stop overwriting user corrections to city rows. No review queue.
-- [ ] **Facts** (smaller E5, off hold): load the city's accessibility, restroom type and changing stations into `bathrooms`; add layout (one single / several singles → how many / one with stalls → how many, card chips like "3 single bathrooms"; existing logs convert), step-free, changing table and code needed, each confirmed with a tap.
-- [ ] **Ask for what's missing:** cards with gaps say so ("Hours unknown · Know them?", "Access unknown") and open the same fix form.
-- [ ] **Where inside? (finding the restroom once you're there)** (Ashley, 2026-10-26): tapping a bathroom doesn't say where it is in a big place. Ex: "Penn Station LIRR Restroom" is too broad; you need to know where in Penn Station. The city data has no field for this (its note for Penn Station is generic: "outside of fare gates"), so it has to come from people: a short "How to find it" line (level, near which exit / track / store) on the detail page and map card, editable like other facts, and asked for when missing ("Where inside? · Know it?"). Matters most for stations, malls, parks, libraries and museums. Pairs with Confirm and correct, Facts and Ask for what's missing.
+- [ ] **Facts** (smaller E5, off hold; next, its migration can start now that #34 is in): load the city's accessibility, restroom type and changing stations into `bathrooms`; add layout (one single / several singles → how many / one with stalls → how many, card chips like "3 single bathrooms"; existing logs convert), step-free, changing table and code needed, each confirmed with a tap.
+- [ ] **Ask for what's missing:** cards with gaps say so ("Hours unknown · Know them?", "Access unknown") and open the same fix form (Suggest an edit, `#/fix/<id>`, from #34).
+- [ ] **Where inside? (finding the restroom once you're there)** (Ashley, 2026-10-26): tapping a bathroom doesn't say where it is in a big place. Ex: "Penn Station LIRR Restroom" is too broad; you need to know where in Penn Station. The city data has no field for this (its note for Penn Station is generic: "outside of fare gates"), so it has to come from people: a short "How to find it" line (level, near which exit / track / store) on the detail page and map card, editable like other facts, and asked for when missing ("Where inside? · Know it?"). Matters most for stations, malls, parks, libraries and museums. Uses the Suggest an edit form (#34); pairs with Facts and Ask for what's missing.
 
 ## Next, Tier 2: more bathrooms
 
@@ -50,7 +51,8 @@ Order set 2026-10-26 by two principles (see `DECISIONS.md` and `IMPROVEMENTS-SCO
 - [ ] **Location log:** maybe leave `dev` rows out of the views, and add a rate limit if the public insert ever gets spammed.
 - [ ] **Watch the location log for the iOS Home Screen bug:** rows with `permission_before = 'denied'` and `result = 'granted'` on `ios-homescreen` mean the phone said blocked but location worked (query in PR #21).
 
-- [ ] **"Hours from a visitor" label** next to "Open" when the hours came from a user (low priority, Ashley 2026-10-26): says where the hours came from, which may get more people to report a mistake.
+- [ ] **"Hours from a visitor" label** next to "Open" when the hours came from a user (low priority, Ashley 2026-10-26): says where the hours came from, which may get more people to report a mistake. Since #34 the restroom page's source line says "Hours from a NYC Poops user"; cards and the map card don't yet.
+- [ ] **"No, fix them" then tapping outside the rating sheet** doesn't open the hours form (it opens after Save or Later) (#34).
 - [ ] **Remove a visit:** a mistaken "I went here" still counts; there's no delete yet (#29).
 - [ ] **Rate limit on visits** if spam ever shows up: one person can inflate the visit count, though not the people count (#29).
 - [ ] **Raise `stats_min_people()` above 1** before the app opens beyond friends: with one visitor, the count, date and ratings are that person's (2026-10-26).
@@ -70,6 +72,7 @@ Order set 2026-10-26 by two principles (see `DECISIONS.md` and `IMPROVEMENTS-SCO
 ## Done
 
 - [x] 2026-10-27: **Map: after dragging, the search centers on the part of the map you can see** (Ashley, from a real iPhone), not the middle of the whole map, part of which sits behind the card. Also checked on iPhone: sign-in with E2 lists and E3 visits works (Ashley)
+- [x] 2026-10-26: **Confirm and correct any bathroom** (#34, Tier 1 #1): anyone, signed in or not, can Suggest an edit (name, who can use it, hours, "It's open again"), Report closed, and answer "Was it open?" / "Hours right?" after "I went here". Edits go live with a history ("Recent changes" on each restroom page, never who) and Undo for the person who made it or an admin. Two people reporting closed shows "Reported closed" until someone edits it open again. User hours can show "Open" and skip the Seasonal rule. The nightly sync keeps corrected names and hours. Edits per person: `select * from bathroom_edits_per_person;`. Limit: 60 changes per person per hour
 - [x] 2026-10-26: **Backlog cleanup:** milestone order closed (Milestone A shipped; Milestone B's E1–E3 shipped, E5 on hold); "Saving without a confirmation step" closed (the pop-up is gone; saving is a list item since E2 and logging is a visit since E3); the `dev` test rows in `location_events` deleted (there were 6)
 - [x] 2026-10-26: **E3: visits and ratings** (#29): `visits` table and counts-only `bathroom_stats()`; one-tap "I went here" (main button on the map card, and on every restroom's page); quick Clean / Getting in / Vibes rating with chips; "Rate your last visit"; ratings, facts and "Visited by N people" on cards and pages from the first visit; old ratings carried over as past visits; only signed-in users add places or keep My places
 - [x] 2026-10-26: **Map: dragging shows the closest restrooms there** (#28, from user feedback): moving the map at least half the radius searches around the new center (distances stay from you); "Back to me" returns
