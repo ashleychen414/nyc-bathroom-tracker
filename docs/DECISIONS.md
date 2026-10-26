@@ -229,3 +229,13 @@ Work that serves neither principle directly is deferred. The new order is in `do
 - **Fact fields are off hold,** with a short list: what the city data already has (accessibility, restroom type, changing stations), plus layout (one single / several singles / stalls), step-free, changing table and code needed, each confirmed with a tap.
 - **Bulk-imported places** (museums, hotels, stores, gas stations) **come in as Customer Only with hours unknown, and show on the map and list by default, labeled "Unconfirmed".** They sort like any other bathroom, not last. Seeing them is what gets people to confirm them, and in an emergency an unconfirmed Target beats nothing.
 - **New places stay Public by default.** "Default to Private" is dropped for now; revisit it only if many people turn out to keep their own saved lists.
+
+## 2026-10-26: Confirm and correct, as built (PR #34)
+
+- **Anyone can confirm, report or edit, signed in or not (Ashley).** Edits are counted per person: the account when signed in, otherwise a random id the phone makes for itself (never shown). Read them with `select * from bathroom_edits_per_person;` (service role only).
+- **Undo is for whoever made the change (same account or same phone) and Ashley as admin (Ashley).** An older edit can't be undone once a later edit changed the same field; that one is undone first, or edited over.
+- **Editable fields: hours, access and name (Ashley),** plus "It's open again" on a restroom shown closed. Location stays as it is for now.
+- **A "Closed" from two reports clears only by an edit (Ashley):** "It's open again", or undoing a report. "Yes, it was open" after a visit to a closed place counts as that edit.
+- **User hours also skip the Seasonal rule,** and "It's open again" on a city restroom overrides the city's own closed status. Both follow from "hours a user enters count as source hours".
+- **Undoing a correction to a city field restores what the city says now,** not the value from before the edit (the nightly sync may have changed it since).
+- **At most 60 changes per person per hour,** in the database.
