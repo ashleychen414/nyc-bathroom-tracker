@@ -12,8 +12,8 @@ const sheet = (id, body) => `
 export const signInBanner = `
   <section class="signin-banner">
     <div>
-      <p class="signin-title">Keep your places forever</p>
-      <p class="muted small">Sign in with your email to save them to your account, on any phone. No password.</p>
+      <p class="signin-title">Sign in to save places</p>
+      <p class="muted small">Add places and keep My places in your account, on any phone. Just your email, no password.</p>
     </div>
     <button class="btn primary" data-action="open-signin">Sign in</button>
   </section>`;
@@ -34,11 +34,11 @@ export function syncText(status) {
 }
 
 export function syncLine(user, status) {
-  if (!user) return 'Saved on this phone only. <button class="link" data-action="open-signin">Sign in</button> to keep them forever.';
+  if (!user) return 'Saved on this phone only. <button class="link" data-action="open-signin">Sign in</button> to move them to your account.';
   return `${esc(syncText(status))} · <button class="link" data-action="open-account">${esc(user.email)}</button>`;
 }
 
-// s: { step: 'email' | 'code', email, busy, error, message }
+// s: { step: 'email' | 'code', email, busy, error, message, reason?: why sign-in was asked for }
 export function signInSheet(s) {
   const body =
     s.step === 'code'
@@ -54,8 +54,8 @@ export function signInSheet(s) {
            <button class="link" data-action="resend-code" ${s.busy ? 'disabled' : ''}>Send a new code</button>
            <button class="link" data-action="change-email">Use a different email</button>
          </div>`
-      : `<h2 id="si-title">Keep your places forever</h2>
-         <p class="muted">Enter your email and we'll send you a code. No password. Your places on this phone are saved to your account and show up on any phone you sign in on.</p>
+      : `<h2 id="si-title">${s.reason ? esc(s.reason) : 'Sign in'}</h2>
+         <p class="muted">Enter your email and we'll send you a code. No password. Your places and visits on this phone are saved to your account and show up on any phone you sign in on.</p>
          <form class="signin-form" data-form="send-code">
            <label class="field-label" for="signin-email">Email</label>
            <input id="signin-email" class="input" type="email" autocomplete="email" inputmode="email"

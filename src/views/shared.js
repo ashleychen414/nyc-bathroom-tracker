@@ -1,7 +1,6 @@
 // Pieces used by more than one screen.
 
 import { esc, icon } from '../lib/html.js';
-import { currentUser } from '../lib/auth.js';
 
 // Who can use it (access) and who can see it (visibility). Users only ever see two access labels;
 // 'unknown' shows no label on cards ("Access unknown" on the detail screen).
@@ -9,13 +8,8 @@ export const ACCESS = { public: 'Available to Public', customers_only: 'Customer
 
 export const accessTag = (access) => (access === 'customers_only' ? '<span class="tag access">Customer Only</span>' : '');
 
-// Signed out, a Public place waits on this phone until sign-in, so the label says so.
 export const visibilityTag = (visibility) =>
-  visibility !== 'public'
-    ? '<span class="tag vis-private">🔒 Private</span>'
-    : currentUser()
-      ? '<span class="tag vis-public">Public</span>'
-      : '<span class="tag vis-public">Public after sign-in</span>';
+  visibility !== 'public' ? '<span class="tag vis-private">🔒 Private</span>' : '<span class="tag vis-public">Public</span>';
 
 // Labels for a card: Customer Only, and Public / Private on bathrooms you created.
 export function placeTags(bathroom, place) {

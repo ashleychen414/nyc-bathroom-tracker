@@ -41,6 +41,7 @@ never to "Open". Closed and non-operational restrooms are shown greyed out, not 
 - Table `public.places` (id, user_id, data jsonb, updated_at, deleted_at) with row-level security: users read/insert/update only their own rows; no delete policy (deletes are tombstones). RPCs: `delete_my_account()`, `keep_alive()` (nightly GitHub Action).
 - Sign-in is a one-time **code** by email (not a link: links open Safari instead of the Home Screen app). Needs `{{ .Token }}` in the Supabase email templates.
 - `src/lib/auth.js` (plain fetch to Supabase Auth), `src/lib/sync.js` (local-first; newer edit wins per place via `planSync` in storage.js). The publishable key in `src/lib/supabase-config.js` is public by design.
+- **Visits and ratings (E3):** `public.visits` (one row per "I went here", optional Clean / Getting in / Vibes ratings and chips; each person reads only their own). Others see `bathroom_stats()`: counts only, never who; its minimum number of people is `stats_min_people()` (1 for now). App side: `src/lib/visits.js` (on the phone first, works signed out), `src/lib/stats.js`, `src/views/ratings.js`; visits upload with the rest of the sync at sign-in.
 
 ## Location log (database counts only)
 
