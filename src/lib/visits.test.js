@@ -18,9 +18,9 @@ test('old phone ratings carry over like the database did: same id, Clean, chip r
 test('ratings keep valid values only, and a chip field only while its chip is tapped', () => {
   assert.deepEqual(cleanRatings({ clean: 3, getIn: 7, vibes: 0, chips: ['smell', 'code', 'code', 'nope'], smell: 2, trash: 4, lighting: 3, stallCount: 3 }), {
     clean: 3,
-    chips: ['smell', 'code'],
-    smell: 2,
+    chips: ['smell', 'code'], // Smell is a plain chip: no rating of its own
   });
+  assert.deepEqual(cleanRatings({ clean: 2, chips: ['trash'], trash: 2 }), { clean: 2, chips: ['trash'], trash: 2 });
   assert.deepEqual(cleanRatings({ getIn: 2, chips: ['stalls'], stallCount: 4 }), { getIn: 2, chips: ['stalls'], stallCount: 4 });
   assert.deepEqual(cleanRatings({ getIn: 2, chips: ['stalls'], stallCount: 99 }), { getIn: 2, chips: ['stalls'] });
 });

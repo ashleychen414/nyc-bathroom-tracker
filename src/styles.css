@@ -576,12 +576,8 @@ body.sheet-open { overflow: hidden; }
 .reasons span { white-space: nowrap; }
 .reason-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .chip-btn.small { min-height: 34px; font-size: 14px; padding: 0 12px; }
-.sub-rating { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0 0 4px; }
-.mini-scale { display: flex; gap: 4px; }
-.mini-scale button {
-  min-width: 36px; min-height: 36px; border-radius: 10px; border: 1px solid var(--border);
-  background: var(--surface); color: var(--text); font: inherit; font-weight: 700;
-}
-.mini-scale button.on { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.sub-rating { display: grid; gap: 4px; padding-top: 6px; }
+.sub-rating.count-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.stars.small .star { max-width: 44px; height: 40px; font-size: 24px; }
 .sub-rating .input.count { width: 4.5em; text-align: center; }
 .map-sheet .actions .btn.primary { flex: 1.4; }

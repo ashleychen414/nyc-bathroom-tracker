@@ -17,15 +17,16 @@ const KEY = 'nbt.visits';
 const V1_KEY = 'nbt.places';
 export const NUDGE_DAYS = 7;
 
-// Chip keys match the database. Old log fields (smell, trash cans, lighting, stalls) open their own
-// rating when tapped: 'rating' (1–5) or 'count'.
+// Chip keys match the database. Old log fields (trash cans, lighting, stalls) open their own rating
+// when tapped: 'rating' (1–5, shown with the chip's emoji, like the stars) or 'count'. Smell is a
+// plain chip (Ashley, 2026-10-26); old smell scores are kept in the database, not asked again.
 export const DIMENSIONS = [
   {
     key: 'clean', label: 'Clean', emoji: '🧼',
     chips: [
       { key: 'dirty', label: 'Dirty floors' },
-      { key: 'smell', label: 'Smell', field: 'smell', type: 'rating' },
-      { key: 'trash', label: 'Trash cans', field: 'trash', type: 'rating' },
+      { key: 'smell', label: 'Smell' },
+      { key: 'trash', label: 'Trash cans', field: 'trash', type: 'rating', emoji: '🗑️', question: 'How were the trash cans?' },
     ],
   },
   {
@@ -35,19 +36,19 @@ export const DIMENSIONS = [
       { key: 'buy', label: 'Had to buy something' },
       { key: 'wait', label: 'Had to wait' },
       { key: 'find', label: 'Hard to find' },
-      { key: 'stalls', label: 'Number of stalls', field: 'stallCount', type: 'count' },
+      { key: 'stalls', label: 'Number of stalls', field: 'stallCount', type: 'count', question: 'How many stalls?' },
     ],
   },
   {
     key: 'vibes', label: 'Vibes', emoji: '✨', optional: true,
     chips: [
-      { key: 'lighting', label: 'Lighting', field: 'lighting', type: 'rating' },
+      { key: 'lighting', label: 'Lighting', field: 'lighting', type: 'rating', emoji: '💡', question: 'How was the lighting?' },
       { key: 'music', label: 'Music' },
     ],
   },
 ];
 export const RATING_KEYS = DIMENSIONS.map((d) => d.key);
-export const FIELD_KEYS = ['smell', 'trash', 'lighting', 'stallCount'];
+export const FIELD_KEYS = ['trash', 'lighting', 'stallCount'];
 const CHIP_KEYS = new Set(DIMENSIONS.flatMap((d) => d.chips.map((c) => c.key)));
 
 const isRated = (v) => RATING_KEYS.some((k) => v[k]);

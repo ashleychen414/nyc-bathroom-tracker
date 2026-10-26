@@ -117,16 +117,17 @@ function chipsHtml(d, draft) {
   return `<p class="hint">What was the problem?</p><div class="reason-chips">${chips}</div>${extras}${code}`;
 }
 
+// A chip's own 1–5 rating, with its emoji like the stars above (e.g. 💡 for lighting).
 const miniScale = (c, value) => `
   <div class="sub-rating">
-    <span class="small">${c.label}</span>
-    <div class="mini-scale" role="group" aria-label="${c.label}, 1 to 5">${[1, 2, 3, 4, 5]
-      .map((n) => `<button type="button" class="${value === n ? 'on' : ''}" aria-label="${c.label} ${n} of 5, ${RATING_WORDS[n]}" aria-pressed="${value === n}" data-action="rate-field" data-field="${c.field}" data-value="${n}">${n}</button>`)
+    <p class="hint">${c.question}</p>
+    <div class="stars small" role="group" aria-label="${c.label}, 1 to 5">${[1, 2, 3, 4, 5]
+      .map((n) => `<button type="button" class="star ${value >= n ? 'on' : ''}" aria-label="${c.label} ${n} of 5, ${RATING_WORDS[n]}" aria-pressed="${value === n}" data-action="rate-field" data-field="${c.field}" data-value="${n}">${c.emoji}</button>`)
       .join('')}</div>
   </div>`;
 
 const countField = (c, value) => `
-  <label class="sub-rating">
-    <span class="small">How many stalls?</span>
+  <label class="sub-rating count-row">
+    <span class="hint">${c.question}</span>
     <input id="rate-stall-count" class="input count" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="2" value="${value ?? ''}" aria-label="${c.label}">
   </label>`;
