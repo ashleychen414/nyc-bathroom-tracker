@@ -48,6 +48,12 @@ export function selectPin(id, { pan = false } = {}) {
 let sheetEl = null;
 const sheetHeight = () => sheetEl?.offsetHeight ?? 0;
 
+// The middle of the part of the map you can see: the card covers the bottom of the map.
+function visibleCenter() {
+  const { x, y } = map.getSize();
+  return map.containerPointToLatLng([x / 2, Math.max(0, y - sheetHeight()) / 2]);
+}
+
 // el: the #map element just painted; sheet: the card over the map (kept clear when framing).
 // center: where the search ran (the user, or a spot they dragged the map to); here: the user.
 // onMove(center): called when the user drags or zooms the map well away from the search center.
@@ -94,7 +100,7 @@ export async function mountMap(el, { entries, here, center = here, radius, appro
   map.on('moveend', () => {
     if (!byHand) return;
     byHand = false;
-    const { lat, lng } = map.getCenter();
+    const { lat, lng } = visibleCenter();
     if (distanceMiles(searchCenter, { lat, lng }) < radius / 2) return;
     searchCenter = { lat, lng };
     onMove?.(searchCenter);
