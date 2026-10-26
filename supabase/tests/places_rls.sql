@@ -164,6 +164,11 @@ do $$ begin
     raise exception 'A was able to add a bathroom owned by B';
   exception when insufficient_privilege then null;
   end;
+  begin
+    insert into public.bathrooms (id, name, lat, lng, user_fields) values ('rls-test-x', 'x', 40.7, -73.9, '{name}');
+    raise exception 'A was able to set user_fields (only edit_bathroom() does)';
+  exception when insufficient_privilege then null;
+  end;
 end $$;
 
 -- A edits their own rows, can make Private → Public but not back, and deletes only Private ones.
@@ -184,6 +189,11 @@ do $$ begin
   begin
     update public.bathrooms set status = 'confirmed' where id = 'rls-test-new-public';
     raise exception 'A was able to change status';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    update public.bathrooms set reported_closed_at = null where id = 'rls-test-new-public';
+    raise exception 'A was able to change reported_closed_at (only the closed reports do)';
   exception when insufficient_privilege then null;
   end;
 end $$;
@@ -586,6 +596,218 @@ do $$ begin
          and (created_at at time zone 'America/New_York')::date = (now() at time zone 'America/New_York')::date
          and platform in ('ios-safari', 'desktop')),
     'the daily view should count the rows';
+end $$;
+
+-- ---------- bathroom_edits: confirm and correct (Tier 1) ----------
+
+-- A city restroom, one the city lists as closed, and A's Private bathroom.
+reset role;
+set local request.jwt.claims = '{"role":"service_role"}';
+insert into public.bathrooms (id, name, source, access, lat, lng, hours, source_data) values
+  ('rls-test-edit-seed', 'City name', 'seed', 'public', 40.7, -73.9, '{"kind":"always"}', '{"id":"rls-test-edit-seed","name":"City name","status":"Operational"}'),
+  ('rls-test-edit-shut', 'City closed', 'seed', 'public', 40.7, -73.9, null, '{"id":"rls-test-edit-shut","name":"City closed","status":"Not Operational"}');
+insert into public.bathrooms (id, name, source, visibility, created_by, lat, lng) values
+  ('rls-test-edit-private', 'A private edit', 'user', 'private', '11111111-1111-1111-1111-111111111111', 40.7, -73.9);
+
+-- Signed out: nothing direct, only the functions.
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
+do $$ begin
+  begin
+    perform 1 from public.bathroom_edits;
+    raise exception 'anon was able to read bathroom_edits';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    insert into public.bathroom_edits (bathroom_id, kind, device_id) values ('rls-test-edit-seed', 'report_closed', gen_random_uuid());
+    raise exception 'anon was able to add to bathroom_edits directly';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    perform 1 from public.bathroom_edits_per_person;
+    raise exception 'anon was able to read bathroom_edits_per_person';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    perform public.bathrooms_recompute_closed('rls-test-edit-seed');
+    raise exception 'anon was able to call bathrooms_recompute_closed()';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    perform public.is_admin();
+    raise exception 'anon was able to call is_admin()';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+
+-- Phone 1 (signed out) corrects the name and hours; phone 2 can't undo it, and sees it as not theirs.
+do $$
+declare r jsonb;
+begin
+  r := public.edit_bathroom('rls-test-edit-seed', 'd1000000-0000-0000-0000-000000000001',
+    '{"name":"  Better name ","hours":{"kind":"weekly","days":[[],[[540,1020]],[[540,1020]],[[540,1020]],[[540,1020]],[[540,1020]],null]},"access":"public"}');
+  assert r->'bathroom'->>'name' = 'Better name', 'an edit should go live right away, trimmed';
+  assert r->'bathroom'->'userFields' = '["hours","name"]', 'corrected fields should be marked (unchanged access dropped)';
+  assert (select count(*) from public.bathroom_history('rls-test-edit-seed', 'd1000000-0000-0000-0000-000000000001') h where h.mine and h.can_undo) = 1,
+    'phone 1 should see its edit as its own, undoable';
+  assert (select count(*) from public.bathroom_history('rls-test-edit-seed', 'd2000000-0000-0000-0000-000000000002') h where h.mine or h.can_undo) = 0,
+    'phone 2 should not be able to undo phone 1''s edit';
+  assert (select h.changes ? 'access' from public.bathroom_history('rls-test-edit-seed') h) = false, 'unchanged values should not be recorded';
+  begin
+    perform public.undo_bathroom_edit((r->>'editId')::uuid, 'd2000000-0000-0000-0000-000000000002');
+    raise exception 'phone 2 was able to undo phone 1''s edit';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    perform public.edit_bathroom('rls-test-edit-seed', 'd1000000-0000-0000-0000-000000000001', '{"hours":{"kind":"weekly","days":[]}}');
+    raise exception 'malformed hours were accepted';
+  exception when check_violation then null;
+  end;
+  begin
+    perform public.edit_bathroom('rls-test-edit-seed', 'd1000000-0000-0000-0000-000000000001', '{"lat":41}');
+    raise exception 'a field other than name, hours, access, open was accepted';
+  exception when check_violation then null;
+  end;
+  begin
+    perform public.edit_bathroom('rls-test-edit-seed', 'd1000000-0000-0000-0000-000000000001', '{"name":"Better name"}');
+    raise exception 'an edit that changes nothing was accepted';
+  exception when check_violation then null;
+  end;
+  begin
+    perform public.edit_bathroom('rls-test-edit-seed', 'd1000000-0000-0000-0000-000000000001', '{"open":true}');
+    raise exception '"it''s open again" was accepted on a restroom not shown closed';
+  exception when check_violation then null;
+  end;
+  begin
+    perform public.edit_bathroom('rls-test-edit-seed', null, '{"name":"No phone"}');
+    raise exception 'an edit without a device id was accepted';
+  exception when check_violation then null;
+  end;
+  begin
+    perform public.edit_bathroom('rls-test-edit-private', 'd1000000-0000-0000-0000-000000000001', '{"name":"Hijacked"}');
+    raise exception 'anon was able to edit someone''s Private bathroom';
+  exception when no_data_found then null;
+  end;
+  begin
+    perform public.report_bathroom('rls-test-edit-private', 'd1000000-0000-0000-0000-000000000001', 'report_closed');
+    raise exception 'anon was able to report someone''s Private bathroom';
+  exception when no_data_found then null;
+  end;
+  assert (select count(*) from public.bathroom_history('rls-test-edit-private')) = 0, 'Private bathrooms have no public history';
+end $$;
+
+-- The nightly sync keeps the corrected name and hours, and still updates the rest.
+reset role;
+set local request.jwt.claims = '{"role":"service_role"}';
+select public.sync_seed_bathrooms('[{"id":"rls-test-edit-seed","name":"City renamed","type":"Library","borough":"Brooklyn","lat":40.71,"lng":-73.9,"hours":null,"status":"Operational"}]', false);
+do $$ begin
+  assert (select name || '/' || (hours->>'kind') || '/' || venue_type || '/' || lat from public.bathrooms where id = 'rls-test-edit-seed') = 'Better name/weekly/library/40.71',
+    'the sync should keep corrected fields and update the others';
+end $$;
+
+-- Closed after two different people report it; the same person twice counts once.
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
+do $$ begin
+  perform public.report_bathroom('rls-test-edit-seed', 'd1000000-0000-0000-0000-000000000001', 'report_closed');
+  perform public.report_bathroom('rls-test-edit-seed', 'd1000000-0000-0000-0000-000000000001', 'report_closed');
+  assert (select reported_closed_at from public.bathrooms where id = 'rls-test-edit-seed') is null, 'one person''s reports should not close it';
+  perform public.report_bathroom('rls-test-edit-seed', 'd2000000-0000-0000-0000-000000000002', 'confirm_open');
+  perform public.report_bathroom('rls-test-edit-seed', 'd2000000-0000-0000-0000-000000000002', 'report_closed');
+  assert (select reported_closed_at from public.bathrooms where id = 'rls-test-edit-seed') is not null, 'two people''s reports should close it';
+  begin
+    perform public.report_bathroom('rls-test-edit-seed', 'd1000000-0000-0000-0000-000000000001', 'closed');
+    raise exception 'an unknown report kind was accepted';
+  exception when check_violation then null;
+  end;
+end $$;
+
+-- Signed in as B: "it's open again" clears it (and isn't a city override here); undoing it closes it again.
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}';
+do $$
+declare r jsonb;
+begin
+  r := public.edit_bathroom('rls-test-edit-seed', 'db000000-0000-0000-0000-00000000000b', '{"open":true}');
+  assert r->'bathroom'->>'reportedClosedAt' is null, 'an "open again" edit should clear the reports';
+  assert not (r->'bathroom'->'userFields' ? 'open'), '"open" should only be marked against the city''s own closed status';
+  assert (select count(*) from public.bathroom_history('rls-test-edit-seed') h where h.mine and h.kind = 'edit') = 1,
+    'B should see their edit as theirs by account, whatever the phone';
+  perform public.undo_bathroom_edit((r->>'editId')::uuid, null);
+  assert (select reported_closed_at from public.bathrooms where id = 'rls-test-edit-seed') is not null, 'undoing "open again" should bring the reports back';
+  -- City closed: "open again" overrides the city status.
+  r := public.edit_bathroom('rls-test-edit-shut', 'db000000-0000-0000-0000-00000000000b', '{"open":true}');
+  assert r->'bathroom'->'userFields' = '["open"]', '"open" against the city''s closed status should be marked';
+  begin
+    perform public.edit_bathroom('rls-test-edit-shut', 'db000000-0000-0000-0000-00000000000b', '{"open":true}');
+    raise exception '"open again" was accepted twice';
+  exception when check_violation then null;
+  end;
+end $$;
+
+-- Undo: a later edit to the same field blocks undoing an earlier one, until it's undone itself.
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
+do $$
+declare first_edit uuid; second jsonb;
+begin
+  select h.id into first_edit from public.bathroom_history('rls-test-edit-seed', 'd1000000-0000-0000-0000-000000000001') h where h.mine and h.kind = 'edit';
+  second := public.edit_bathroom('rls-test-edit-seed', 'd2000000-0000-0000-0000-000000000002', '{"name":"Third name"}');
+  begin
+    perform public.undo_bathroom_edit(first_edit, 'd1000000-0000-0000-0000-000000000001');
+    raise exception 'an edit was undone over a later edit to the same field';
+  exception when object_not_in_prerequisite_state then null;
+  end;
+  perform public.undo_bathroom_edit((second->>'editId')::uuid, 'd2000000-0000-0000-0000-000000000002');
+  assert (select name from public.bathrooms where id = 'rls-test-edit-seed') = 'Better name', 'undo should restore the name before';
+  perform public.undo_bathroom_edit(first_edit, 'd1000000-0000-0000-0000-000000000001');
+  assert (select name || '/' || coalesce(hours->>'kind', 'none') || '/' || cardinality(user_fields) from public.bathrooms where id = 'rls-test-edit-seed') = 'City renamed/none/0',
+    'undoing the first edit should go back to what the city says now, and unmark the fields';
+  begin
+    perform public.undo_bathroom_edit(first_edit, 'd1000000-0000-0000-0000-000000000001');
+    raise exception 'an edit was undone twice';
+  exception when no_data_found then null;
+  end;
+  -- Phone 2 takes back its closed report: one person left, so it's no longer closed.
+  perform public.undo_bathroom_edit(h.id, 'd2000000-0000-0000-0000-000000000002')
+    from public.bathroom_history('rls-test-edit-seed', 'd2000000-0000-0000-0000-000000000002') h where h.mine and h.kind = 'report_closed';
+  assert (select reported_closed_at from public.bathrooms where id = 'rls-test-edit-seed') is null, 'undoing a report should reopen it';
+end $$;
+
+-- An admin can undo anyone's edit.
+reset role;
+update public.profiles set role = 'admin' where id = '11111111-1111-1111-1111-111111111111';
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
+select public.edit_bathroom('rls-test-edit-seed', 'd2000000-0000-0000-0000-000000000002', '{"access":"customers_only"}');
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+do $$ begin
+  assert (select count(*) from public.bathroom_history('rls-test-edit-seed') h where h.can_undo and not h.mine) >= 1, 'an admin should be able to undo others'' edits';
+  perform public.undo_bathroom_edit(h.id, null) from public.bathroom_history('rls-test-edit-seed') h where h.kind = 'edit' and h.can_undo and h.changes ? 'access';
+  assert (select access from public.bathrooms where id = 'rls-test-edit-seed') = 'public', 'the admin''s undo should restore access';
+end $$;
+
+-- 60 changes an hour per person, then no more.
+reset role;
+insert into public.bathroom_edits (bathroom_id, kind, device_id)
+  select 'rls-test-edit-seed', 'confirm_open', 'd3000000-0000-0000-0000-000000000003' from generate_series(1, 60);
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
+do $$ begin
+  begin
+    perform public.report_bathroom('rls-test-edit-seed', 'd3000000-0000-0000-0000-000000000003', 'confirm_open');
+    raise exception 'the hourly limit did not stop phone 3';
+  exception when program_limit_exceeded then null;
+  end;
+end $$;
+
+-- Counted per person (service role).
+reset role;
+do $$ begin
+  assert (select edits || '/' || reported_closed || '/' || confirmations from public.bathroom_edits_per_person where person = 'phone d1000000') = '1/2/0',
+    'edits per person should count phone 1';
+  assert (select signed_in from public.bathroom_edits_per_person where person = '22222222-2222-2222-2222-222222222222'), 'B should count as signed in';
 end $$;
 
 -- ---------- deleting an account ----------

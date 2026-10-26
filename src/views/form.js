@@ -5,7 +5,8 @@ import { getPlace, savePlace, deletePlace, requestPersistence } from '../lib/sto
 import { getPosition, locationPermission, searchAddress, reverseGeocode, resultMeta } from '../lib/geo.js';
 import { logLocation } from '../lib/location-log.js';
 import { currentPlatformLabel } from '../lib/device.js';
-import { emptyHoursForm, formFromHours, hoursFromForm, DAY_SHORT, DISPLAY_ORDER } from '../lib/hours-form.js';
+import { emptyHoursForm, formFromHours, hoursFromForm } from '../lib/hours-form.js';
+import { hoursFieldsHtml, hoursClick, hoursInput } from './hours-fields.js';
 import { esc } from '../lib/html.js';
 import { currentUser } from '../lib/auth.js';
 
@@ -188,38 +189,7 @@ function renderSuggestions() {
 
 // ---------- Hours ----------
 
-function hoursHtml() {
-  const h = draft.hoursForm;
-  const mode = (value, text) =>
-    `<button type="button" class="seg ${h.mode === value ? 'on' : ''}" aria-pressed="${h.mode === value}" data-hours-mode="${value}">${text}</button>`;
-  let detail = '';
-  if (h.mode === 'set') {
-    const times = h.same
-      ? `<div class="times">
-           <label class="time"><span>Opens</span><input type="time" class="input" data-hours="open" value="${esc(h.open)}"></label>
-           <label class="time"><span>Closes</span><input type="time" class="input" data-hours="close" value="${esc(h.close)}"></label>
-         </div>`
-      : `<div class="days">${DISPLAY_ORDER.map((i) => {
-          const d = h.days[i];
-          return `<div class="day-row">
-              <div class="day-head">
-                <span class="day">${DAY_SHORT[i]}</span>
-                <label class="closed-toggle"><input type="checkbox" data-day-closed="${i}" ${d.closed ? 'checked' : ''}>Closed</label>
-              </div>
-              ${d.closed ? '' : `<input type="time" class="input" aria-label="${DAY_SHORT[i]} opens" data-day-open="${i}" value="${esc(d.open)}">
-              <input type="time" class="input" aria-label="${DAY_SHORT[i]} closes" data-day-close="${i}" value="${esc(d.close)}">`}
-            </div>`;
-        }).join('')}</div>`;
-    detail = `
-      <label class="switch-row"><span>Same hours every day</span><input type="checkbox" class="switch" data-hours-same ${h.same ? 'checked' : ''}></label>
-      ${times}
-      <p class="hint">Closes after midnight? Enter the closing time, e.g. 1:00 AM.</p>`;
-  }
-  return `
-    <div class="field-row"><h2>Hours</h2><span class="hint">Shows Open / Closed in lists</span></div>
-    <div class="segmented">${mode('unknown', "Don't know")}${mode('always', '24 hours')}${mode('set', 'Set hours')}</div>
-    ${detail}`;
-}
+const hoursHtml = () => hoursFieldsHtml(draft.hoursForm);
 
 const refreshHours = () => (root.querySelector('#hours-group').innerHTML = hoursHtml());
 
@@ -306,8 +276,7 @@ export function handleFormClick(target) {
     refreshAccess();
     return true;
   }
-  if (target.dataset.hoursMode) {
-    draft.hoursForm.mode = target.dataset.hoursMode;
+  if (hoursClick(draft.hoursForm, target)) {
     refreshHours();
     return true;
   }
@@ -349,21 +318,13 @@ export function handleFormClick(target) {
 export function handleFormInput(e) {
   if (!draft) return false;
   const t = e.target;
-  const h = draft.hoursForm;
   if (t.id === 'name') draft.name = t.value;
   else if (t.id === 'notes') draft.notes = t.value;
   else if (t.id === 'address') onAddressInput(t.value);
-  else if (t.dataset.hours) h[t.dataset.hours] = t.value;
-  else if (t.dataset.dayOpen) h.days[t.dataset.dayOpen].open = t.value;
-  else if (t.dataset.dayClose) h.days[t.dataset.dayClose].close = t.value;
-  else if (t.dataset.hoursSame !== undefined) {
-    h.same = t.checked;
-    // Carry "every day" times into each day (or back) so switching doesn't lose them.
-    if (!h.same && h.open && h.close) h.days = h.days.map(() => ({ closed: false, open: h.open, close: h.close }));
-    refreshHours();
-  } else if (t.dataset.dayClosed) {
-    h.days[t.dataset.dayClosed].closed = t.checked;
-    refreshHours();
-  } else return false;
+  else {
+    const changed = hoursInput(draft.hoursForm, t);
+    if (!changed) return false;
+    if (changed === 'repaint') refreshHours();
+  }
   return true;
 }

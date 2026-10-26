@@ -1,7 +1,7 @@
 // App shell: state, hash routing (so the phone's back button works), location, events.
 //
 // Routes: #/nearby (default), #/places, #/welcome, #/r/<restroom id>, #/mine/<place id>,
-//         #/add, #/edit/<place id>, #/log/<restroom id>
+//         #/add, #/edit/<place id>, #/log/<restroom id>, #/fix/<restroom id> (Suggest an edit)
 
 import { listPlaces, getPlace, privatePlaces, makePublic, exportPlaces, importPlaces, clearLocal } from './lib/storage.js';
 import { currentUser, sendCode, verifyCode, signOut, deleteAccount } from './lib/auth.js';
@@ -22,6 +22,8 @@ import { signInSheet, accountSheet, shareSheet } from './views/account.js';
 import { logVisit, getVisit, rateVisit, cleanRatings, dismissNudge, clearVisits, DIMENSIONS } from './lib/visits.js';
 import { refreshStats } from './lib/stats.js';
 import { rateSheetBody } from './views/ratings.js';
+import { openFix, closeFix, isFixOpen, handleFixClick, handleFixInput } from './views/fix.js';
+import { reportBathroom, editBathroom, undoEdit, bathroomHistory, applyResult, canReopen } from './lib/corrections.js';
 
 const app = document.getElementById('app');
 
@@ -65,6 +67,8 @@ const state = {
   filters: { kind: 'all', type: '', hideClosed: true, openNow: false, accessible: false, changing: false },
   sheet: null, // 'homescreen' | 'backup' | 'signin' | 'account' | 'share' | 'rate'
   rateDraft: null, // the quick rating being filled in (see rateSheetBody)
+  history: {}, // restroom id → its latest changes (bathroom_history), 'loading' or 'error'
+  fixFocus: null, // 'hours' when "Hours right? No" opens Suggest an edit
   afterSignIn: null, // where to go once signed in (e.g. #/add)
   shareChoices: {}, // "Share your places?": place id → 'public' (default Private)
   shareAnswered: false, // this session, so the prompt doesn't come back before the account hears
@@ -143,6 +147,7 @@ function render() {
   const { name, id } = parseRoute();
   const formRoutes = { add: 'add', edit: `edit:${id}`, log: `log:${id}` };
   if (!formRoutes[name]) closeForm();
+  if (name !== 'fix') closeFix();
 
   switch (name) {
     case 'welcome':
@@ -158,7 +163,28 @@ function render() {
       if (place?.own) return location.replace(`#/mine/${encodeURIComponent(id)}`); // your own: your latest copy
       const b = findBathroom(id);
       if (!b) return paint('<main class="list"><p class="error">That restroom is no longer in the city data.</p></main>', 'nearby');
+      if (state.history[id] === undefined) loadHistory(id);
       return paint(publicDetailView(state, b, place, distanceTo(b)), null);
+    }
+
+    case 'fix': {
+      if (!state.data) return loading();
+      const b = findBathroom(id);
+      if (!b) return location.replace('#/nearby');
+      if (isFixOpen(id)) return; // already showing; don't wipe what's being typed
+      const focus = state.fixFocus;
+      state.fixFocus = null;
+      paintedHash = location.hash;
+      app.classList.remove('has-tabbar');
+      window.scrollTo(0, 0);
+      return openFix(app, b, {
+        focus,
+        done: (result) => {
+          delete state.history[id];
+          if (result) toast('Thanks! Changed for everyone. You can undo it on its page.');
+          goBack(`#/r/${encodeURIComponent(id)}`);
+        },
+      });
     }
 
     case 'mine': {
@@ -270,7 +296,7 @@ function stepSelection(delta) {
 // Re-render only screens that show location-dependent content, never an open form.
 function refresh() {
   const { name } = parseRoute();
-  if (!['add', 'edit', 'log', 'welcome'].includes(name)) render();
+  if (!['add', 'edit', 'log', 'fix', 'welcome'].includes(name)) render();
 }
 
 // ---------- Sheets ----------
@@ -300,6 +326,7 @@ function toast(text) {
 // ---------- Visits and ratings ----------
 
 // "I went here": logs the visit at once (even if the rating is skipped), then offers the rating.
+// On a shared bathroom it also asks "Was it open?" and "Hours right?" (corrections.js).
 function wentHere(id) {
   let visit;
   try {
@@ -307,13 +334,14 @@ function wentHere(id) {
   } catch {
     return toast("Couldn't save on this phone. Check that your browser allows site data.");
   }
-  openRate(visit);
+  const b = findBathroom(id);
+  openRate(visit, b ? { bathroomId: id, hoursKnown: Boolean(b.hours), open: null, hours: null } : null);
 }
 
-function openRate(visit) {
+function openRate(visit, confirm = null) {
   const { id, name, bathroomId, chips = [], ...rest } = visit;
   const values = Object.fromEntries(['clean', 'getIn', 'vibes', 'smell', 'trash', 'lighting', 'stallCount'].filter((k) => rest[k] !== undefined).map((k) => [k, rest[k]]));
-  state.rateDraft = { visitId: id, name: findName(bathroomId) ?? name, chips: [...chips], ...values };
+  state.rateDraft = { visitId: id, name: findName(bathroomId) ?? name, chips: [...chips], ...values, confirm };
   state.sheet = 'rate';
   render();
 }
@@ -355,8 +383,41 @@ function rateClick(action, target) {
   repaintSheet();
 }
 
+// "Was it open?" / "Hours right?" in the rating sheet: sent at once, once. "Yes, it was open" on a
+// restroom shown closed is an edit ("It's open again"), the only thing that clears closed reports.
+async function confirmClick(action, value) {
+  const c = state.rateDraft?.confirm;
+  if (!c) return;
+  const field = action === 'confirm-open' ? 'open' : 'hours';
+  if (c[field]) return;
+  c[field] = value;
+  c.error = '';
+  repaintSheet();
+  if (field === 'hours' && value === 'no') return; // the hours form opens once the sheet closes
+  const b = findBathroom(c.bathroomId);
+  try {
+    let result;
+    if (field === 'hours') result = await reportBathroom(c.bathroomId, 'confirm_hours');
+    else if (value === 'no') result = await reportBathroom(c.bathroomId, 'report_closed');
+    else if (b && canReopen(b)) {
+      result = await editBathroom(c.bathroomId, { open: true });
+      c.reopened = true;
+    } else result = await reportBathroom(c.bathroomId, 'confirm_open');
+    applyResult(b, result);
+    delete state.history[c.bathroomId];
+  } catch (err) {
+    c[field] = null;
+    c.error = err.message || "Couldn't send that. Try again.";
+  }
+  if (state.rateDraft?.confirm === c) repaintSheet();
+}
+
 function finishRating(save) {
   const d = state.rateDraft;
+  if (d?.confirm?.hours === 'no') {
+    state.fixFocus = 'hours';
+    setTimeout(() => (location.hash = `#/fix/${encodeURIComponent(d.confirm.bathroomId)}`));
+  }
   state.rateDraft = null;
   state.sheet = null;
   let rated = false;
@@ -373,6 +434,47 @@ function finishRating(save) {
   }
   toast(rated ? 'Thanks! Your rating helps the next person.' : "Visit logged. You can rate it later from Nearby.");
   render();
+}
+
+// ---------- Confirm and correct (Report closed, It's open again, Undo) ----------
+
+function loadHistory(id) {
+  state.history[id] = 'loading';
+  bathroomHistory(id)
+    .then((rows) => (state.history[id] = rows))
+    .catch(() => (state.history[id] = 'error'))
+    .finally(() => {
+      const route = parseRoute();
+      if (route.name === 'r' && route.id === id && !state.sheet) render();
+    });
+}
+
+async function correct(id, send, thanks) {
+  const b = findBathroom(id);
+  if (!b) return;
+  try {
+    applyResult(b, await send());
+    toast(thanks(b));
+  } catch (err) {
+    toast(err.message || "Couldn't send that. Try again.");
+  }
+  delete state.history[id];
+  refresh();
+}
+
+function reportClosed(id) {
+  if (!confirm(`Report "${findName(id)}" closed? It shows closed for everyone once two people report it.`)) return;
+  correct(id, () => reportBathroom(id, 'report_closed'), (b) =>
+    b.reportedClosedAt ? 'Thanks. It now shows closed for everyone.' : 'Thanks. It shows closed once one more person reports it.',
+  );
+}
+
+const reopen = (id) => correct(id, () => editBathroom(id, { open: true }), () => 'Thanks! It shows open again for everyone.');
+
+// Undo one of your changes (or anyone's, for an admin) on the restroom page you're on.
+function undoChange(editId) {
+  const { id } = parseRoute();
+  correct(id, () => undoEdit(editId), () => 'Undone.');
 }
 
 // ---------- Sign-in and account ----------
@@ -628,6 +730,7 @@ app.addEventListener('click', (e) => {
   const target = e.target.closest('button, [data-action="close-sheet"]');
   if (!target) return;
   if (handleFormClick(target)) return;
+  if (handleFixClick(target)) return;
 
   const { action, value } = target.dataset;
   switch (action) {
@@ -651,6 +754,15 @@ app.addEventListener('click', (e) => {
       return finishRating(true);
     case 'rate-later':
       return finishRating(false);
+    case 'confirm-open':
+    case 'confirm-hours':
+      return confirmClick(action, value);
+    case 'report-closed':
+      return reportClosed(value);
+    case 'reopen':
+      return reopen(value);
+    case 'undo-edit':
+      return undoChange(value);
     case 'signin-then':
       return askSignIn(value);
     case 'open-backup':
@@ -750,6 +862,7 @@ document.addEventListener('keydown', (e) => {
 
 app.addEventListener('input', (e) => {
   if (handleFormInput(e)) return;
+  if (handleFixInput(e)) return;
   if (e.target.id === 'signin-email') return void (state.signin.email = e.target.value);
   if (e.target.id === 'signin-code') return void (state.signin.code = e.target.value);
   if (e.target.id === 'rate-stall-count' && state.rateDraft) {
@@ -781,7 +894,7 @@ startSync((changed) => {
     updateStats();
   }
   const { name } = parseRoute();
-  if (['add', 'edit', 'log', 'welcome'].includes(name)) return;
+  if (['add', 'edit', 'log', 'fix', 'welcome'].includes(name)) return;
   // Never under an open rating sheet: it would lose the stars being picked.
   if ((changed || name === 'places' || state.sheet === 'account') && state.sheet !== 'rate') render();
   maybePromptShare();

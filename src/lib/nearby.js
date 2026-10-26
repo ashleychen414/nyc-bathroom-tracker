@@ -11,9 +11,20 @@ export const MIN_RESULTS = 5;
 export const placeStatus = (place, now = new Date()) =>
   getStatus({ status: 'Operational', season: null, hours: place.hours ?? null }, now);
 
+// Two people reporting it closed shows it closed, until someone edits it open again.
+// A city restroom follows the city's status and season, except where a user corrected it: "it's
+// open again" overrides the city's closed status, and user-entered hours count as source hours,
+// so they also skip the Seasonal rule (Ashley, 2026-10-26).
 // A bathroom someone added has no city status: its hours decide, unless we marked it closed.
 export const bathroomStatus = (b, now = new Date()) => {
-  if (b.source !== 'user') return getStatus(b, now);
+  if (b.reportedClosedAt) return { state: 'closed', label: 'Reported closed' };
+  if (b.source !== 'user') {
+    const fields = b.userFields ?? [];
+    if (!fields.length) return getStatus(b, now);
+    const open = fields.includes('open');
+    const season = open || (fields.includes('hours') && b.season === 'Seasonal') ? null : b.season;
+    return getStatus({ ...b, status: open ? 'Operational' : b.status, season }, now);
+  }
   if (b.recordStatus === 'closed') return { state: 'closed', label: 'Closed' };
   return placeStatus(b, now);
 };
