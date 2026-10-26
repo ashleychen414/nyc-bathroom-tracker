@@ -140,7 +140,7 @@ function chipsHtml(d, draft) {
     .filter((c) => c.field && draft.chips.includes(c.key))
     .map((c) => (c.type === 'count' ? countField(c, draft[c.field]) : miniScale(c, draft[c.field])))
     .join('');
-  const code = d.key === 'getIn' && draft.chips.includes('code') ? '<p class="hint">Keep the code itself in your private notes.</p>' : '';
+  const code = d.key === 'getIn' && draft.chips.includes('code') ? '<p class="hint">Know the code? Add it on the restroom\'s page so the next person gets in fast. Everyone sees it.</p>' : '';
   return `<p class="hint">What was the problem?</p><div class="reason-chips">${chips}</div>${extras}${code}`;
 }
 

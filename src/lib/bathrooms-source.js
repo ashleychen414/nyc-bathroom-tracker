@@ -5,8 +5,8 @@
 
 import { SUPABASE_URL, SUPABASE_KEY } from './supabase-config.js';
 
-const CACHE_KEY = 'nbt.bathrooms.v3'; // v3: corrected fields and closed reports (Tier 1)
-const OLD_CACHE_KEYS = ['nbt.bathrooms', 'nbt.bathrooms.v2'];
+const CACHE_KEY = 'nbt.bathrooms.v4'; // v4: public door codes
+const OLD_CACHE_KEYS = ['nbt.bathrooms', 'nbt.bathrooms.v2', 'nbt.bathrooms.v3'];
 const SOURCE_ID = 'nyc-open-data';
 const FILE = 'public/data/bathrooms.json';
 export const PAGE = 1000; // Supabase returns at most 1,000 rows per request
@@ -15,11 +15,13 @@ export const PAGE = 1000; // Supabase returns at most 1,000 rows per request
 const CITY_FIELDS = ['type', 'operator', 'status', 'season', 'hoursText', 'accessibility', 'restroomType', 'changingStations', 'notes', 'website'];
 // source: 'seed' (city) or 'user' (added by someone in NYC Poops and made Public); access:
 // 'public' | 'customers_only' | 'unknown'; recordStatus: our verification status (closed shows closed);
-// userFields: fields a user corrected (corrections.js); reportedClosedAt: set once two people reported it closed.
+// userFields: fields a user corrected (corrections.js); reportedClosedAt: set once two people reported it closed;
+// code: the public door code, codeConfirmedAt: when it was last added or confirmed.
 // Visitors only ever get Public bathrooms here: Private ones come with your own places (sync.js).
 export const BATHROOM_SELECT = [
   'id', 'name', 'borough', 'lat', 'lng', 'hours', 'hoursReviewed:hours_reviewed',
   'source', 'access', 'address', 'recordStatus:status', 'userFields:user_fields', 'reportedClosedAt:reported_closed_at',
+  'code', 'codeConfirmedAt:code_confirmed_at',
   ...CITY_FIELDS.map((f) => `${f}:source_data->>${f}`),
 ].join(',');
 

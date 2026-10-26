@@ -1,10 +1,13 @@
 // Facts on cards ("Fully accessible", "3 single bathrooms") and the "What to expect" answers on a
 // restroom's page (lib/facts.js). Each fact shows the majority answer and how many said so; a tap
 // gives your own answer, and tapping it again takes it back ("Not sure").
+// The door code itself is public (Ashley, 2026-10-27): it replaces "Code needed" on cards, and its
+// own section on the page asks "Know the code?" when one is needed but nobody added it yet.
 
 import { esc } from '../lib/html.js';
 import { FACTS, COUNTED, factsFor, factLabel, myFactAnswer } from '../lib/facts.js';
 import { FACTS as STAT_FACTS } from '../lib/stats.js';
+import { codeText } from '../lib/corrections.js';
 
 // Before anyone answers "Code or key", a "Code needed" from visit ratings (the code chip) stands in.
 function withStats(facts, stat) {
@@ -12,12 +15,17 @@ function withStats(facts, stat) {
   return facts;
 }
 
+// Is a code needed, by the answers (or visit ratings)? A known code shows whatever they say.
+export const codeNeeded = (b, stat) => withStats(factsFor(b), stat).code?.value === 'yes';
+
 // Card chips. Negative answers ("No changing table") stay off cards; they show on the page.
+// A known code replaces "Code needed": "Code: 4321 · confirmed Oct 27".
 export function factTags(b, stat) {
   const facts = withStats(factsFor(b), stat);
-  const tags = FACTS.map(({ key }) => facts[key])
+  const tags = FACTS.map(({ key }) => (key === 'code' && b.code ? null : facts[key]))
     .map((f, i) => (f && !['none', 'no'].includes(f.value) ? factLabel(FACTS[i].key, f) : null))
     .filter(Boolean);
+  if (b.code) tags.unshift(codeText(b));
   // Not one of the facts yet, but the city says so.
   if (/All Gender/.test(b.restroomType ?? '')) tags.push('All gender');
   return tags.length ? `<div class="tags">${tags.map((t) => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : '';
@@ -61,4 +69,33 @@ export function factsSection(b, stat, busy = null) {
       </div>`;
   });
   return rows.join('');
+}
+
+// The door code near the top of a restroom's page: the code with "Still works" and "Edit", or,
+// when a code is needed and nobody added it, "Know the code?". Nothing otherwise (Suggest an edit
+// still has the field).
+export function codeSection(b, stat) {
+  const id = esc(b.id);
+  if (b.code) {
+    return `<section class="group code-card" id="door-code">
+        <p class="code-line">${esc(codeText(b))}</p>
+        <p class="hint">Public: everyone sees it. Codes change, so say if it still works.</p>
+        <div class="actions">
+          <button class="btn outline small" data-action="confirm-code" data-value="${id}">Still works</button>
+          <button class="btn outline small" data-action="edit-code" data-value="${id}">Edit code</button>
+        </div>
+      </section>`;
+  }
+  if (!codeNeeded(b, stat)) return '';
+  return `<section class="group code-card" id="door-code">
+      <p class="code-line">Code needed</p>
+      <button class="btn outline small" data-action="edit-code" data-value="${id}">Know the code?</button>
+    </section>`;
+}
+
+// One line for the card over the map: the code, or "Code needed" with "Know the code?".
+export function codeMapLine(b, stat) {
+  if (b.code) return `<p class="code-line small">${esc(codeText(b))}</p>`;
+  if (!codeNeeded(b, stat)) return '';
+  return `<div class="code-ask"><span class="code-line small">Code needed</span><button class="btn ghost small" data-action="edit-code" data-value="${esc(b.id)}">Know the code?</button></div>`;
 }

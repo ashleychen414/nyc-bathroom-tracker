@@ -592,3 +592,10 @@ body.sheet-open { overflow: hidden; }
 .fact:first-of-type { border-top: 0; padding-top: 0; }
 .fact .count-row { display: flex; align-items: center; gap: 8px; }
 .fact .input.count { width: 56px; min-height: 36px; padding: 4px 6px; text-align: center; }
+
+/* ---------- Door code (public) ---------- */
+.code-card { gap: 8px; }
+.code-line { font-weight: 600; font-variant-numeric: tabular-nums; }
+.code-card .code-line { font-size: 18px; }
+.code-line.small { font-size: 14px; margin: 4px 0; }
+.code-ask { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }

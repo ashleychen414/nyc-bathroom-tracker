@@ -1,6 +1,6 @@
 // Checks what an anonymous visitor (no sign-in) can do against the live Supabase project.
 // Signed-in, cross-user checks live in supabase/tests/places_rls.sql (needs database access).
-// Covers places, profiles, the shared bathrooms table, lists, list_items, visits, bathroom_stats(), bathroom_edits and bathroom_fact_answers (and their functions), data_sources and location_events.
+// Covers places, profiles, the shared bathrooms table, lists, list_items, visits, bathroom_stats(), bathroom_edits, bathroom_fact_answers and door codes (and their functions), data_sources and location_events.
 // Run: npm run test:rls
 
 import assert from 'node:assert/strict';
@@ -125,6 +125,22 @@ const checks = [
     for (const row of r.body) assert.deepEqual(Object.keys(row).sort(), ['bathroom_id', 'count', 'fact', 'last_at', 'people', 'value']);
     const answer = await call('/rest/v1/rpc/answer_fact', { method: 'POST', body: { p_bathroom_id: 'rls-check-none', p_device_id: '00000000-0000-0000-0000-000000000000', p_fact: 'code', p_value: 'yes' } });
     assert.ok(answer.status >= 400, `answer for a missing bathroom: got ${answer.status}`);
+  }],
+  ['door codes: anyone reads them, writes only through edit_bathroom()', async () => {
+    const r = await call('/rest/v1/bathrooms?select=id,code,code_confirmed_at&source=eq.seed&limit=1');
+    assert.equal(r.status, 200);
+    assert.deepEqual(Object.keys(r.body[0]).sort(), ['code', 'code_confirmed_at', 'id']);
+    // A direct write is refused (or touches nothing: no rows match for anonymous visitors).
+    const patch = await call(`/rest/v1/bathrooms?id=eq.${encodeURIComponent(r.body[0].id)}`, { method: 'PATCH', body: { code: 'rls-check' }, headers: { Prefer: 'return=representation' } });
+    if (patch.status === 200) assert.deepEqual(patch.body, []);
+    else blocked(patch);
+    const device = '00000000-0000-0000-0000-000000000000';
+    const edit = await call('/rest/v1/rpc/edit_bathroom', { method: 'POST', body: { p_bathroom_id: 'rls-check-none', p_device_id: device, p_changes: { code: '1234' } } });
+    assert.ok(edit.status >= 400, `code for a missing bathroom: got ${edit.status}`);
+    const confirm = await call('/rest/v1/rpc/report_bathroom', { method: 'POST', body: { p_bathroom_id: 'rls-check-none', p_device_id: device, p_kind: 'confirm_code' } });
+    assert.ok(confirm.status >= 400, `confirm for a missing bathroom: got ${confirm.status}`);
+    const recompute = await call('/rest/v1/rpc/bathrooms_recompute_code', { method: 'POST', body: { p_bathroom_id: 'rls-check-none' } });
+    assert.ok([401, 403, 404].includes(recompute.status), `bathrooms_recompute_code: expected 401/403/404, got ${recompute.status}`);
   }],
   ['anonymous visitors cannot run the bathrooms sync', async () => {
     const r = await call('/rest/v1/rpc/sync_seed_bathrooms', { method: 'POST', body: { rows: [], mark_missing: false } });
