@@ -123,4 +123,4 @@ Photos (E12), public tips (E6), filter by type (E0), hours source line (E0), map
 3. ~~What "private bathroom" means~~ **Decided 2026-10-24: two separate fields, access ("Available to Public" / "Customer Only") and visibility (Public / Private).** See `DECISIONS.md`.
 4. ~~Starting rating dimensions~~ **Decided 2026-10-24: Clean, Getting in, Vibes (1–5), with reason tags; one-tap "I went here" first.** See `DECISIONS.md`.
 5. ~~Analytics approach~~ **Decided: database counts only.**
-6. **Milestone order:** A → B → C, or B first.
+6. ~~Milestone order~~ **Closed 2026-10-26: built A → B.** Milestone A shipped; Milestone B's E1, E2 and E3 shipped by 2026-10-26 (E5 on hold).
