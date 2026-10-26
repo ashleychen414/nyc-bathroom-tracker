@@ -197,3 +197,8 @@ Designed around two users: the person who needs a bathroom now (Is it open? Can 
 - **No limit on visits.** People will mostly log one visit per bathroom, but the app doesn't restrict it (no one-per-day rule). "N people" still counts different people.
 - **Adding a place doesn't open the rating.** People rate through "I went here". (The prototype opened it because adding a place often means you were just there; but people also add places they haven't visited yet.)
 - **No minimum number of people before showing details, for now.** Visit count, last visit, averages and facts show from the first visit. This replaces "shown only once 3 different people have visited" (2026-10-24). The threshold stays a single setting, so it can be raised later. Trade-off accepted: with one visitor, the count, date and ratings are that one person's.
+
+## 2026-10-26: Map searches where you drag it (user feedback)
+
+- **The map searches the new area on its own, no "Search this area" button.** Someone who needs a restroom urgently shouldn't need an extra tap. Only moves made by hand count, and only once the map center is half the radius or more from the last search, so zooming in place or a small nudge keeps the current results and selected card.
+- **Distances on the card stay measured from you,** not from the map center: the map decides which restrooms show and their order, but "how far is it" is always about the walk from where you are. "Back to me" returns to the search around you; a new location does the same. The list view always shows results around you.
