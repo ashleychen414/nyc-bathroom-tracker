@@ -239,3 +239,9 @@ Work that serves neither principle directly is deferred. The new order is in `do
 - **User hours also skip the Seasonal rule,** and "It's open again" on a city restroom overrides the city's own closed status. Both follow from "hours a user enters count as source hours".
 - **Undoing a correction to a city field restores what the city says now,** not the value from before the edit (the nightly sync may have changed it since).
 - **At most 60 changes per person per hour,** in the database.
+
+## 2026-10-27: Door codes are public (Ashley)
+
+- **A bathroom's door code is a public note, visible to everyone.** This replaces "Codes stay private" (2026-10-24) and "The code itself only ever goes in private notes" (2026-10-24, key-or-code). Why: a code is the one thing that gets someone in fast, which is the app's purpose.
+- **Private notes stay private.** Codes people already typed into their private notes are not published; they can add them as the public code themselves.
+- **How it should work (to confirm when building):** the code is a field on the bathroom, editable by anyone through "Suggest an edit" (#34), with its history, undo and the 60-changes-per-hour limit. It shows where "Code needed" shows, with when it was last added or confirmed, since codes change.

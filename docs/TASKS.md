@@ -18,6 +18,8 @@ Order set 2026-10-26 by two principles (see `DECISIONS.md` and `IMPROVEMENTS-SCO
 - [ ] **Facts** (smaller E5, off hold; next, its migration can start now that #34 is in): load the city's accessibility, restroom type and changing stations into `bathrooms`; add layout (one single / several singles → how many / one with stalls → how many, card chips like "3 single bathrooms"; existing logs convert), step-free, changing table and code needed, each confirmed with a tap.
 - [ ] **Ask for what's missing:** cards with gaps say so ("Hours unknown · Know them?", "Access unknown") and open the same fix form (Suggest an edit, `#/fix/<id>`, from #34).
 
+- [ ] **Public door codes** (Ashley, 2026-10-27; see DECISIONS.md): a public "Code" field on each bathroom, editable through Suggest an edit, shown with "Code needed" and when it was last added or confirmed. Change the copy that sends codes to private notes ("Only you see these. A good place for door codes", and "Keep the code itself in your private notes" on the rating sheet). Pairs with "Where inside?" (same kind of public text).
+
 ## Next, Tier 2: more bathrooms
 
 - [ ] **"Share your places?" prompt as a growth hook** (Ashley, 2026-10-24): beyond the one-time migration prompt, invite people to move Private places to Public. Decide when it shows and how often.
