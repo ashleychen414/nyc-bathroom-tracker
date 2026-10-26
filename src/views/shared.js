@@ -33,15 +33,6 @@ const RESTROOM_TYPES = {
 };
 export const restroomType = (raw) => RESTROOM_TYPES[raw] ?? raw;
 
-export function publicTags(b) {
-  const tags = [];
-  if (b.accessibility === 'Fully Accessible') tags.push('Fully accessible');
-  else if (b.accessibility === 'Partially Accessible') tags.push('Partially accessible');
-  if (b.restroomType) tags.push(restroomType(b.restroomType));
-  if (b.changingStations?.startsWith('Yes')) tags.push('Changing station');
-  return tags.length ? `<div class="tags">${tags.map((t) => `<span class="tag">${esc(t)}</span>`).join('')}</div>` : '';
-}
-
 export const backBar = (label) => `
   <header class="bar slim">
     <button class="btn ghost back" data-action="back">${icon.back()}${esc(label)}</button>

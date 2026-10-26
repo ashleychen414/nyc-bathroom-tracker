@@ -3,6 +3,10 @@
 
 import { esc } from '../lib/html.js';
 import { DIMENSIONS } from '../lib/visits.js';
+import { FACTS } from '../lib/stats.js';
+
+// "Code needed" shows with the other facts (views/facts.js), not here.
+const ratingFacts = (stat) => stat.facts.filter((f) => f !== FACTS.code);
 
 const RATING_WORDS = ['', 'Very bad', 'Bad', 'OK', 'Good', 'Very good'];
 
@@ -27,7 +31,7 @@ export function cardRatings(stat, mine) {
     const avg = stat.ratings[d.key];
     return `<span class="chip rate-${Math.round(avg)}" title="${d.label}: ${avg.toFixed(1)} of 5">${d.emoji} ${d.label} <b>${avg.toFixed(1)}</b></span>`;
   });
-  for (const f of stat.facts) chips.push(`<span class="chip fact">${esc(f)}</span>`);
+  for (const f of ratingFacts(stat)) chips.push(`<span class="chip fact">${esc(f)}</span>`);
   return `${chips.length ? `<div class="chips">${chips.join('')}</div>` : ''}<p class="trust">${esc(trustLine(stat))}</p>`;
 }
 
@@ -59,7 +63,7 @@ export function ratingsSection(stat, mine) {
   });
   return `<section class="group">
       <div class="kv-head"><h2 class="label">Ratings</h2><span class="muted small">${people(stat.people)}</span></div>
-      ${stat.facts.length ? `<div class="chips">${stat.facts.map((f) => `<span class="chip fact">${esc(f)}</span>`).join('')}</div>` : ''}
+      ${ratingFacts(stat).length ? `<div class="chips">${ratingFacts(stat).map((f) => `<span class="chip fact">${esc(f)}</span>`).join('')}</div>` : ''}
       ${rows.length ? rows.join('') : '<p class="muted">Visits logged, no ratings yet.</p>'}
       <p class="trust">${esc(trustLine(stat))}</p>
       ${you ? `<p class="trust">${esc(you)}</p>` : ''}
