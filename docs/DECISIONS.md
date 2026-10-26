@@ -245,3 +245,13 @@ Work that serves neither principle directly is deferred. The new order is in `do
 - **A bathroom's door code is a public note, visible to everyone.** This replaces "Codes stay private" (2026-10-24) and "The code itself only ever goes in private notes" (2026-10-24, key-or-code). Why: a code is the one thing that gets someone in fast, which is the app's purpose.
 - **Private notes stay private.** Codes people already typed into their private notes are not published; they can add them as the public code themselves.
 - **How it should work (to confirm when building):** the code is a field on the bathroom, editable by anyone through "Suggest an edit" (#34), with its history, undo and the 60-changes-per-hour limit. It shows where "Code needed" shows, with when it was last added or confirmed, since codes change.
+
+## 2026-10-26: Facts, as built (PR #39)
+
+- **Facts are decided by majority (Ashley).** Each person's latest answer counts once, and the city's value counts as one answer. A person can change their answer any time, or take it back ("Not sure").
+- **One Accessible fact (Ashley):** Fully / Partly / No. "Fully accessible" covers step-free, so there's no separate step-free fact.
+- **Old stall counts stay out of Layout for now (Ashley),** flagged in TASKS.md to revisit.
+- **A tie goes to the newest answer;** the city's counts as the oldest.
+- **Answers can't be undone.** They're votes, not edits: people change them instead. They still show in "Recent changes", count per person and share the 60-an-hour limit.
+- **City values map only where they're clear.** Multi-stall becomes "One room with stalls" and "Both…" becomes "Singles and stalls"; "Single-Stall All Gender Restroom(s)" doesn't say one or several, so it gives no Layout answer (the page still shows the city's restroom type, and cards keep an "All gender" tag).
+- **"Code needed" from visit ratings (the code chip) stands in until someone answers the Code fact,** then the answers decide. It no longer shows twice under Ratings.
