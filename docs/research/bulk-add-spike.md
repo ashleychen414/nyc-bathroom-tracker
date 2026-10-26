@@ -232,6 +232,25 @@ list instead of being imported.
 | App: "Unconfirmed" label, "Is there a restroom here?", hide after two "no" answers | S–M, overlaps Tier 1 confirm-and-correct |
 | **Total, Brooklyn** | **~4–5 days**; each further borough ~1 day (mostly curation) |
 
+## Update, 2026-10-26: first Brooklyn batch, in hand review
+
+Ashley chose department stores, hotels and **fast food** (new; not in the six categories above),
+plus Target, with no OpenStreetMap data. `bulk-add-spike/build_candidates.py` builds the list:
+
+| Group | Source | Rule | Candidates |
+|---|---|---|---|
+| Target | Target's store directory (ids), Foursquare addresses and pins | all 10 Brooklyn stores | 10 |
+| Department stores | Overture | Macy's, Kohl's, JCPenney, Burlington, Marshalls, T.J. Maxx, Nordstrom Rack, Century 21; confidence ≥ 0.7 | 25 |
+| Hotels | Overture | `basic_category = hotel`, confidence ≥ 0.9 | 121 |
+| Fast food and coffee | Overture | McDonald's, Burger King, Wendy's, Popeyes, KFC, Taco Bell, Chipotle, Shake Shack, Chick-fil-A, Panera, White Castle, Starbucks; confidence ≥ 0.7. Dunkin' and Subway left out (often counters with no restroom) | 311 |
+
+Only places Overture lists as open. Same chain within 75 m = one place. 48 are flagged for a
+closer look (hotel names that don't look like hotels, low confidence, within 60 m of a city
+restroom). Ashley reviews them in a private review page (Keep / Drop / Not sure, drop reason,
+"restroom for customers?", corrected name, note); unflagged chain rows can be kept in one step
+per category. The import itself waits for that review and for the database pieces under
+"How imports map to `bathrooms`".
+
 ## What I couldn't verify
 
 - **Whether customers can actually use the restroom** at any of these places. No source says, and
@@ -294,3 +313,4 @@ with subfolders `osm/`, `overture/`, `fsq/`, `nyc/`, and Python 3 with `duckdb` 
    - Hotels: `https://data.cityofnewyork.us/resource/tjus-cn27.json?$query=SELECT * WHERE borough="BROOKLYN" AND taxyear="2027" LIMIT 5000`, distinct `bin`
 6. **Overlap, duplicates and the hand-check sample:** `python match.py <repo>` and
    `python sample.py <repo>` (needs `public/data/bathrooms.json` from the repo).
+7. **Review candidates (first batch):** run `fsq-categories.sql` first, then `python build_candidates.py <repo> > candidates.json`.
