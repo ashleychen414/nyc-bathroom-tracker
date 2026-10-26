@@ -1,34 +1,29 @@
 // Pieces used by more than one screen.
 
 import { esc, icon } from '../lib/html.js';
+import { currentUser } from '../lib/auth.js';
 
-export const RATING_WORDS = ['', 'Very bad', 'Bad', 'OK', 'Good', 'Very good'];
+// Who can use it (access) and who can see it (visibility). Users only ever see two access labels;
+// 'unknown' shows no label on cards ("Access unknown" on the detail screen).
+export const ACCESS = { public: 'Available to Public', customers_only: 'Customer Only' };
 
-// Order follows the logging flow; trash cleanliness only applies if there are trash cans.
-export const LOG_FIELDS = [
-  { key: 'lighting', label: 'Lighting', emoji: '💡', type: 'rating' },
-  { key: 'cleanliness', label: 'Bathroom cleanliness', emoji: '🧼', type: 'rating' },
-  { key: 'smell', label: 'Smelly vibes', emoji: '🌸', type: 'rating' },
-  { key: 'hasStalls', label: 'Stalls', type: 'yesno' },
-  { key: 'stallCount', label: 'How many stalls?', type: 'count', showIf: (log) => log.hasStalls === true },
-  { key: 'hasTrash', label: 'Trash cans', type: 'yesno' },
-  { key: 'trashCleanliness', label: 'Trash cleanliness', emoji: '🗑️', type: 'rating', showIf: (log) => log.hasTrash !== false },
-];
+export const accessTag = (access) => (access === 'customers_only' ? '<span class="tag access">Customer Only</span>' : '');
 
-export function logChips(log = {}) {
-  const chips = LOG_FIELDS.flatMap((f) => {
-    const v = log[f.key];
-    if (v === undefined || f.type === 'count') return [];
-    if (f.type === 'rating') return [`<span class="chip rate-${v}" title="${f.label}: ${v} of 5">${f.emoji} <b>${v}</b></span>`];
-    if (f.key === 'hasStalls' && v && log.stallCount) {
-      return [`<span class="chip">${log.stallCount} stall${log.stallCount === 1 ? '' : 's'}</span>`];
-    }
-    return [`<span class="chip">${v ? f.label : `No ${f.label.toLowerCase()}`}</span>`];
-  });
-  return chips.length ? `<div class="chips">${chips.join('')}</div>` : '';
+// Signed out, a Public place waits on this phone until sign-in, so the label says so.
+export const visibilityTag = (visibility) =>
+  visibility !== 'public'
+    ? '<span class="tag vis-private">🔒 Private</span>'
+    : currentUser()
+      ? '<span class="tag vis-public">Public</span>'
+      : '<span class="tag vis-public">Public after sign-in</span>';
+
+// Labels for a card: Customer Only, and Public / Private on bathrooms you created.
+export function placeTags(bathroom, place) {
+  const tags = [accessTag(bathroom?.access ?? place?.access), place?.own ? visibilityTag(place.visibility) : ''].filter(Boolean);
+  return tags.length ? `<div class="tags">${tags.join('')}</div>` : '';
 }
 
-export const hasLog = (log = {}) => Object.keys(log).length > 0;
+export const notesLine = (place) => (place?.notes ? `<p class="notes">${esc(place.notes)}</p>` : '');
 
 export function statusBadge({ state, label }) {
   return `<span class="badge ${state}">${state === 'closed' ? '' : '<span class="dot"></span>'}${esc(label)}</span>`;

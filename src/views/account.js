@@ -87,3 +87,32 @@ export function accountSheet({ user, status, count, homeScreenTip }) {
      <button class="btn block" data-action="close-sheet">Done</button>`,
   );
 }
+
+// One time, for places saved before sharing existed (moved over as Private). Each starts Private:
+// nothing becomes public unless its owner picks Public.
+export function shareSheet({ places, choices, busy }) {
+  const one = places.length === 1;
+  const rows = places
+    .map((p) => {
+      const pub = choices[p.id] === 'public';
+      return `<div class="share-row">
+        <div><b>${esc(p.name)}</b>${p.address ? `<p class="addr">${esc(p.address)}</p>` : ''}</div>
+        <div class="segmented compact">
+          <button type="button" class="seg ${pub ? '' : 'on'}" aria-pressed="${!pub}" data-action="share-choice" data-id="${esc(p.id)}" data-value="private">Private</button>
+          <button type="button" class="seg ${pub ? 'on' : ''}" aria-pressed="${pub}" data-action="share-choice" data-id="${esc(p.id)}" data-value="public">Public</button>
+        </div>
+      </div>`;
+    })
+    .join('');
+  return sheet(
+    'share-title',
+    `<h2 id="share-title">Share your places?</h2>
+     <p class="muted">You saved ${one ? 'this place' : 'these places'} before NYC Poops could share bathrooms, so ${one ? "it's" : "they're"} <b>Private</b>: only you can see ${one ? 'it' : 'them'}. Make one Public to add it to the map for everyone.</p>
+     <div class="share-list">${rows}</div>
+     <p class="hint">Your notes always stay private. Public can't be undone, since others may save it.</p>
+     <div class="sheet-actions">
+       <button class="btn block" data-action="share-done" data-value="keep" ${busy ? 'disabled' : ''}>Keep private</button>
+       <button class="btn primary block" data-action="share-done" data-value="save" ${busy ? 'disabled' : ''}>Save</button>
+     </div>`,
+  );
+}

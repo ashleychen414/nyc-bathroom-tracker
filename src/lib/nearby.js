@@ -1,5 +1,5 @@
-// Builds the Nearby list: public restrooms and the user's own places, mixed,
-// filtered, and sorted open-first then by distance.
+// Builds the Nearby list: shared bathrooms (city restrooms and Public ones people added) and the
+// user's own places, mixed, filtered, and sorted open-first then by distance.
 
 import { getStatus, STATE_RANK } from './hours.js';
 import { distanceMiles } from './geo.js';
@@ -11,26 +11,31 @@ export const MIN_RESULTS = 5;
 export const placeStatus = (place, now = new Date()) =>
   getStatus({ status: 'Operational', season: null, hours: place.hours ?? null }, now);
 
-// One entry per restroom. A saved public restroom stays one entry (public data + your log).
-// A saved public restroom whose row has left the city data falls back to being "yours".
+// A bathroom someone added has no city status: its hours decide, unless we marked it closed.
+export const bathroomStatus = (b, now = new Date()) => {
+  if (b.source !== 'user') return getStatus(b, now);
+  if (b.recordStatus === 'closed') return { state: 'closed', label: 'Closed' };
+  return placeStatus(b, now);
+};
+
+// One entry per bathroom. A saved shared bathroom stays one entry (its data + your notes).
+// Your own bathrooms always come from the phone's copy (it has your latest edits), even once
+// they're Public and in the shared data. A saved bathroom missing from the data (e.g. it left the
+// city data) falls back to being "yours". Duplicates (the same café added by two people) both show.
 export function buildEntries(bathrooms, places, now = new Date()) {
-  const publicIds = new Set(bathrooms.map((b) => b.id));
-  const savedByPublicId = new Map(places.filter((p) => p.publicId).map((p) => [p.publicId, p]));
-  return [
-    ...bathrooms.map((b) => ({
-      kind: 'public',
-      id: b.id,
-      name: b.name,
-      lat: b.lat,
-      lng: b.lng,
-      bathroom: b,
-      place: savedByPublicId.get(b.id) ?? null,
-      status: getStatus(b, now),
-    })),
-    ...places
-      .filter((p) => !p.publicId || !publicIds.has(p.publicId))
-      .map((p) => ({ kind: 'mine', id: p.id, name: p.name, lat: p.lat, lng: p.lng, bathroom: null, place: p, status: placeStatus(p, now) })),
-  ];
+  const placeById = new Map(places.map((p) => [p.id, p]));
+  const shown = new Set();
+  const entries = [];
+  for (const b of bathrooms) {
+    if (placeById.get(b.id)?.own) continue;
+    shown.add(b.id);
+    entries.push({ kind: 'public', id: b.id, name: b.name, lat: b.lat, lng: b.lng, bathroom: b, place: placeById.get(b.id) ?? null, status: bathroomStatus(b, now) });
+  }
+  for (const p of places) {
+    if (shown.has(p.id) || !Number.isFinite(p.lat) || !Number.isFinite(p.lng)) continue;
+    entries.push({ kind: 'mine', id: p.id, name: p.name, lat: p.lat, lng: p.lng, bathroom: null, place: p, status: placeStatus(p, now) });
+  }
+  return entries;
 }
 
 export function matches(entry, { kind = 'all', type = '', hideClosed = false, openNow = false, accessible = false, changing = false }) {

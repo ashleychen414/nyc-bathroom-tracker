@@ -1,6 +1,6 @@
 // Checks what an anonymous visitor (no sign-in) can do against the live Supabase project.
 // Signed-in, cross-user checks live in supabase/tests/places_rls.sql (needs database access).
-// Covers places, profiles, the shared bathrooms table, data_sources and location_events.
+// Covers places, profiles, the shared bathrooms table, lists, list_items, data_sources and location_events.
 // Run: npm run test:rls
 
 import assert from 'node:assert/strict';
@@ -42,8 +42,13 @@ const checks = [
     assert.ok(total >= 1000, `expected 1,000+ seed bathrooms, got ${total}`);
     assert.match(r.body[0].id, /^nyc-[0-9a-f]{10}$/);
   }],
-  ['anonymous visitors see only seed and confirmed bathrooms', async () => {
-    const r = await call('/rest/v1/bathrooms?select=id&source=neq.seed&status=neq.confirmed&limit=1');
+  ['anonymous visitors see no Private bathrooms', async () => {
+    const r = await call('/rest/v1/bathrooms?select=id&visibility=eq.private&limit=1');
+    assert.equal(r.status, 200);
+    assert.deepEqual(r.body, []);
+  }],
+  ['anonymous visitors see no removed or merged user bathrooms', async () => {
+    const r = await call('/rest/v1/bathrooms?select=id&source=eq.user&status=in.(removed,merged)&limit=1');
     assert.equal(r.status, 200);
     assert.deepEqual(r.body, []);
   }],
@@ -55,6 +60,15 @@ const checks = [
   }],
   ['anonymous visitors cannot delete a bathroom', async () => {
     blocked(await call('/rest/v1/bathrooms?id=eq.rls-check-none', { method: 'DELETE' }));
+  }],
+  ['anonymous visitors see no lists or list items, and cannot add any', async () => {
+    for (const table of ['lists', 'list_items']) {
+      const r = await call(`/rest/v1/${table}?select=*&limit=1`);
+      if (r.status === 200) assert.deepEqual(r.body, []);
+      else blocked(r);
+    }
+    blocked(await call('/rest/v1/lists', { method: 'POST', body: { name: 'x' } }));
+    blocked(await call('/rest/v1/list_items', { method: 'POST', body: { list_id: '00000000-0000-0000-0000-000000000000', bathroom_id: 'rls-check' } }));
   }],
   ['anonymous visitors cannot run the bathrooms sync', async () => {
     const r = await call('/rest/v1/rpc/sync_seed_bathrooms', { method: 'POST', body: { rows: [], mark_missing: false } });

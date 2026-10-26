@@ -534,6 +534,22 @@ body.sheet-open { overflow: hidden; }
 .loc-actions { display: inline-flex; gap: 12px; margin-left: auto; }
 .loc .muted { font-weight: 500; }
 
+/* ---------- Access and visibility (E2) ---------- */
+.tag.access { background: #fdecc8; color: #6b4a00; font-weight: 600; }
+.tag.vis-private { background: var(--dim-bg); color: var(--text); }
+.tag.vis-public { background: var(--accent-soft); color: var(--accent); }
+.detail-head .tags { margin-top: 6px; }
+#access-group .seg { padding: 0 6px; white-space: nowrap; font-size: 15px; }
+#access-group .field:first-child { border-top: none; padding-top: 0; }
+.seg:disabled { opacity: .5; cursor: not-allowed; }
+.share-list { display: grid; gap: 10px; }
+.share-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px; border-radius: 12px; background: var(--bg); }
+.share-row .addr { margin: 2px 0 0; }
+.segmented.compact .seg { padding: 0 10px; font-size: 14px; min-height: 36px; }
+@media (prefers-color-scheme: dark) {
+  .tag.access { background: #3d2f10; color: #ffd98a; }
+}
+
 /* Map card: directions as a round icon next to the distance. */
 .map-sheet .card-head { align-items: center; }
 .dist-dir { display: inline-flex; align-items: center; gap: 8px; flex-shrink: 0; }
