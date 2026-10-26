@@ -557,3 +557,31 @@ body.sheet-open { overflow: hidden; }
   width: 44px; min-height: 44px; padding: 0; border-radius: 50%;
   background: var(--accent); border-color: var(--accent); color: var(--accent-text);
 }
+
+/* ---------- Visits and ratings (E3) ---------- */
+.nudge {
+  display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 12px; border-radius: 12px;
+  background: var(--accent-soft); font-size: 14px; margin-bottom: 8px;
+}
+.nudge span { flex: 1; min-width: 0; }
+.trust { font-size: 13px; color: var(--muted); margin: 0; }
+.card .chips + .trust, .map-sheet .chips + .trust { margin-top: 4px; }
+.chip.fact { background: var(--dim-bg); font-weight: 600; }
+.btn.went { border: 2px solid var(--accent); color: var(--accent); background: var(--surface); }
+.rating-row { display: grid; grid-template-columns: 9.5em 1fr 2.2em; align-items: center; gap: 10px; font-size: 15px; }
+.rating-row b { text-align: right; }
+.rating-row .meter { height: 8px; border-radius: 4px; background: var(--dim-bg); overflow: hidden; }
+.rating-row .meter i { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+.reasons { display: flex; flex-wrap: wrap; gap: 2px 12px; font-size: 13px; color: var(--muted); margin: -4px 0 4px 1.6em; }
+.reasons span { white-space: nowrap; }
+.reason-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip-btn.small { min-height: 34px; font-size: 14px; padding: 0 12px; }
+.sub-rating { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0 0 4px; }
+.mini-scale { display: flex; gap: 4px; }
+.mini-scale button {
+  min-width: 36px; min-height: 36px; border-radius: 10px; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); font: inherit; font-weight: 700;
+}
+.mini-scale button.on { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.sub-rating .input.count { width: 4.5em; text-align: center; }
+.map-sheet .actions .btn.primary { flex: 1.4; }

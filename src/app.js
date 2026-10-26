@@ -19,6 +19,9 @@ import { homeScreenSheet, backupSheet, backupResult } from './views/sheets.js';
 import { mountMap, mountBackdrop, unmountMap, selectPin } from './views/map.js';
 import { mapSheet } from './views/nearby.js';
 import { signInSheet, accountSheet, shareSheet } from './views/account.js';
+import { logVisit, getVisit, rateVisit, cleanRatings, dismissNudge, clearVisits, DIMENSIONS } from './lib/visits.js';
+import { refreshStats } from './lib/stats.js';
+import { rateSheetBody } from './views/ratings.js';
 
 const app = document.getElementById('app');
 
@@ -57,7 +60,9 @@ const state = {
   selectedId: null, // pin selected on the map; null = best match
   // Closed restrooms are hidden by default; the "Hide closed" chip turns that off.
   filters: { kind: 'all', type: '', hideClosed: true, openNow: false, accessible: false, changing: false },
-  sheet: null, // 'homescreen' | 'backup' | 'signin' | 'account' | 'share'
+  sheet: null, // 'homescreen' | 'backup' | 'signin' | 'account' | 'share' | 'rate'
+  rateDraft: null, // the quick rating being filled in (see rateSheetBody)
+  afterSignIn: null, // where to go once signed in (e.g. #/add)
   shareChoices: {}, // "Share your places?": place id → 'public' (default Private)
   shareAnswered: false, // this session, so the prompt doesn't come back before the account hears
   signin: { step: 'email', email: '', code: '', busy: false, error: '', message: '' },
@@ -93,7 +98,15 @@ function goBack(fallback) {
   else location.replace(fallback);
 }
 
+const sheetWrap = (id, body) => `
+  <div class="sheet-backdrop" data-action="close-sheet"></div>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="${id}" tabindex="-1">
+    <div class="grabber" aria-hidden="true"></div>
+    ${body}
+  </div>`;
+
 function sheetHtml() {
+  if (state.sheet === 'rate' && state.rateDraft) return sheetWrap('rate-title', rateSheetBody(state.rateDraft, { signedIn: Boolean(state.user) }));
   if (state.sheet === 'homescreen') return homeScreenSheet(mobilePlatform() ?? 'ios');
   if (state.sheet === 'share') return shareSheet({ places: privatePlaces(), choices: state.shareChoices });
   if (state.sheet === 'signin') return signInSheet(state.signin);
@@ -119,6 +132,7 @@ function paint(html, tab) {
 }
 
 const findBathroom = (id) => state.data?.bathrooms.find((b) => b.id === id) ?? null;
+const findName = (id) => findBathroom(id)?.name ?? getPlace(id)?.name ?? null;
 const distanceTo = (p) => (state.here ? distanceMiles(state.here, p) : null);
 const loading = () => paint('<main class="list"><p class="meta">Loading…</p></main>', null);
 
@@ -154,6 +168,13 @@ function render() {
     case 'edit':
     case 'log': {
       const key = formRoutes[name];
+      // Adding a place or saving one to My places needs an account (Ashley, 2026-10-26). Editing a
+      // place already saved on this phone doesn't.
+      if (!state.user && (name === 'add' || (name === 'log' && !getPlace(id)))) {
+        const then = location.hash;
+        location.replace(name === 'add' ? '#/places' : `#/r/${encodeURIComponent(id)}`);
+        return askSignIn(then);
+      }
       if (isFormOpen(key)) return; // already showing; don't wipe what's being typed
       let opts = { key };
       if (name === 'edit') opts.placeId = id;
@@ -250,7 +271,91 @@ function toast(text) {
   }, 4000);
 }
 
+// ---------- Visits and ratings ----------
+
+// "I went here": logs the visit at once (even if the rating is skipped), then offers the rating.
+function wentHere(id) {
+  let visit;
+  try {
+    visit = logVisit(id, findName(id) ?? undefined);
+  } catch {
+    return toast("Couldn't save on this phone. Check that your browser allows site data.");
+  }
+  openRate(visit);
+}
+
+function openRate(visit) {
+  const { id, name, bathroomId, chips = [], ...rest } = visit;
+  const values = Object.fromEntries(['clean', 'getIn', 'vibes', 'smell', 'trash', 'lighting', 'stallCount'].filter((k) => rest[k] !== undefined).map((k) => [k, rest[k]]));
+  state.rateDraft = { visitId: id, name: findName(bathroomId) ?? name, chips: [...chips], ...values };
+  state.sheet = 'rate';
+  render();
+}
+
+// Repaints only the open sheet, so tapping stars doesn't rebuild the map behind it.
+function repaintSheet() {
+  const el = app.querySelector('.sheet');
+  if (!el) return render();
+  const scroll = el.scrollTop;
+  const tpl = document.createElement('template');
+  tpl.innerHTML = sheetHtml();
+  el.innerHTML = tpl.content.querySelector('.sheet').innerHTML;
+  el.scrollTop = scroll;
+}
+
+function rateClick(action, target) {
+  const d = state.rateDraft;
+  if (!d) return;
+  if (action === 'rate-star') {
+    const dim = target.dataset.dim;
+    const n = Number(target.dataset.value);
+    d[dim] = d[dim] === n ? undefined : n;
+    // Chips only apply below 5 stars: clearing a rating or giving 5 drops its chips and their values.
+    if (!d[dim] || d[dim] === 5) {
+      const chips = DIMENSIONS.find((x) => x.key === dim).chips;
+      d.chips = d.chips.filter((c) => !chips.some((x) => x.key === c));
+      for (const c of chips) if (c.field) delete d[c.field];
+    }
+  } else if (action === 'rate-chip') {
+    const key = target.dataset.value;
+    const chip = DIMENSIONS.flatMap((x) => x.chips).find((c) => c.key === key);
+    d.chips = d.chips.includes(key) ? d.chips.filter((c) => c !== key) : [...d.chips, key];
+    if (!d.chips.includes(key) && chip?.field) delete d[chip.field];
+  } else if (action === 'rate-field') {
+    const field = target.dataset.field;
+    const n = Number(target.dataset.value);
+    d[field] = d[field] === n ? undefined : n;
+  }
+  repaintSheet();
+}
+
+function finishRating(save) {
+  const d = state.rateDraft;
+  state.rateDraft = null;
+  state.sheet = null;
+  let rated = false;
+  if (save && d) {
+    const { visitId, name, ...values } = d;
+    try {
+      const clean = cleanRatings(values);
+      rated = ['clean', 'getIn', 'vibes'].some((k) => clean[k]);
+      rateVisit(visitId, clean);
+    } catch {
+      toast("Couldn't save on this phone. Check that your browser allows site data.");
+      return render();
+    }
+  }
+  toast(rated ? 'Thanks! Your rating helps the next person.' : "Visit logged. You can rate it later from Nearby.");
+  render();
+}
+
 // ---------- Sign-in and account ----------
+
+// Sign-in first, then carry on to `then` (a route like #/add).
+function askSignIn(then) {
+  state.afterSignIn = then;
+  openSignIn(then === '#/add' ? 'Sign in to add a place' : 'Sign in to save places');
+}
 
 const FRIENDLY = {
   over_email_send_rate_limit: 'Too many codes sent. Wait a few minutes and try again.',
@@ -260,8 +365,9 @@ const FRIENDLY = {
 const friendly = (err) =>
   err instanceof TypeError ? "Can't reach the server. Check your connection." : FRIENDLY[err.code] ?? (err.status === 429 ? FRIENDLY.over_request_rate_limit : err.message);
 
-function openSignIn() {
-  state.signin = { step: 'email', email: state.signin.email, code: '', busy: false, error: '', message: '' };
+function openSignIn(reason = '') {
+  if (!reason) state.afterSignIn = null;
+  state.signin = { step: 'email', email: state.signin.email, code: '', busy: false, error: '', message: '', reason };
   state.sheet = 'signin';
   render();
   app.querySelector('#signin-email')?.focus();
@@ -304,7 +410,10 @@ async function checkCode() {
   state.sheet = null;
   const count = listPlaces().length;
   toast(count ? `Signed in. Saving your ${count} place${count === 1 ? '' : 's'} to your account…` : 'Signed in.');
-  render();
+  const then = state.afterSignIn;
+  state.afterSignIn = null;
+  if (then) location.hash = then; // the hashchange renders
+  else render();
   syncNow();
 }
 
@@ -317,6 +426,7 @@ async function handleSignOut() {
   if (!confirm(message)) return;
   signOut();
   clearLocal();
+  clearVisits();
   Object.assign(syncStatus, { state: 'off', at: null, error: '', sharePromptDue: false });
   state.sheet = null;
   toast('Signed out.');
@@ -334,6 +444,7 @@ async function handleDeleteAccount() {
     return;
   }
   clearLocal();
+  clearVisits();
   Object.assign(syncStatus, { state: 'off', at: null, error: '', sharePromptDue: false });
   state.sheet = null;
   toast('Your account and saved places were deleted.');
@@ -495,7 +606,27 @@ app.addEventListener('click', (e) => {
   const { action, value } = target.dataset;
   switch (action) {
     case 'close-sheet':
+      state.rateDraft = null; // closing the rating sheet keeps the visit, unrated
       return closeSheet();
+    case 'went-here':
+      return wentHere(value);
+    case 'rate-visit': {
+      const visit = getVisit(value);
+      return visit ? openRate(visit) : render();
+    }
+    case 'nudge-dismiss':
+      dismissNudge(value);
+      return render();
+    case 'rate-star':
+    case 'rate-chip':
+    case 'rate-field':
+      return rateClick(action, target);
+    case 'rate-save':
+      return finishRating(true);
+    case 'rate-later':
+      return finishRating(false);
+    case 'signin-then':
+      return askSignIn(value);
     case 'open-backup':
       return openSheet('backup');
     case 'open-account':
@@ -591,6 +722,12 @@ app.addEventListener('input', (e) => {
   if (handleFormInput(e)) return;
   if (e.target.id === 'signin-email') return void (state.signin.email = e.target.value);
   if (e.target.id === 'signin-code') return void (state.signin.code = e.target.value);
+  if (e.target.id === 'rate-stall-count' && state.rateDraft) {
+    const n = e.target.value.replace(/\D/g, '').slice(0, 2);
+    e.target.value = n;
+    state.rateDraft.stallCount = Number(n) || undefined;
+    return;
+  }
   if (e.target.id === 'zip') {
     const zip = e.target.value.replace(/\D/g, '').slice(0, 5);
     e.target.value = zip;
@@ -606,12 +743,26 @@ app.addEventListener('input', (e) => {
 // ---------- Start ----------
 
 // Re-render after a sync only where it shows: My places, the account sheet, or when places changed.
+let statsPushSeen = null;
 startSync((changed) => {
+  // Visits just reached the account: fetch the public numbers again so they include them.
+  if (syncStatus.visitsPushedAt && syncStatus.visitsPushedAt !== statsPushSeen) {
+    statsPushSeen = syncStatus.visitsPushedAt;
+    updateStats();
+  }
   const { name } = parseRoute();
   if (['add', 'edit', 'log', 'welcome'].includes(name)) return;
-  if (changed || name === 'places' || state.sheet === 'account') render();
+  // Never under an open rating sheet: it would lose the stars being picked.
+  if ((changed || name === 'places' || state.sheet === 'account') && state.sheet !== 'rate') render();
   maybePromptShare();
 });
+
+// Public visit counts and ratings (counts only). Repaints only if they changed, never mid-rating.
+async function updateStats() {
+  if ((await refreshStats()) && state.sheet !== 'rate') refresh();
+}
+updateStats();
+document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && updateStats());
 
 // Restrooms come from the shared Supabase table (phone copy first, then fresh if it changed).
 loadBathrooms((data) => {

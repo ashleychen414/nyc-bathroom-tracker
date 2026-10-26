@@ -227,7 +227,9 @@ const refreshHours = () => (root.querySelector('#hours-group').innerHTML = hours
 
 // Public is one-way once saved (others may have it on their list), so an existing Public place is locked.
 function accessHtml() {
-  const locked = draft.id && draft.savedVisibility === 'public';
+  // Signed out you can only edit a place saved earlier on this phone; it can't be made Public
+  // until you sign in (no more "Public after sign-in").
+  const locked = (draft.id && draft.savedVisibility === 'public') || !currentUser();
   const seg = (field, value, text) =>
     `<button type="button" class="seg ${draft[field] === value ? 'on' : ''}" aria-pressed="${draft[field] === value}" data-choice="${field}" data-value="${value}" ${field === 'visibility' && locked ? 'disabled' : ''}>${text}</button>`;
   const accessHint =
@@ -236,13 +238,15 @@ function accessHtml() {
       : draft.access === 'public'
         ? 'Anyone can walk in and use it.'
         : "Skip if you're not sure.";
-  const visibilityHint = locked
-    ? "It's on the map for everyone. Public places can't be made private again, since others may have saved them."
-    : draft.visibility === 'public'
-      ? currentUser()
+  const visibilityHint = !currentUser()
+    ? draft.visibility === 'public'
+      ? 'Goes on the map for everyone when you sign in. Your notes stay private.'
+      : 'Sign in to share places on the map.'
+    : locked
+      ? "It's on the map for everyone. Public places can't be made private again, since others may have saved them."
+      : draft.visibility === 'public'
         ? 'Added to the NYC Poops map for everyone. Your notes stay private.'
-        : 'Added to the map for everyone once you sign in. Until then it stays on this phone. Your notes stay private.'
-      : "Only you can see it, e.g. your office or a friend's place.";
+        : "Only you can see it, e.g. your office or a friend's place.";
   return `
     <div class="field">
       <div class="field-row"><span class="field-label">Who can use it?</span></div>

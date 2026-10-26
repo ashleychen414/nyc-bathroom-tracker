@@ -42,3 +42,32 @@ test('list item rows carry the bathroom name and location for showing offline', 
   const i = itemFromRow({ bathroom_id: 'nyc-1', notes: null, created_at: '2026-10-24T18:00:00+00:00', updated_at: '2026-10-24T18:00:00+00:00', deleted_at: null, bathroom: { name: 'Park', lat: 1, lng: 2 } });
   assert.deepEqual(i, { bathroomId: 'nyc-1', createdAt: '2026-10-24T18:00:00.000Z', updatedAt: '2026-10-24T18:00:00.000Z', snapshot: { name: 'Park', lat: 1, lng: 2 } });
 });
+
+test('visits: newer edit wins, phone-only fields stay, stuck ones are not resent', async () => {
+  const { planVisits, afterVisitPush, visitToRow } = await import('./sync.js');
+  const v = (id, updatedAt, extra = {}) => ({ id, bathroomId: 'b', visitedAt: '2026-10-26T10:00:00.000Z', chips: [], source: 'app', updatedAt, ...extra });
+  const server = [v('a', '2026-10-26T10:00:00.000Z', { clean: 2 }), v('b', '2026-10-26T11:00:00.000Z', { clean: 5 })];
+  const local = [
+    v('a', '2026-10-26T12:00:00.000Z', { clean: 4, name: 'Café', dismissedAt: 'x' }), // rated later on this phone
+    v('b', '2026-10-26T10:30:00.000Z', { name: 'Park' }), // older than the account's copy
+    v('c', '2026-10-26T12:00:00.000Z'), // logged signed out
+    v('d', '2026-10-26T12:00:00.000Z', { stuck: true }), // refused before
+  ];
+  const plan = planVisits(server, local);
+  assert.deepEqual(plan.toPush.map((x) => x.id), ['a', 'c']);
+  const byId = Object.fromEntries(plan.merged.map((x) => [x.id, x]));
+  assert.equal(byId.a.clean, 4);
+  assert.equal(byId.b.clean, 5);
+  assert.equal(byId.b.name, 'Park'); // the account's copy wins, the phone keeps the name
+  assert.equal(byId.d.stuck, true);
+
+  // After the push: c was refused; a was rated again mid-sync; b's card was closed mid-sync.
+  const latest = [...local.slice(0, 1).map((x) => ({ ...x, clean: 1, updatedAt: '2026-10-26T13:00:00.000Z' })), { ...local[1], dismissedAt: 'y' }, local[2], local[3]];
+  const after = Object.fromEntries(afterVisitPush(plan, new Set(['c']), latest).map((x) => [x.id, x]));
+  assert.equal(after.a.clean, 1);
+  assert.equal(after.b.dismissedAt, 'y');
+  assert.equal(after.c.stuck, true);
+
+  assert.deepEqual(Object.keys(visitToRow(v('e', 't'))), ['id', 'bathroom_id', 'visited_at', 'clean', 'get_in', 'vibes', 'chips', 'smell', 'trash', 'lighting', 'stall_count', 'updated_at']);
+  assert.deepEqual(visitToRow({ id: 'e', bathroomId: 'b', visitedAt: 't', updatedAt: 't' }).chips, []);
+});

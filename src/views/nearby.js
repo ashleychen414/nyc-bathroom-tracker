@@ -8,6 +8,9 @@ import { statusBadge, mineBadge, placeTags, ACCESS, publicTags, restroomType, ba
 import { mapLegend } from './map.js';
 import { locationHelp, mobilePlatform, isStandalone, isIOSSafari } from '../lib/device.js';
 import { currentUser } from '../lib/auth.js';
+import { statsFor } from '../lib/stats.js';
+import { myVisits, nextToRate } from '../lib/visits.js';
+import { cardRatings, ratingsSection, wentHereButton, nudgeCard } from './ratings.js';
 
 const KINDS = [
   ['all', 'All'],
@@ -137,6 +140,7 @@ function entryCard(e, approx) {
       <div class="badges">${statusBadge(e.status)}${e.place ? mineBadge : ''}${sub ? `<span class="type">${sub}</span>` : ''}</div>
       ${b ? publicTags(b) : ''}
       ${placeTags(b, e.place)}
+      ${cardRatings(statsFor(e.id), myVisits(e.id))}
     </a>`;
 }
 
@@ -161,6 +165,7 @@ function results(s, list) {
   const approx = s.here.source === 'zip';
   const near = approx ? ` of ${esc(s.here.zip)}` : '';
   return `
+    ${nudgeCard(nextToRate())}
     ${inside.length ? `<p class="meta">${inside.length} within ${radiusLabel(s.radius)}${near} · open first, then nearest</p>` : ''}
     ${emptyBox(s, list)}
     ${inside.map((e) => entryCard(e, approx)).join('')}
@@ -170,7 +175,8 @@ function results(s, list) {
 // The card over the map: the selected bathroom (default: the best match, open first then nearest).
 export function mapSheet(s, list, selectedId) {
   const entries = [...list.inside, ...list.outside];
-  if (!entries.length) return emptyBox(s, list) || '<p class="muted">No restrooms match these filters.</p>';
+  const nudge = nudgeCard(nextToRate());
+  if (!entries.length) return nudge + (emptyBox(s, list) || '<p class="muted">No restrooms match these filters.</p>');
   const index = Math.max(0, entries.findIndex((e) => e.id === selectedId));
   const e = entries[index];
   const approx = s.here.source === 'zip';
@@ -185,6 +191,7 @@ export function mapSheet(s, list, selectedId) {
   const href = e.kind === 'public' ? `#/r/${encodeURIComponent(e.id)}` : `#/mine/${encodeURIComponent(e.id)}`;
   const sub = entrySub(e);
   return `
+    ${nudge}
     <div class="sheet-head">
       <span class="section-label">${esc(label)}</span>
       <span class="pager">
@@ -201,7 +208,9 @@ export function mapSheet(s, list, selectedId) {
     </div>
     <div class="badges">${statusBadge(e.status)}${e.place ? mineBadge : ''}${sub ? `<span class="type">${esc(sub)}</span>` : ''}</div>
     ${placeTags(e.bathroom, e.place)}
+    ${cardRatings(statsFor(e.id), myVisits(e.id))}
     <div class="actions">
+      ${wentHereButton(e.id, { primary: true, block: false })}
       <a class="btn" href="${href}">Details</a>
     </div>`;
 }
@@ -244,6 +253,16 @@ function hoursRows(hours) {
 }
 
 function notesCard(place, addHref) {
+  // Only signed-in users keep My places (Ashley, 2026-10-26); places saved before that are kept.
+  if (!place && !currentUser()) {
+    return `
+    <section class="group notes-card">
+      <div class="kv-head"><h2 class="label">Private notes</h2><span class="muted small">Not saved</span></div>
+      <p>Only you see these. A good place for door codes and tips for next time.</p>
+      <button class="btn outline block" data-action="signin-then" data-value="${esc(addHref)}">${icon.pencil()}Save to My places</button>
+      <p class="hint">Sign in to save restrooms to My places, with notes if you like.</p>
+    </section>`;
+  }
   if (place?.notes) {
     return `
       <section class="group notes-card">
@@ -266,7 +285,7 @@ function accessSection(item, { own = false, editHref } = {}) {
   const rows = [`<div class="kv"><span>Who can use it</span><span>${esc(ACCESS[item.access] ?? 'Access unknown')}</span></div>`];
   if (item.access === 'customers_only') rows.push('<p class="hint">You may need to buy something or ask staff.</p>');
   if (own) {
-    const who = item.visibility !== 'public' ? 'Only you (Private)' : currentUser() ? 'Everyone (Public)' : 'Everyone, once you sign in';
+    const who = item.visibility !== 'public' ? 'Only you (Private)' : 'Everyone (Public)';
     rows.push(`<div class="kv"><span>Who can see it</span><span>${who}</span></div>`);
   } else {
     rows.push('<p class="hint">Added by someone on NYC Poops and shared with everyone.</p>');
@@ -307,6 +326,8 @@ export function publicDetailView(s, b, place, distance) {
         <div class="badges">${statusBadge(status)}${place ? mineBadge : ''}</div>
       </div>
       <a class="btn primary block big" href="${directionsUrl(b)}" target="_blank" rel="noopener">${icon.directions()}Directions</a>
+      ${wentHereButton(b.id)}
+      ${ratingsSection(statsFor(b.id), myVisits(b.id))}
       ${notesCard(place, `#/log/${encodeURIComponent(b.id)}`)}
       <section class="group">
         <h2 class="label">Hours</h2>
@@ -340,6 +361,8 @@ function sharedDetailView(s, b, place, distance) {
         ${placeTags(b, null)}
       </div>
       <a class="btn primary block big" href="${directionsUrl(b)}" target="_blank" rel="noopener">${icon.directions()}Directions</a>
+      ${wentHereButton(b.id)}
+      ${ratingsSection(statsFor(b.id), myVisits(b.id))}
       ${accessSection(b)}
       ${notesCard(place, `#/log/${encodeURIComponent(b.id)}`)}
       <section class="group">
@@ -363,6 +386,8 @@ export function mineDetailView(s, place, distance) {
         ${placeTags(null, place)}
       </div>
       <a class="btn primary block big" href="${directionsUrl(place)}" target="_blank" rel="noopener">${icon.directions()}Directions</a>
+      ${wentHereButton(place.id)}
+      ${ratingsSection(statsFor(place.id), myVisits(place.id))}
       ${place.own ? accessSection(place, { own: true, editHref: `#/edit/${encodeURIComponent(place.id)}` }) : ''}
       ${notesCard(place)}
       ${

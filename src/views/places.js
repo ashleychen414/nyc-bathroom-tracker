@@ -5,6 +5,13 @@ import { distanceMiles, formatDistance, directionsUrl } from '../lib/geo.js';
 import { placeStatus, bathroomStatus } from '../lib/nearby.js';
 import { statusBadge, placeTags, notesLine } from './shared.js';
 import { signInBanner, syncLine } from './account.js';
+import { statsFor } from '../lib/stats.js';
+import { myVisits } from '../lib/visits.js';
+import { cardRatings } from './ratings.js';
+
+// Only signed-in users add places (Ashley, 2026-10-26): signed out, + Add asks to sign in first.
+const addButton = (user, label, cls = 'btn primary') =>
+  user ? `<a class="${cls}" href="#/add">${label}</a>` : `<button class="${cls}" data-action="signin-then" data-value="#/add">${label}</button>`;
 
 function placeCard(p, bathroom, approx) {
   const status = bathroom ? bathroomStatus(bathroom) : placeStatus(p);
@@ -19,6 +26,7 @@ function placeCard(p, bathroom, approx) {
       ${p.address ? `<p class="addr">${esc(p.address)}</p>` : ''}
       <div class="badges">${statusBadge(status)}${kind ? `<span class="type">${kind}</span>` : ''}</div>
       ${placeTags(bathroom, p)}
+      ${cardRatings(statsFor(p.id), myVisits(p.id))}
       ${notesLine(p)}
       <p class="meta">Updated ${formatDate(p.updatedAt)}</p>
       <div class="actions">
@@ -43,7 +51,7 @@ export function placesView(s, places) {
       <h1>My places</h1>
       <div class="bar-actions">
         <button class="btn icon-btn" data-action="${s.user ? 'open-account' : 'open-backup'}" aria-label="${s.user ? 'Your account' : 'Back up your places'}">${icon.more()}</button>
-        <a class="btn primary" href="#/add">+ Add</a>
+        ${addButton(s.user, '+ Add')}
       </div>
     </header>
     <main class="list">
@@ -55,7 +63,7 @@ export function placesView(s, places) {
           : `<div class="empty">
                <p class="empty-title">No saved places yet</p>
                <p>Save the bathrooms you've used, like a café or store. Share them on the map, or keep them private.</p>
-               <a class="btn primary" href="#/add">Add your first place</a>
+               ${addButton(s.user, s.user ? 'Add your first place' : 'Sign in to add places')}
                <p class="hint">You can also save a public restroom, with private notes, from its detail page.</p>
              </div>`
       }
