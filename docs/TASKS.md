@@ -4,10 +4,7 @@ Updated 2026-10-26 (after #29 and backlog cleanup). Steps map to the MVP scope i
 
 ## Now
 
-- [ ] **Check E2 signed in on the live site** (not verified in #24): your list loads, the one-time "Share your places?" prompt shows for the 2 owners of moved places, and a place made Public shows on the map for others.
-- [ ] **Check E3 signed in on the live site** (not verified in #29): visits logged while signed out upload at sign-in, "Visited by…" includes your visit, and your old ratings show as past visits.
-- [ ] **Try map dragging on a real iPhone** (#28): touch drag and pinch weren't tested on a phone.
-- [ ] **Brooklyn hours: Ashley's calls** on what's left after PR #2 (review list is down from 52 rows to 22):
+- [ ] **Brooklyn hours: Ashley's calls** (Ashley will do these later) on what's left after PR #2 (review list is down from 52 rows to 22):
   - Gravesend, Ryder and Leonard libraries are open per BPL but "Closed for Construction" in city data. They stay greyed out until overrides can set `status` (below).
   - Carver Playground is "Not Operational" in city data, but NYC Parks rated it "Acceptable" in Sept 2025. It may be open.
   - McCarren Indoor Tennis: operator site wouldn't load. It's Seasonal, so it never shows Open either way.
@@ -59,6 +56,7 @@ Updated 2026-10-26 (after #29 and backlog cleanup). Steps map to the MVP scope i
 
 ## Done
 
+- [x] 2026-10-27: **Map: after dragging, the search centers on the part of the map you can see** (Ashley, from a real iPhone), not the middle of the whole map, part of which sits behind the card. Also checked on iPhone: sign-in with E2 lists and E3 visits works (Ashley)
 - [x] 2026-10-26: **Backlog cleanup:** milestone order closed (Milestone A shipped; Milestone B's E1–E3 shipped, E5 on hold); "Saving without a confirmation step" closed (the pop-up is gone; saving is a list item since E2 and logging is a visit since E3); the `dev` test rows in `location_events` deleted (there were 6)
 - [x] 2026-10-26: **E3: visits and ratings** (#29): `visits` table and counts-only `bathroom_stats()`; one-tap "I went here" (main button on the map card, and on every restroom's page); quick Clean / Getting in / Vibes rating with chips; "Rate your last visit"; ratings, facts and "Visited by N people" on cards and pages from the first visit; old ratings carried over as past visits; only signed-in users add places or keep My places
 - [x] 2026-10-26: **Map: dragging shows the closest restrooms there** (#28, from user feedback): moving the map at least half the radius searches around the new center (distances stay from you); "Back to me" returns
