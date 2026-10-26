@@ -106,15 +106,36 @@ Photos (E12), public tips (E6), filter by type (E0), hours source line (E0), map
 
 ---
 
-## 5. Suggested sequence toward the current goal (10 regular users, 2 contributors)
+## 5. Order of the remaining work (2026-10-26)
 
-**Milestone A: a better emergency tool (~1 week)**: E0 quick wins, E4 map-first home, E9-lite (improve today's search ranking and labels without a new provider). Serves the 8 who just need a bathroom now.
+Milestones A and B are built (E0–E4, plus E9-lite). The rest is ordered by two principles (Ashley, 2026-10-26, see `DECISIONS.md`):
 
-**Milestone B: the contributor loop (~2–3 weeks)**: E1 shared bathrooms, E2 lists + migration, E3 visits and ratings, E5 layout/accessibility, analytics (§2.6). Gives the 2 contributors something that visibly improves the map.
+1. **NYC Poops is only as useful as the breadth and depth of its database.**
+2. **Users must be able to rate, confirm and edit incomplete information quickly.**
 
-**Milestone C: community and scale (~3–4 weeks)**: E6 tips, E7 corrections + moderation, E8 duplicates, E10 sharing, then E9 full provider, E11 import and E12 photos as demand shows.
+### Tier 1: confirm, correct and fill in (both principles)
 
-**Confidence: Medium.** The order follows the goal: utility first keeps the 8 emergency users; the contributor loop (B) is what the 2 contributors need. The main risk is B's migration (E1–E2) taking longer than sized; mitigation: ship E1 first with the app still reading the JSON file, then switch reads once the table is proven.
+1. **Confirm and correct any bathroom** (smaller E7, **M–L**, 3–4d). After "I went here": one-tap "Was it open?" and "Hours right?", where "No" opens a short fix form. "Report closed" and "Suggest an edit" on every bathroom, city rows included. Edits go live right away with an undoable history; "Closed" shows once two people report it. The nightly sync stops overwriting user corrections to city rows. No admin review queue for now.
+2. **Facts, scoped down** (smaller E5, **S–M**, 1–2d). Load what the city data already has (accessibility, restroom type, changing stations) into `bathrooms`; add layout (one single / several singles / stalls), step-free, changing table and code needed, each confirmed with a tap.
+3. **Ask for what's missing** (**S–M**). Cards with gaps say so ("Hours unknown · Know them?", "Access unknown") and open the same fix form as item 1.
+
+### Tier 2: more bathrooms (principle 1), once Tier 1 works
+
+1. **"Share your places?" prompt**: invite people to move Private places to Public.
+2. **Bulk-add bathrooms by category** (museums, hotels, grocery and department stores, Target, gas stations). Start with a 1-day Brooklyn spike: candidate counts per category from OpenStreetMap, Overture Maps / Foursquare Open Places and NYC / NY State open data; how often hours and a restroom tag are present; license terms (OpenStreetMap's share-alike in particular); a hand check of 20 places. **Decided 2026-10-26:** imports come in as Customer Only with hours unknown (never "Open"), show on the map and list by default labeled "Unconfirmed", sort like any other bathroom (no penalty), and each has a one-tap "Is there a restroom here?" that feeds Tier 1. Needs a new `import` source value (a migration).
+3. **Add a bathroom faster**: tap the map to add, with only name, pin and access required; search our own bathrooms first.
+4. **E8 duplicates, smaller**: flag only (~50 m and a similar name); build the merge tool when there are real duplicates. Matters more once bulk-add is in.
+5. **E9 full and E11 Google Maps import**. Check first (about 1 hour) whether Takeout exports include coordinates.
+6. **Hours for other boroughs**: filled in by Tier 1 corrections rather than reviewed by hand.
+
+### Deferred (neither principle directly)
+
+- **E10 share lists**: helps the app spread, not the data.
+- **E6 public tips**: free text that needs moderation; chips and facts cover most of it.
+- **E12 photos**: slow to build and needs review; maybe entrance photos only, later.
+- **Needs-based onboarding**: revisit once the data is good.
+- **E13 launch checklist**: only rate limits now, since open editing needs them.
+- **Default new places to Private**: dropped for now; revisit if many people keep their own saved lists.
 
 ## 6. Decisions needed to start
 
@@ -123,4 +144,4 @@ Photos (E12), public tips (E6), filter by type (E0), hours source line (E0), map
 3. ~~What "private bathroom" means~~ **Decided 2026-10-24: two separate fields, access ("Available to Public" / "Customer Only") and visibility (Public / Private).** See `DECISIONS.md`.
 4. ~~Starting rating dimensions~~ **Decided 2026-10-24: Clean, Getting in, Vibes (1–5), with reason tags; one-tap "I went here" first.** See `DECISIONS.md`.
 5. ~~Analytics approach~~ **Decided: database counts only.**
-6. ~~Milestone order~~ **Closed 2026-10-26: built A → B.** Milestone A shipped; Milestone B's E1, E2 and E3 shipped by 2026-10-26 (E5 on hold).
+6. ~~Milestone order~~ **Closed 2026-10-26: built A → B.** Milestone A shipped; Milestone B's E1, E2 and E3 shipped by 2026-10-26. The rest follows the two principles in §5.

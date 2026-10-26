@@ -11,6 +11,8 @@ Audience: the owner (Ashley) and friends, so no moderation, analytics, or accoun
 A wrong "Open" is the worst failure. Never show "Open" unless the source hours say so for
 this exact day and time in New York. Ambiguity resolves to "Hours unknown" / "Hours vary",
 never to "Open". Closed and non-operational restrooms are shown greyed out, not hidden.
+Hours a user enters count as source hours (Ashley, 2026-10-26): they can show "Open", and other
+users correct them by reporting closed or wrong hours. Imported places with no hours never show "Open".
 
 ## Where things live
 

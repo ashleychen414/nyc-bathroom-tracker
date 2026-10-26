@@ -214,3 +214,18 @@ Designed around two users: the person who needs a bathroom now (Is it open? Can 
 - **Closing "Rate your last visit" is remembered on that phone only.**
 - **No nearby check (Ashley confirmed):** "I went here" works from anywhere.
 - **Ratings on every list card (Ashley confirmed):** they show on the Nearby list, the map card and My places, not just the map card and the restroom's page.
+
+## 2026-10-26: Organize the remaining epics around the data (Ashley)
+
+Two principles now set the order of the remaining work:
+
+1. **NYC Poops is only as useful as the breadth and depth of its database.**
+2. **Users must be able to rate, confirm and edit incomplete information quickly**, so the data keeps getting better.
+
+Work that serves neither principle directly is deferred. The new order is in `docs/IMPROVEMENTS-SCOPING.md` §5.
+
+- **Edits go live right away, with a history that can be undone.** No review queue for now. A bathroom shows "Closed" once two people report it.
+- **Hours a user enters count as source hours,** so one person's hours can show "Open". Other people fix them by reporting the place closed or the hours wrong. This relaxes "accuracy first" for user-entered hours on purpose: more places showing Open, corrected by the people who visit, is worth the risk. City hours and imported places are unchanged (no hours → never "Open").
+- **Fact fields are off hold,** with a short list: what the city data already has (accessibility, restroom type, changing stations), plus layout (one single / several singles / stalls), step-free, changing table and code needed, each confirmed with a tap.
+- **Bulk-imported places** (museums, hotels, stores, gas stations) **come in as Customer Only with hours unknown, and show on the map and list by default, labeled "Unconfirmed".** They sort like any other bathroom, not last. Seeing them is what gets people to confirm them, and in an emergency an unconfirmed Target beats nothing.
+- **New places stay Public by default.** "Default to Private" is dropped for now; revisit it only if many people turn out to keep their own saved lists.
