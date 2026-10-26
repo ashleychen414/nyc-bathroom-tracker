@@ -308,27 +308,23 @@ end $$;
 insert into auth.users (id, email, aud, role) values
   ('33333333-3333-3333-3333-333333333333', 'rls-test-v@example.invalid', 'authenticated', 'authenticated');
 
--- A logs visits: the owner is filled in, one per bathroom per New York day, never in the future.
+-- A logs visits: the owner is filled in, no limit per day, never in the future.
 set local role authenticated;
 set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
-insert into public.visits (bathroom_id, visited_at, clean, updated_at)
-  values ('rls-test-seed', now() - interval '3 days', 1, now() - interval '3 days');
-insert into public.visits (bathroom_id, visited_at, clean, get_in, vibes, chips, smell, updated_at)
-  values ('rls-test-seed', now() + interval '2 days', 4, 2, 5, '{code,smell}', 2, now());
+insert into public.visits (id, bathroom_id, visited_at, clean, updated_at)
+  values ('bbbbbbbb-0000-0000-0000-000000000001', 'rls-test-seed', now() - interval '3 days', 1, now() - interval '3 days');
+insert into public.visits (id, bathroom_id, visited_at, clean, get_in, vibes, chips, smell, updated_at)
+  values ('bbbbbbbb-0000-0000-0000-000000000002', 'rls-test-seed', now() + interval '2 days', 4, 2, 5, '{code,smell}', 2, now());
+insert into public.visits (id, bathroom_id, visited_at) values ('bbbbbbbb-0000-0000-0000-000000000003', 'rls-test-seed', now() - interval '1 minute');
 do $$ begin
-  assert (select count(*) from public.visits) = 2, 'A should see their 2 visits';
+  assert (select count(*) from public.visits) = 3, 'A should see their 3 visits, two of them today';
   assert (select user_id from public.visits where clean = 4) = '11111111-1111-1111-1111-111111111111', 'a visit should be A''s';
   assert (select visited_at <= now() and source = 'app' from public.visits where clean = 4), 'a future visit should be dated now, from the app';
-  begin
-    insert into public.visits (bathroom_id, visited_at) values ('rls-test-seed', now());
-    raise exception 'A was able to log a second visit the same day';
-  exception when unique_violation then null;
-  end;
-  -- The app saves with an upsert: the same day updates the visit.
-  insert into public.visits (bathroom_id, visited_at, clean, get_in, vibes, chips, smell, updated_at)
-    values ('rls-test-seed', now(), 4, 2, 5, '{code,smell}', 2, now())
-    on conflict (user_id, bathroom_id, visit_day) do update set clean = excluded.clean, updated_at = excluded.updated_at;
-  assert (select count(*) from public.visits) = 2, 'the upsert should update today''s visit';
+  -- The app saves with an upsert on id: the same id updates the visit.
+  insert into public.visits (id, bathroom_id, visited_at, clean, updated_at)
+    values ('bbbbbbbb-0000-0000-0000-000000000003', 'rls-test-seed', now() - interval '1 minute', 3, now())
+    on conflict (id) do update set clean = excluded.clean, updated_at = excluded.updated_at;
+  assert (select count(*) from public.visits) = 3, 'the upsert should update the visit, not add one';
   begin
     insert into public.visits (bathroom_id, visited_at, chips) values ('rls-test-confirmed', now(), '{not-a-chip}');
     raise exception 'a chip outside the list was accepted';
@@ -361,22 +357,28 @@ do $$ begin
   end;
 end $$;
 
--- B sees none of A's visits and can't change them. With 2 people the bathroom has no stats.
+-- B sees none of A's visits, can't change them, and can't take one over by its id.
 set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}';
 update public.visits set clean = 1 where bathroom_id = 'rls-test-seed';
 insert into public.visits (bathroom_id, visited_at, clean, get_in, chips, updated_at)
   values ('rls-test-seed', now(), 2, 3, '{code,dirty}', now());
 do $$ begin
   assert (select count(*) from public.visits) = 1, 'B should see only their own visit';
-  assert not exists (select 1 from public.bathroom_stats() where bathroom_id = 'rls-test-seed'), 'stats should not show under 3 people';
+  begin
+    insert into public.visits (id, bathroom_id, visited_at, clean) values ('bbbbbbbb-0000-0000-0000-000000000002', 'rls-test-seed', now(), 1)
+      on conflict (id) do update set clean = excluded.clean;
+    raise exception 'B was able to upsert over A''s visit';
+  exception when insufficient_privilege then null;
+  end;
 end $$;
 reset role;
 do $$ begin
-  assert (select clean from public.visits where user_id = '11111111-1111-1111-1111-111111111111' and visit_day = (now() at time zone 'America/New_York')::date) = 4,
+  assert (select clean from public.visits where id = 'bbbbbbbb-0000-0000-0000-000000000002') = 4,
     'B should not be able to change A''s visit';
 end $$;
 
--- A third person: now everyone sees counts, and only counts. Each person's latest rating counts once.
+-- A third person, and everyone sees the counts, and only counts. People are different people,
+-- not visits; each person's latest rating counts once.
 set local role authenticated;
 set local request.jwt.claims = '{"sub":"33333333-3333-3333-3333-333333333333","role":"authenticated"}';
 insert into public.visits (bathroom_id, visited_at, clean, get_in, updated_at) values ('rls-test-seed', now(), 3, 5, now());
@@ -397,12 +399,13 @@ begin
   exception when insufficient_privilege then null;
   end;
   select * into s from public.bathroom_stats() where bathroom_id = 'rls-test-seed';
-  assert s.people = 3, 'stats should count 3 people, got ' || s.people;
+  assert s.people = 3 and s.visits = 5, 'stats should count 3 people and 5 visits, got ' || s.people || '/' || s.visits;
   assert s.last_visit = (now() at time zone 'America/New_York')::date, 'last visit should be today';
   assert s.clean = 3.0 and s.clean_people = 3, 'Clean should average each person''s latest rating (4, 2, 3), got ' || s.clean;
   assert s.get_in = 3.3 and s.get_in_people = 3, 'Getting in should average 2, 3, 5, got ' || s.get_in;
-  assert s.vibes is null and s.vibes_people = 1, 'Vibes rated by 1 person should show no average';
+  assert s.vibes = 5.0 and s.vibes_people = 1, 'Vibes rated by 1 person should show (minimum is 1 for now)';
   assert s.chips = '{"code": 2, "dirty": 1, "smell": 1}'::jsonb, 'chips should count people per chip, got ' || s.chips;
+  assert s.facts = '{code}', 'code tapped by 2 people should be a fact, got ' || s.facts::text;
 end $$;
 reset role;
 
