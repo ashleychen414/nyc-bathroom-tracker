@@ -105,11 +105,12 @@ insert into public.bathrooms (id, name, source, status, visibility, created_by, 
   ('rls-test-removed', 'RLS test removed', 'user', 'removed', 'public', '22222222-2222-2222-2222-222222222222', 40.7, -73.9),
   ('rls-test-private-a', 'RLS test private', 'user', 'unverified', 'private', '11111111-1111-1111-1111-111111111111', 40.7, -73.9);
 
--- The table refuses user rows without an owner, and Private seed rows.
+-- The table refuses Private rows without an owner, and Private seed rows. (A Public one can lose its
+-- owner when they delete their account: see the end.)
 do $$ begin
   begin
-    insert into public.bathrooms (id, name, source, created_by, lat, lng) values ('rls-test-no-owner', 'x', 'user', null, 40.7, -73.9);
-    raise exception 'a user row without an owner was accepted';
+    insert into public.bathrooms (id, name, source, visibility, created_by, lat, lng) values ('rls-test-no-owner', 'x', 'user', 'private', null, 40.7, -73.9);
+    raise exception 'a Private user row without an owner was accepted';
   exception when check_violation then null;
   end;
   begin
@@ -471,6 +472,37 @@ do $$ begin
          and platform in ('ios-safari', 'desktop')),
     'the daily view should count the rows';
 end $$;
+
+-- ---------- deleting an account ----------
+
+-- Its Private bathrooms and list go; its Public bathrooms stay on the map, with no owner.
+reset role;
+set local request.jwt.claims = '{"role":"service_role"}';
+insert into auth.users (id, email, aud, role) values
+  ('44444444-4444-4444-4444-444444444444', 'rls-test-c@example.invalid', 'authenticated', 'authenticated');
+insert into public.bathrooms (id, name, source, visibility, created_by, lat, lng) values
+  ('rls-test-c-public', 'C public', 'user', 'public', '44444444-4444-4444-4444-444444444444', 40.7, -73.9),
+  ('rls-test-c-private', 'C private', 'user', 'private', '44444444-4444-4444-4444-444444444444', 40.7, -73.9);
+insert into public.list_items (list_id, bathroom_id, user_id)
+  select id, 'rls-test-c-private', user_id from public.lists where user_id = '44444444-4444-4444-4444-444444444444';
+delete from auth.users where id = '44444444-4444-4444-4444-444444444444';
+do $$ begin
+  assert not exists (select 1 from public.bathrooms where id = 'rls-test-c-private'), 'a deleted account''s Private bathrooms should go';
+  assert (select coalesce(created_by::text, 'no owner') || '/' || visibility from public.bathrooms where id = 'rls-test-c-public') = 'no owner/public',
+    'a deleted account''s Public bathrooms should stay, with no owner';
+  assert not exists (select 1 from public.lists where user_id = '44444444-4444-4444-4444-444444444444'), 'a deleted account''s list should go';
+  begin
+    insert into public.bathrooms (id, name, source, visibility, created_by, lat, lng) values ('rls-test-c-x', 'x', 'user', 'private', null, 40.7, -73.9);
+    raise exception 'a Private bathroom without an owner was accepted';
+  exception when check_violation then null;
+  end;
+end $$;
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
+do $$ begin
+  assert exists (select 1 from public.bathrooms where id = 'rls-test-c-public'), 'anon should still see the kept Public bathroom';
+end $$;
+reset role;
 
 select 'places, profiles, bathrooms, lists, list_items, data_sources, location_events RLS: all checks passed' as result;
 rollback;

@@ -324,7 +324,9 @@ async function handleSignOut() {
 }
 
 async function handleDeleteAccount() {
-  if (!confirm("Delete your account and all your saved places? This can't be undone.")) return;
+  const message =
+    "Delete your account, your list, your notes and your Private places? Places you made Public stay on the map for everyone. This can't be undone.";
+  if (!confirm(message)) return;
   try {
     await deleteAccount();
   } catch (err) {
@@ -332,7 +334,7 @@ async function handleDeleteAccount() {
     return;
   }
   clearLocal();
-  Object.assign(syncStatus, { state: 'off', at: null, error: '' });
+  Object.assign(syncStatus, { state: 'off', at: null, error: '', sharePromptDue: false });
   state.sheet = null;
   toast('Your account and saved places were deleted.');
   render();
