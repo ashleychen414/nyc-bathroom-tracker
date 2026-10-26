@@ -79,7 +79,7 @@ export function nudgeCard(visit) {
 // ---------- The quick rating sheet ----------
 
 // draft: { visitId, name, clean?, getIn?, vibes?, chips: [], smell?, trash?, lighting?, stallCount? }
-export function rateSheetBody(draft, { signedIn }) {
+export function rateSheetBody(draft) {
   const dims = DIMENSIONS.map((d) => {
     const v = draft[d.key];
     const stars = [1, 2, 3, 4, 5]
@@ -92,9 +92,8 @@ export function rateSheetBody(draft, { signedIn }) {
       </div>`;
   });
   return `<h2 id="rate-title">How was ${esc(draft.name ?? 'it')}?</h2>
-     <p class="muted">Your visit is logged. Ratings are optional.</p>
+     <p class="muted">Share your feedback with the community</p>
      ${dims.join('')}
-     <p class="hint">${signedIn ? 'Ratings count toward the public numbers. Nobody sees who rated.' : 'Saved on this phone. Sign in to add it to the public numbers.'}</p>
      <div class="sheet-actions">
        <button class="btn block" data-action="rate-later">Later</button>
        <button class="btn primary block" data-action="rate-save">Save</button>

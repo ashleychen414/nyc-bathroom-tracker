@@ -109,7 +109,7 @@ const sheetWrap = (id, body) => `
   </div>`;
 
 function sheetHtml() {
-  if (state.sheet === 'rate' && state.rateDraft) return sheetWrap('rate-title', rateSheetBody(state.rateDraft, { signedIn: Boolean(state.user) }));
+  if (state.sheet === 'rate' && state.rateDraft) return sheetWrap('rate-title', rateSheetBody(state.rateDraft));
   if (state.sheet === 'homescreen') return homeScreenSheet(mobilePlatform() ?? 'ios');
   if (state.sheet === 'share') return shareSheet({ places: privatePlaces(), choices: state.shareChoices });
   if (state.sheet === 'signin') return signInSheet(state.signin);
