@@ -1,10 +1,12 @@
 # Tasks
 
-Updated 2026-10-26. Steps map to the MVP scope in `SPEC.md`. Product improvements (Ashley, Oct 12) are sized and cross-referenced in `docs/IMPROVEMENTS-SCOPING.md`; epic numbers (E0–E13) refer to that doc.
+Updated 2026-10-26 (after #29). Steps map to the MVP scope in `SPEC.md`. Product improvements (Ashley, Oct 12) are sized and cross-referenced in `docs/IMPROVEMENTS-SCOPING.md`; epic numbers (E0–E13) refer to that doc.
 
 ## Now
 
 - [ ] **Check E2 signed in on the live site** (not verified in #24): your list loads, the one-time "Share your places?" prompt shows for the 2 owners of moved places, and a place made Public shows on the map for others.
+- [ ] **Check E3 signed in on the live site** (not verified in #29): visits logged while signed out upload at sign-in, "Visited by…" includes your visit, and your old ratings show as past visits.
+- [ ] **Try map dragging on a real iPhone** (#28): touch drag and pinch weren't tested on a phone.
 - [ ] **Brooklyn hours: Ashley's calls** on what's left after PR #2 (review list is down from 52 rows to 22):
   - Gravesend, Ryder and Leonard libraries are open per BPL but "Closed for Construction" in city data. They stay greyed out until overrides can set `status` (below).
   - Carver Playground is "Not Operational" in city data, but NYC Parks rated it "Acceptable" in Sept 2025. It may be open.
@@ -12,15 +14,7 @@ Updated 2026-10-26. Steps map to the MVP scope in `SPEC.md`. Product improvement
 
 ## Next
 
-- [ ] **Decide the remaining open question in `docs/IMPROVEMENTS-SCOPING.md` §6**: milestone order (A → B → C proposed). Milestone A is nearly done (E0, E4, E9-lite shipped). Decided 2026-10-24: what "private bathroom" means (unblocks E2) and the rating dimensions (unblocks E3).
-- [ ] **E3: visits and ratings** (unblocked 2026-10-24; chips and sign-in rules decided 2026-10-26, see DECISIONS.md; includes making + Add and saving to My places require sign-in). Per DECISIONS.md: one-tap "I went here", optional Clean / Getting in / Vibes stars with reason tags, a "Rate your last visit" card for skipped ratings, reasons that confirm facts, trust line shown once 3 people have visited, existing ratings carried over. The old log fields come back as tags inside the rating dimensions; tapping one opens that field's old rating (Ashley, 2026-10-26): Clean: Trash cans, Smell; Getting in: Number of stalls; Vibes: Lighting. Old values to carry over are in the read-only `places` table and each phone's `nbt.places`.
-- [ ] **E3 prototype: open questions to review before building** (prototype finished 2026-10-24; draft PR #17, closed unmerged; preview: https://nyc-bathroom-tracker-git-prototype-e2-e3-ashley-s-sandbox.vercel.app). The E2 questions were answered on 2026-10-24/26 (see DECISIONS.md). Prototyped answers in brackets:
-  - **Ratings on list cards:** on every list card, or only on the map card and the restroom's page? (Cards got noticeably taller.) [every card]
-  - **Directions icon on list cards** too, not just the map card? (Each list card is one big link today.) [map card only]
-  - **Rate right after adding a new place?** Saving a place logs a visit and opens the quick rating. [yes]
-  - **"Rate your last visit" nudge:** how long a skipped rating stays (7 days), and whether it also shows over the map. [7 days, list and map]
-  - **Reasons become facts** ("Code needed") after how many people? [3, same as the trust line]
-  - **Does "I went here" require being nearby?** And one visit per person per bathroom per day? (Open since the scoping doc.) [no check; unlimited]
+- [ ] **Decide the remaining open question in `docs/IMPROVEMENTS-SCOPING.md` §6**: milestone order (A → B → C proposed). Milestone A is nearly done (E0, E4, E9-lite shipped); Milestone B's E1, E2 and E3 shipped by 2026-10-26.
 - [ ] **Let hours overrides set `status`**, then mark Gravesend, Ryder and Leonard libraries open and Paerdegat Athletic "Temporarily closed" (today it reads "Closed for today").
 - [ ] **NYPL holiday closures** (Manhattan, Bronx, Staten Island libraries). nypl.org/help/closings blocks automated reading, so copy the list in by hand.
 - [ ] **Bathroom layout: several separate single bathrooms** (feedback 2026-10-08). Becomes E5 on the shared `bathrooms` table (on hold with the other fact fields). Proposal: replace Stalls with **Layout**:
@@ -48,23 +42,27 @@ Updated 2026-10-26. Steps map to the MVP scope in `SPEC.md`. Product improvement
 
 - [ ] **Flip the visibility default to Private, with a prompt to make places Public** (Ashley, 2026-10-26, future decision). Today new places start Public. Decide together with the growth hook below.
 - [ ] **Public / Private known gaps** (kept as is, 2026-10-26; see DECISIONS.md): a Public place not yet on the server (added signed out, or before it syncs) is already locked as Public; hiding a Public place (`status = removed`) may not reach phones with a cached restroom list until other bathroom data changes. Revisit if a place ever needs to be hidden or un-shared quickly.
-- [ ] **Drop the `places` table** once E3 has carried its old ratings over (read-only since E2).
+- [ ] **Drop the `places` table:** E3 carried its old ratings over as visits (#29); it has been read-only since E2.
+- [ ] **Directions icon on list cards** too, not just the map card? Each list card is one big link today (open question from the E2/E3 prototype).
 - [ ] **Use the "Share your places?" prompt as a growth hook** (Ashley, 2026-10-24, from the E2/E3 prototype): beyond the one-time migration prompt, periodically invite people to batch-move Private places to Public, to grow the shared map. Decide when it shows and how often.
-- [ ] **Carry into the E3 build:** on the map card, "I went here" becomes the main action (the Directions icon and the sheet layering fix shipped in #22).
 
 - [ ] **Watch the location log for the iOS Home Screen bug:** rows with `permission_before = 'denied'` and `result = 'granted'` on `ios-homescreen` mean the phone said blocked but location worked (query in PR #21).
 - [ ] **Location log upkeep:** delete the 7 `dev` test rows (query in PR #16), maybe leave `dev` rows out of the views, and add a rate limit if the public insert ever gets spammed.
 
+- [ ] **Remove a visit:** a mistaken "I went here" still counts; there's no delete yet (#29).
+- [ ] **Rate limit on visits** if spam ever shows up: one person can inflate the visit count, though not the people count (#29).
+- [ ] **Raise `stats_min_people()` above 1** before the app opens beyond friends: with one visitor, the count, date and ratings are that person's (2026-10-26).
+
 ### Future ideas (backlog, Ashley 2026-10-08; spec each before building)
 
 - [ ] **Curated lists** (e.g. "Best bathrooms to cry in") that people can browse and save into their own list. Becomes E10 + public lists on the shared database.
-- [ ] **Visit log** (E3): an "I went here" tap that records the time, plus your visit history per place, in a separate `visits` table.
-- [ ] **Aggregated visits** (E3): "Visited 23 times by 9 people" per public restroom; counts only, never who; a minimum number of people before showing a count.
 - [ ] **Lists phase 2: share your list / import a friend's** (E10). Now references to shared bathrooms, not copies; share links are snapshots of which bathrooms.
 - [ ] **Lists phase 3: Ashley's public list** shown to everyone in Nearby. Needs its own planning conversation first.
 
 ## Done
 
+- [x] 2026-10-26: **E3: visits and ratings** (#29): `visits` table and counts-only `bathroom_stats()`; one-tap "I went here" (main button on the map card, and on every restroom's page); quick Clean / Getting in / Vibes rating with chips; "Rate your last visit"; ratings, facts and "Visited by N people" on cards and pages from the first visit; old ratings carried over as past visits; only signed-in users add places or keep My places
+- [x] 2026-10-26: **Map: dragging shows the closest restrooms there** (#28, from user feedback): moving the map at least half the radius searches around the new center (distances stay from you); "Back to me" returns
 - [x] 2026-10-26: **Map searches where you drag it** (user feedback): dragging or zooming the map well away from you shows the closest restrooms around the new map center (same radius and filters), with distances still from you and a "Back to me" button
 - [x] 2026-10-26: **E2: lists, and saved places on the shared bathrooms table** (#24): `lists` / `list_items` (one list per person), `bathrooms` gets owner, visibility (Public / Private) and address; Add a place asks "Who can use it?" and "Who can see it?" (Public by default); cards and detail pages show Customer Only and Public / Private; the 6 `places` rows moved over (2 city restrooms as list items, 4 hand-added places as Private) with a one-time "Share your places?" prompt; `places` is read-only; deleting an account keeps its Public bathrooms
 - [x] 2026-10-24: **Startup location check no longer trusts "denied" alone** (#21): shows the blocked state, quietly tries once, and switches to your location if it works; logs the real result

@@ -202,3 +202,15 @@ Designed around two users: the person who needs a bathroom now (Is it open? Can 
 
 - **The map searches the new area on its own, no "Search this area" button.** Someone who needs a restroom urgently shouldn't need an extra tap. Only moves made by hand count, and only once the map center is half the radius or more from the last search, so zooming in place or a small nudge keeps the current results and selected card.
 - **Distances on the card stay measured from you,** not from the map center: the map decides which restrooms show and their order, but "how far is it" is always about the walk from where you are. "Back to me" returns to the search around you; a new location does the same. The list view always shows results around you.
+
+## 2026-10-26: Map dragging (PR #28)
+
+- **Dragging or zooming the map by hand re-runs the Nearby search around the new map center** once the center moves at least half the radius, with the same radius and filters. Distances stay measured from you, not the map center. "Back to me" (or a new location) returns to results around you. The app's own pans (‹ ›, tapping a pin) don't trigger a search, and the list view always shows results around you. Why: user feedback, when nothing was nearby and they dragged the map to look elsewhere.
+
+## 2026-10-26: Visits and ratings, as built (PR #29)
+
+- **The database (Ashley approved the SQL):** one `visits` table holds each visit's ratings and chips. "Number of stalls" is a count, not a 1–5 rating. An old smell, trash or lighting score of 1–2 also marks that chip. Averages count each person's latest rating once, and chips count once per person. The minimum number of people is one database setting, `stats_min_people()` = 1, and the database (not the app) decides facts.
+- **Signed out, a place can't be made Public.** This replaces "Public after sign-in". Places marked Public on a signed-out phone before this change still go Public at sign-in.
+- **Closing "Rate your last visit" is remembered on that phone only.**
+- **No nearby check (Ashley confirmed):** "I went here" works from anywhere.
+- **Ratings on every list card (Ashley confirmed):** they show on the Nearby list, the map card and My places, not just the map card and the restroom's page.
