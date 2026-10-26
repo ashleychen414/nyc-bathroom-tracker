@@ -191,3 +191,9 @@ Designed around two users: the person who needs a bathroom now (Is it open? Can 
 - **One set of chips per rating, no separate tags.** Tapping a chip marks it as a problem. Chips for the old log fields (Clean: Trash cans, Smell; Getting in: Number of stalls; Vibes: Lighting) also open that field's own 1–5 rating. The full chip list per rating: *Clean:* dirty floors, smell, trash cans; *Getting in:* needs a code, had to buy something, had to wait, hard to find, number of stalls; *Vibes:* lighting, music.
 - **Signed-out visits are allowed.** "I went here" and ratings work without an account; they're kept on the phone and count toward public numbers only after sign-in, so "3 different people" stays reliable.
 - **Only signed-in users can add new places or keep their own list (My places).** This replaces "Signed out, a Public place stays on the phone until sign-in" from the 2026-10-26 E2 entry. Places already saved on a signed-out phone are kept and move to the account at sign-in.
+
+## 2026-10-26: E3 corrections (Ashley)
+
+- **No limit on visits.** People will mostly log one visit per bathroom, but the app doesn't restrict it (no one-per-day rule). "N people" still counts different people.
+- **Adding a place doesn't open the rating.** People rate through "I went here". (The prototype opened it because adding a place often means you were just there; but people also add places they haven't visited yet.)
+- **No minimum number of people before showing details, for now.** Visit count, last visit, averages and facts show from the first visit. This replaces "shown only once 3 different people have visited" (2026-10-24). The threshold stays a single setting, so it can be raised later. Trade-off accepted: with one visitor, the count, date and ratings are that one person's.
