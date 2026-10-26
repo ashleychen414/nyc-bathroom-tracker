@@ -1,6 +1,6 @@
 # Tasks
 
-Updated 2026-10-26 (after #29 and backlog cleanup). Steps map to the MVP scope in `SPEC.md`. Product improvements (Ashley, Oct 12) are sized and cross-referenced in `docs/IMPROVEMENTS-SCOPING.md`; epic numbers (E0–E13) refer to that doc.
+Updated 2026-10-26 (after #29, backlog cleanup, and reordering the epics around the data). Steps map to the MVP scope in `SPEC.md`. Product improvements (Ashley, Oct 12) are sized and cross-referenced in `docs/IMPROVEMENTS-SCOPING.md`; epic numbers (E0–E13) refer to that doc.
 
 ## Now
 
@@ -12,44 +12,56 @@ Updated 2026-10-26 (after #29 and backlog cleanup). Steps map to the MVP scope i
   - Carver Playground is "Not Operational" in city data, but NYC Parks rated it "Acceptable" in Sept 2025. It may be open.
   - McCarren Indoor Tennis: operator site wouldn't load. It's Seasonal, so it never shows Open either way.
 
-## Next
+## Next, Tier 1: confirm, correct and fill in
+
+Order set 2026-10-26 by two principles (see `DECISIONS.md` and `IMPROVEMENTS-SCOPING.md` §5): the app is only as good as its database, and users must be able to rate, confirm and edit incomplete information quickly.
+
+- [ ] **Confirm and correct any bathroom** (smaller E7): after "I went here", one-tap "Was it open?" and "Hours right?" ("No" opens a short fix form); "Report closed" and "Suggest an edit" on every bathroom, city rows included. Edits live right away with an undoable history; "Closed" after two reports; user-entered hours can show "Open". The nightly sync must stop overwriting user corrections to city rows. No review queue.
+- [ ] **Facts** (smaller E5, off hold): load the city's accessibility, restroom type and changing stations into `bathrooms`; add layout (one single / several singles → how many / one with stalls → how many, card chips like "3 single bathrooms"; existing logs convert), step-free, changing table and code needed, each confirmed with a tap.
+- [ ] **Ask for what's missing:** cards with gaps say so ("Hours unknown · Know them?", "Access unknown") and open the same fix form.
+
+## Next, Tier 2: more bathrooms
+
+- [ ] **"Share your places?" prompt as a growth hook** (Ashley, 2026-10-24): beyond the one-time migration prompt, invite people to move Private places to Public. Decide when it shows and how often.
+- [ ] **Bulk-add bathrooms by category** (museums, hotels, grocery and department stores, Target, gas stations). First a 1-day Brooklyn spike: counts per category from OpenStreetMap, Overture Maps / Foursquare Open Places and NYC / NY State open data, hours and restroom-tag coverage, licenses (OpenStreetMap share-alike), a hand check of 20 places. Imports land as Customer Only, hours unknown, shown by default and labeled "Unconfirmed" (normal sort, not last), with "Is there a restroom here?".
+- [ ] **Add a bathroom faster:** tap a spot on the map to add; only name, pin and access required; search our own bathrooms first (start of E9 full).
+- [ ] **E8 duplicates, flag only** (~50 m and a similar name); merge tool when real duplicates show up.
+- [ ] **E9 full and E11 Google Maps import.** Non-food places OpenStreetMap misses (e.g. GP-81, a Bushwick climbing gym) need another source. Check first whether Takeout exports include coordinates.
+- [ ] **Hours for other boroughs:** filled in by Tier 1 corrections, not reviewed by hand.
+
+## Next, other
 
 - [ ] **Let hours overrides set `status`**, then mark Gravesend, Ryder and Leonard libraries open and Paerdegat Athletic "Temporarily closed" (today it reads "Closed for today").
 - [ ] **NYPL holiday closures** (Manhattan, Bronx, Staten Island libraries). nypl.org/help/closings blocks automated reading, so copy the list in by hand.
-- [ ] **Bathroom layout: several separate single bathrooms** (feedback 2026-10-08). Becomes E5 on the shared `bathrooms` table (on hold with the other fact fields). Proposal: replace Stalls with **Layout**:
-  - One single bathroom
-  - Several single bathrooms → how many?
-  - One bathroom with stalls → how many stalls?
-  - Card chips like "3 single bathrooms" / "1 bathroom, 4 stalls". Existing logs convert automatically.
 - [ ] **Easier edit / delete for saved places** (Ashley, 2026-10-08; lower priority). Since E2: My places → Edit → "Delete place" (Private) or "Remove from My places" at the bottom of the form. Still open: a Remove action on the card itself.
-- [ ] Map follow-ups: tap a spot on the map to add a place; remember the map position between visits; show your live location dot moving as you walk
+- [ ] Map follow-ups: remember the map position between visits; show your live location dot moving as you walk
 - [ ] Test on a real iPhone: GPS, first-launch flow (new landing screen), time pickers, emoji tap targets, location blocked
 - [ ] Launch to friends; keep logging in `FEEDBACK.md`
 
 ## Later
 
-- [ ] **Needs-based onboarding** (Ashley, 2026-10-16, note on the landing screen mockup): ask about needs (medical/accessibility, pregnant, with toddlers) and shape the experience from it. Spec first.
-- [ ] **E9 full: search our own `bathrooms` table first**, then a provider comparison (after E2). Non-food places OpenStreetMap is missing (e.g. GP-81, a Bushwick climbing gym) need another source (Overture Maps / Foursquare open places) or "drop a pin and type the name".
-- [ ] **E7: rule for user corrections to seed rows.** Today a correction survives only until the city changes that row, because the nightly sync overwrites city facts when the city record changes.
 - [ ] **Each December: next year's holiday dates** in `data/special-days.json` (City 2027 calendar, QPL after Jan 3 2027, BPL after June 2027).
 - [ ] **Each spring: recheck seasonal rows**: Abe Stark season dates, Brooklyn Bridge Park restroom hours, Adventurer's Park, Luna Park.
 - [ ] Decide whether to keep publishing `bathrooms.json` once Supabase reads have been reliable for a while (today it's the fallback and the sync's input).
 - [ ] Turn off the GitHub Pages copy (www.nycpoops.com is the main link)
-- [ ] "This info is wrong" report link (E7)
-- [ ] Review hours for other boroughs
 
-- [ ] **Flip the visibility default to Private, with a prompt to make places Public** (Ashley, 2026-10-26, future decision). Today new places start Public. Decide together with the growth hook below.
 - [ ] **Public / Private known gaps** (kept as is, 2026-10-26; see DECISIONS.md): a Public place not yet on the server (added signed out, or before it syncs) is already locked as Public; hiding a Public place (`status = removed`) may not reach phones with a cached restroom list until other bathroom data changes. Revisit if a place ever needs to be hidden or un-shared quickly.
 - [ ] **Drop the `places` table:** E3 carried its old ratings over as visits (#29); it has been read-only since E2.
 - [ ] **Directions icon on list cards** too, not just the map card? Each list card is one big link today (open question from the E2/E3 prototype).
-- [ ] **Use the "Share your places?" prompt as a growth hook** (Ashley, 2026-10-24, from the E2/E3 prototype): beyond the one-time migration prompt, periodically invite people to batch-move Private places to Public, to grow the shared map. Decide when it shows and how often.
 
 - [ ] **Location log:** maybe leave `dev` rows out of the views, and add a rate limit if the public insert ever gets spammed.
 - [ ] **Watch the location log for the iOS Home Screen bug:** rows with `permission_before = 'denied'` and `result = 'granted'` on `ios-homescreen` mean the phone said blocked but location worked (query in PR #21).
 
+- [ ] **"Hours from a visitor" label** next to "Open" when the hours came from a user (low priority, Ashley 2026-10-26): says where the hours came from, which may get more people to report a mistake.
 - [ ] **Remove a visit:** a mistaken "I went here" still counts; there's no delete yet (#29).
 - [ ] **Rate limit on visits** if spam ever shows up: one person can inflate the visit count, though not the people count (#29).
 - [ ] **Raise `stats_min_people()` above 1** before the app opens beyond friends: with one visitor, the count, date and ratings are that person's (2026-10-26).
+
+### Deferred (2026-10-26: serve neither principle directly)
+
+- [ ] **E10 share lists**, **E6 public tips**, **E12 photos** (maybe entrance photos only, later), **E13** beyond rate limits.
+- [ ] **Needs-based onboarding** (Ashley, 2026-10-16): ask about needs (medical/accessibility, pregnant, with toddlers) and shape the experience from it. Spec first.
+- [ ] **Default new places to Private:** dropped for now; revisit only if many people keep their own saved lists.
 
 ### Future ideas (backlog, Ashley 2026-10-08; spec each before building)
 
