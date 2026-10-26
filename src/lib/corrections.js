@@ -6,6 +6,7 @@
 
 import { SUPABASE_URL, SUPABASE_KEY } from './supabase-config.js';
 import { currentUser, authedFetch } from './auth.js';
+import { FACTS, factLabel } from './facts.js'; // facts.js imports deviceId from here; both are used only inside functions
 
 const DEVICE_KEY = 'nbt.device';
 let memoryDeviceId = null;
@@ -97,6 +98,11 @@ export function describeChange(row) {
   if (row.kind === 'report_closed') return 'Reported closed';
   if (row.kind === 'confirm_open') return 'Confirmed open';
   if (row.kind === 'confirm_hours') return 'Confirmed the hours';
+  if (row.kind === 'fact') {
+    const { fact, value, count } = row.changes ?? {};
+    const name = FACTS.find((f) => f.key === fact)?.label ?? fact;
+    return value ? `${name}: ${factLabel(fact, { value, count })}` : `${name}: not sure`;
+  }
   const c = row.changes ?? {};
   const parts = [];
   if ('name' in c) parts.push(`Name changed to ${c.name}`);

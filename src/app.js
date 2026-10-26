@@ -24,6 +24,7 @@ import { refreshStats } from './lib/stats.js';
 import { rateSheetBody } from './views/ratings.js';
 import { openFix, closeFix, isFixOpen, handleFixClick, handleFixInput } from './views/fix.js';
 import { reportBathroom, editBathroom, undoEdit, bathroomHistory, applyResult, canReopen } from './lib/corrections.js';
+import { refreshFacts, answerFact, myFactAnswer, COUNTED } from './lib/facts.js';
 
 const app = document.getElementById('app');
 
@@ -69,6 +70,7 @@ const state = {
   rateDraft: null, // the quick rating being filled in (see rateSheetBody)
   history: {}, // restroom id → its latest changes (bathroom_history), 'loading' or 'error'
   fixFocus: null, // 'hours' when "Hours right? No" opens Suggest an edit
+  factBusy: null, // the fact being sent from a restroom's page
   afterSignIn: null, // where to go once signed in (e.g. #/add)
   shareChoices: {}, // "Share your places?": place id → 'public' (default Private)
   shareAnswered: false, // this session, so the prompt doesn't come back before the account hears
@@ -477,6 +479,36 @@ function undoChange(editId) {
   correct(id, () => undoEdit(editId), () => 'Undone.');
 }
 
+// ---------- Facts (What to expect) ----------
+
+// A tap gives your answer; tapping your own answer again takes it back ("Not sure"). Several
+// singles / stalls then ask how many (fact-count).
+async function answer(id, fact, value, count = null) {
+  state.factBusy = fact;
+  refresh();
+  try {
+    await answerFact(id, fact, value, count);
+    delete state.history[id];
+    toast(value === null ? 'Answer taken back.' : 'Thanks! Your answer counts toward what everyone sees.');
+  } catch (err) {
+    toast(err.message || "Couldn't send that. Try again.");
+  }
+  state.factBusy = null;
+  refresh();
+}
+
+function factClick(target) {
+  const { id, fact, value } = target.dataset;
+  answer(id, fact, myFactAnswer(id, fact) === value ? null : value);
+}
+
+function factCount(target) {
+  const { id, value } = target.dataset;
+  const n = Number(app.querySelector('#fact-count')?.value);
+  if (!Number.isInteger(n) || n < COUNTED[value] || n > 50) return toast(`Enter a number from ${COUNTED[value]} to 50.`);
+  answer(id, 'layout', value, n);
+}
+
 // ---------- Sign-in and account ----------
 
 // Sign-in first, then carry on to `then` (a route like #/add).
@@ -763,6 +795,10 @@ app.addEventListener('click', (e) => {
       return reopen(value);
     case 'undo-edit':
       return undoChange(value);
+    case 'fact-answer':
+      return factClick(target);
+    case 'fact-count':
+      return factCount(target);
     case 'signin-then':
       return askSignIn(value);
     case 'open-backup':
@@ -906,6 +942,13 @@ async function updateStats() {
 }
 updateStats();
 document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && updateStats());
+
+// Facts by majority (counts only), the same way.
+async function updateFacts() {
+  if ((await refreshFacts()) && state.sheet !== 'rate') refresh();
+}
+updateFacts();
+document.addEventListener('visibilitychange', () => document.visibilityState === 'visible' && updateFacts());
 
 // Restrooms come from the shared Supabase table (phone copy first, then fresh if it changed).
 loadBathrooms((data) => {
