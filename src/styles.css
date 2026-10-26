@@ -579,5 +579,6 @@ body.sheet-open { overflow: hidden; }
 .sub-rating { display: grid; gap: 4px; padding-top: 6px; }
 .sub-rating.count-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .stars.small .star { max-width: 44px; height: 40px; font-size: 24px; }
-.sub-rating .input.count { width: 4.5em; text-align: center; }
+/* Two digits at most: a small box, still 16px text so iOS doesn't zoom. */
+.sub-rating .input.count { width: 52px; min-height: 36px; padding: 4px 6px; text-align: center; }
 .map-sheet .actions .btn.primary { flex: 1.4; }
