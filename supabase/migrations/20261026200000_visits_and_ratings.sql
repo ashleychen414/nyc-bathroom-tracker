@@ -1,6 +1,7 @@
 -- E3: visits and ratings.
--- - visits: one row per "I went here" (no limit on how many), with that visit's optional ratings (Clean, Getting in, Vibes, 1–5), the chips tapped as problems, and the old log
---   fields that chips open (smell, trash cans, lighting: 1–5; stalls: a count).
+-- - visits: one row per "I went here" (no limit on how many), with that visit's optional ratings
+--   (Clean, Getting in, Vibes, 1–5), the chips tapped as problems, and the old log fields that
+--   chips open (smell, trash cans, lighting: 1–5; stalls: a count).
 -- - Everyone reads only their own visits. Others see counts through bathroom_stats(), which never
 --   returns anything per person. Its minimum number of people is one setting, stats_min_people()
 --   (1 for now, Ashley 2026-10-26), so it can be raised later by replacing that one function.
