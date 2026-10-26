@@ -316,15 +316,18 @@ insert into public.visits (id, bathroom_id, visited_at, clean, updated_at)
 insert into public.visits (id, bathroom_id, visited_at, clean, get_in, vibes, chips, smell, updated_at)
   values ('bbbbbbbb-0000-0000-0000-000000000002', 'rls-test-seed', now() + interval '2 days', 4, 2, 5, '{code,smell}', 2, now());
 insert into public.visits (id, bathroom_id, visited_at) values ('bbbbbbbb-0000-0000-0000-000000000003', 'rls-test-seed', now() - interval '1 minute');
+-- A visits their own Private bathroom too: it never shows in the stats.
+insert into public.bathrooms (id, name, visibility, lat, lng) values ('rls-test-visit-private', 'A private stop', 'private', 40.7, -73.9);
+insert into public.visits (bathroom_id, visited_at, clean) values ('rls-test-visit-private', now(), 5);
 do $$ begin
-  assert (select count(*) from public.visits) = 3, 'A should see their 3 visits, two of them today';
+  assert (select count(*) from public.visits where bathroom_id = 'rls-test-seed') = 3, 'A should see their 3 visits here, two of them today';
   assert (select user_id from public.visits where clean = 4) = '11111111-1111-1111-1111-111111111111', 'a visit should be A''s';
   assert (select visited_at <= now() and source = 'app' from public.visits where clean = 4), 'a future visit should be dated now, from the app';
   -- The app saves with an upsert on id: the same id updates the visit.
   insert into public.visits (id, bathroom_id, visited_at, clean, updated_at)
     values ('bbbbbbbb-0000-0000-0000-000000000003', 'rls-test-seed', now() - interval '1 minute', 3, now())
     on conflict (id) do update set clean = excluded.clean, updated_at = excluded.updated_at;
-  assert (select count(*) from public.visits) = 3, 'the upsert should update the visit, not add one';
+  assert (select count(*) from public.visits) = 4, 'the upsert should update the visit, not add one';
   begin
     insert into public.visits (bathroom_id, visited_at, chips) values ('rls-test-confirmed', now(), '{not-a-chip}');
     raise exception 'a chip outside the list was accepted';
@@ -338,6 +341,11 @@ do $$ begin
   begin
     insert into public.visits (bathroom_id, visited_at) values ('rls-test-private-b', now());
     raise exception 'A was able to visit B''s Private bathroom';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    update public.visits set bathroom_id = 'rls-test-private-b' where id = 'bbbbbbbb-0000-0000-0000-000000000003';
+    raise exception 'A was able to move a visit onto B''s Private bathroom';
   exception when insufficient_privilege then null;
   end;
   begin
@@ -361,7 +369,7 @@ end $$;
 set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}';
 update public.visits set clean = 1 where bathroom_id = 'rls-test-seed';
 insert into public.visits (bathroom_id, visited_at, clean, get_in, chips, updated_at)
-  values ('rls-test-seed', now(), 2, 3, '{code,dirty}', now());
+  values ('rls-test-seed', now(), 2, 3, '{code,code,dirty}', now());  -- a repeated chip counts once
 do $$ begin
   assert (select count(*) from public.visits) = 1, 'B should see only their own visit';
   begin
@@ -404,8 +412,9 @@ begin
   assert s.clean = 3.0 and s.clean_people = 3, 'Clean should average each person''s latest rating (4, 2, 3), got ' || s.clean;
   assert s.get_in = 3.3 and s.get_in_people = 3, 'Getting in should average 2, 3, 5, got ' || s.get_in;
   assert s.vibes = 5.0 and s.vibes_people = 1, 'Vibes rated by 1 person should show (minimum is 1 for now)';
-  assert s.chips = '{"code": 2, "dirty": 1, "smell": 1}'::jsonb, 'chips should count people per chip, got ' || s.chips;
+  assert s.chips = '{"code": 2, "dirty": 1, "smell": 1}'::jsonb, 'chips should count people per chip, got ' || s.chips::text;
   assert s.facts = '{code}', 'code tapped by 2 people should be a fact, got ' || s.facts::text;
+  assert not exists (select 1 from public.bathroom_stats() where bathroom_id = 'rls-test-visit-private'), 'stats should never show a Private bathroom';
 end $$;
 reset role;
 

@@ -62,8 +62,8 @@ alter table public.visits enable row level security;
 create policy "Users read their own visits" on public.visits
   for select to authenticated using ((select auth.uid()) = user_id);
 
--- Only bathrooms you can see (the subquery runs with your RLS, so someone else's Private
--- bathroom can't be visited even if its id is known).
+-- Only bathrooms you can see, on insert and on update (the subquery runs with your RLS, so someone
+-- else's Private bathroom can't be visited, or a visit moved onto it, even if its id is known).
 create policy "Users add their own visits" on public.visits
   for insert to authenticated with check (
     (select auth.uid()) = user_id
@@ -73,7 +73,10 @@ create policy "Users add their own visits" on public.visits
 create policy "Users update their own visits" on public.visits
   for update to authenticated
   using ((select auth.uid()) = user_id)
-  with check ((select auth.uid()) = user_id);
+  with check (
+    (select auth.uid()) = user_id
+    and exists (select 1 from public.bathrooms b where b.id = bathroom_id)
+  );
 
 -- No delete for now. user_id comes from the session (no column privilege), source stays 'app'.
 -- id, bathroom_id and visited_at are in the update list because the app saves with an upsert
@@ -90,7 +93,7 @@ grant update (id, bathroom_id, visited_at, clean, get_in, vibes, chips, smell, t
 create function public.stats_min_people()
 returns integer
 language sql
-immutable
+stable  -- not immutable: it's meant to be replaced, and callers shouldn't fold it in
 set search_path = ''
 as $$ select 1 $$;
 
@@ -125,19 +128,20 @@ as $$
       max(v.visited_at at time zone 'America/New_York')::date as last_visit
     from public.visits v
     join public.bathrooms b on b.id = v.bathroom_id
-    where b.visibility = 'public' and b.status not in ('removed', 'merged') and b.deleted_at is null
+    -- The same bathrooms anyone can read (the bathrooms read policy, minus "your own").
+    where b.visibility = 'public' and (b.source = 'seed' or b.status not in ('removed', 'merged'))
     group by v.bathroom_id
     having count(distinct v.user_id) >= public.stats_min_people()
   ),
   -- Each person's latest visit that rated each dimension.
   latest as (
     select distinct on (v.bathroom_id, v.user_id, d.dim)
-      v.bathroom_id, d.dim, d.rating, v.chips
+      v.bathroom_id, v.user_id, d.dim, d.rating, v.chips
     from public.visits v
     join shown s using (bathroom_id)
     cross join lateral (values ('clean', v.clean), ('get_in', v.get_in), ('vibes', v.vibes)) as d (dim, rating)
     where d.rating is not null
-    order by v.bathroom_id, v.user_id, d.dim, v.visited_at desc
+    order by v.bathroom_id, v.user_id, d.dim, v.visited_at desc, v.updated_at desc, v.id
   ),
   ratings as (
     select bathroom_id,
@@ -147,11 +151,12 @@ as $$
     from latest
     group by bathroom_id
   ),
-  -- A chip counts from the visit that rated its own dimension.
+  -- A chip counts from the visit that rated its own dimension, once per person (even if the
+  -- array repeats it).
   chip_counts as (
     select bathroom_id, jsonb_object_agg(chip, n) as chips
     from (
-      select l.bathroom_id, c.chip, count(*)::int as n
+      select l.bathroom_id, c.chip, count(distinct l.user_id)::int as n
       from latest l
       cross join lateral unnest(l.chips) as c (chip)
       where (l.dim = 'clean' and c.chip in ('dirty', 'smell', 'trash'))
@@ -205,7 +210,10 @@ select
   p.updated_at,
   p.updated_at
 from public.places p
-join public.bathrooms b on b.id = coalesce(p.data->>'publicId', p.id::text)
+-- The bathroom E2 moved the place to: its city restroom if we still have it, else the Private
+-- bathroom made from the place (same id).
+join public.bathrooms b on b.id = coalesce(
+  (select s.id from public.bathrooms s where s.id = p.data->>'publicId'), p.id::text)
 where p.deleted_at is null
   and (p.data->'log') ?| array['cleanliness', 'smell', 'trashCleanliness', 'lighting', 'stallCount']
 on conflict (id) do nothing;
@@ -217,11 +225,18 @@ do $$ begin
        and (p.data->'log') ?| array['cleanliness', 'smell', 'trashCleanliness', 'lighting', 'stallCount']),
     'each place with a log should be one carried-over visit';
   assert (select count(*) from public.visits v
-          join public.places p on p.id = v.id and p.user_id = v.user_id and coalesce(p.data->>'publicId', p.id::text) = v.bathroom_id
+          join public.places p on p.id = v.id and p.user_id = v.user_id
           where v.source = 'carried_over'
             and (v.clean is distinct from (p.data->'log'->>'cleanliness')::smallint
               or v.smell is distinct from (p.data->'log'->>'smell')::smallint
               or v.trash is distinct from (p.data->'log'->>'trashCleanliness')::smallint
-              or v.lighting is distinct from (p.data->'log'->>'lighting')::smallint)) = 0,
-    'carried-over visits should keep their owner and ratings';
+              or v.lighting is distinct from (p.data->'log'->>'lighting')::smallint
+              or v.stall_count is distinct from nullif((p.data->'log'->>'stallCount')::smallint, 0))) = 0,
+    'carried-over visits should keep their owner, ratings and stall count';
+  assert (select count(*) from public.visits v where v.source = 'carried_over'
+          and ((v.smell <= 2) <> ('smell' = any (v.chips))
+            or (v.trash <= 2) <> ('trash' = any (v.chips))
+            or (v.lighting <= 2) <> ('lighting' = any (v.chips))
+            or cardinality(v.chips) > 3)) = 0,
+    'a carried-over score of 1-2 (and only that) should mark its chip';
 end $$;
