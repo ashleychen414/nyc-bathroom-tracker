@@ -1,6 +1,6 @@
 # Tasks
 
-Updated 2026-10-26 (after #29). Steps map to the MVP scope in `SPEC.md`. Product improvements (Ashley, Oct 12) are sized and cross-referenced in `docs/IMPROVEMENTS-SCOPING.md`; epic numbers (E0–E13) refer to that doc.
+Updated 2026-10-26 (after #29 and backlog cleanup). Steps map to the MVP scope in `SPEC.md`. Product improvements (Ashley, Oct 12) are sized and cross-referenced in `docs/IMPROVEMENTS-SCOPING.md`; epic numbers (E0–E13) refer to that doc.
 
 ## Now
 
@@ -14,7 +14,6 @@ Updated 2026-10-26 (after #29). Steps map to the MVP scope in `SPEC.md`. Product
 
 ## Next
 
-- [ ] **Decide the remaining open question in `docs/IMPROVEMENTS-SCOPING.md` §6**: milestone order (A → B → C proposed). Milestone A is nearly done (E0, E4, E9-lite shipped); Milestone B's E1, E2 and E3 shipped by 2026-10-26.
 - [ ] **Let hours overrides set `status`**, then mark Gravesend, Ryder and Leonard libraries open and Paerdegat Athletic "Temporarily closed" (today it reads "Closed for today").
 - [ ] **NYPL holiday closures** (Manhattan, Bronx, Staten Island libraries). nypl.org/help/closings blocks automated reading, so copy the list in by hand.
 - [ ] **Bathroom layout: several separate single bathrooms** (feedback 2026-10-08). Becomes E5 on the shared `bathrooms` table (on hold with the other fact fields). Proposal: replace Stalls with **Layout**:
@@ -22,7 +21,6 @@ Updated 2026-10-26 (after #29). Steps map to the MVP scope in `SPEC.md`. Product
   - Several single bathrooms → how many?
   - One bathroom with stalls → how many stalls?
   - Card chips like "3 single bathrooms" / "1 bathroom, 4 stalls". Existing logs convert automatically.
-- [ ] **Saving without a confirmation step** (feedback 2026-10-08). The pop-up is gone since lists phase 1; re-check with the tester. The rest is answered by E2 (save = list item) and E3 (log = visit).
 - [ ] **Easier edit / delete for saved places** (Ashley, 2026-10-08; lower priority). Since E2: My places → Edit → "Delete place" (Private) or "Remove from My places" at the bottom of the form. Still open: a Remove action on the card itself.
 - [ ] Map follow-ups: tap a spot on the map to add a place; remember the map position between visits; show your live location dot moving as you walk
 - [ ] Test on a real iPhone: GPS, first-launch flow (new landing screen), time pickers, emoji tap targets, location blocked
@@ -46,8 +44,8 @@ Updated 2026-10-26 (after #29). Steps map to the MVP scope in `SPEC.md`. Product
 - [ ] **Directions icon on list cards** too, not just the map card? Each list card is one big link today (open question from the E2/E3 prototype).
 - [ ] **Use the "Share your places?" prompt as a growth hook** (Ashley, 2026-10-24, from the E2/E3 prototype): beyond the one-time migration prompt, periodically invite people to batch-move Private places to Public, to grow the shared map. Decide when it shows and how often.
 
+- [ ] **Location log:** maybe leave `dev` rows out of the views, and add a rate limit if the public insert ever gets spammed.
 - [ ] **Watch the location log for the iOS Home Screen bug:** rows with `permission_before = 'denied'` and `result = 'granted'` on `ios-homescreen` mean the phone said blocked but location worked (query in PR #21).
-- [ ] **Location log upkeep:** delete the 7 `dev` test rows (query in PR #16), maybe leave `dev` rows out of the views, and add a rate limit if the public insert ever gets spammed.
 
 - [ ] **Remove a visit:** a mistaken "I went here" still counts; there's no delete yet (#29).
 - [ ] **Rate limit on visits** if spam ever shows up: one person can inflate the visit count, though not the people count (#29).
@@ -61,9 +59,9 @@ Updated 2026-10-26 (after #29). Steps map to the MVP scope in `SPEC.md`. Product
 
 ## Done
 
+- [x] 2026-10-26: **Backlog cleanup:** milestone order closed (Milestone A shipped; Milestone B's E1–E3 shipped, E5 on hold); "Saving without a confirmation step" closed (the pop-up is gone; saving is a list item since E2 and logging is a visit since E3); the `dev` test rows in `location_events` deleted (there were 6)
 - [x] 2026-10-26: **E3: visits and ratings** (#29): `visits` table and counts-only `bathroom_stats()`; one-tap "I went here" (main button on the map card, and on every restroom's page); quick Clean / Getting in / Vibes rating with chips; "Rate your last visit"; ratings, facts and "Visited by N people" on cards and pages from the first visit; old ratings carried over as past visits; only signed-in users add places or keep My places
 - [x] 2026-10-26: **Map: dragging shows the closest restrooms there** (#28, from user feedback): moving the map at least half the radius searches around the new center (distances stay from you); "Back to me" returns
-- [x] 2026-10-26: **Map searches where you drag it** (user feedback): dragging or zooming the map well away from you shows the closest restrooms around the new map center (same radius and filters), with distances still from you and a "Back to me" button
 - [x] 2026-10-26: **E2: lists, and saved places on the shared bathrooms table** (#24): `lists` / `list_items` (one list per person), `bathrooms` gets owner, visibility (Public / Private) and address; Add a place asks "Who can use it?" and "Who can see it?" (Public by default); cards and detail pages show Customer Only and Public / Private; the 6 `places` rows moved over (2 city restrooms as list items, 4 hand-added places as Private) with a one-time "Share your places?" prompt; `places` is read-only; deleting an account keeps its Public bathrooms
 - [x] 2026-10-24: **Startup location check no longer trusts "denied" alone** (#21): shows the blocked state, quietly tries once, and switches to your location if it works; logs the real result
 - [x] 2026-10-24: **Map card: Directions as an icon next to the distance** (#22), and bottom sheets now sit above the map card
