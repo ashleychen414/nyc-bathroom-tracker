@@ -38,6 +38,7 @@ export async function refreshStats(fetchImpl = fetch) {
       method: 'POST',
       headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' },
       body: '{}',
+      signal: AbortSignal.timeout?.(8000), // a hung request keeps the last copy, like any failure
     });
     if (!res.ok) return false;
     const next = Object.fromEntries((await res.json()).map((r) => [r.bathroom_id, statFromRow(r)]));

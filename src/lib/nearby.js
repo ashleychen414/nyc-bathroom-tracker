@@ -1,32 +1,33 @@
 // Builds the Nearby list: shared bathrooms (city restrooms and Public ones people added) and the
 // user's own places, mixed, filtered, and sorted open-first then by distance.
 
-import { getStatus, STATE_RANK } from './hours.js';
+import { getStatus, nyClock, STATE_RANK } from './hours.js';
 import { distanceMiles } from './geo.js';
 
 export const RADII = [0.25, 0.5, 1];
 export const MIN_RESULTS = 5;
 
 // The user's own places are always "operational"; their status comes from the hours they logged.
-export const placeStatus = (place, now = new Date()) =>
-  getStatus({ status: 'Operational', season: null, hours: place.hours ?? null }, now);
+// clock (optional): nyClock(now), shared across a batch (see buildEntries).
+export const placeStatus = (place, now = new Date(), clock = null) =>
+  getStatus({ status: 'Operational', season: null, hours: place.hours ?? null }, now, clock);
 
 // Two people reporting it closed shows it closed, until someone edits it open again.
 // A city restroom follows the city's status and season, except where a user corrected it: "it's
 // open again" overrides the city's closed status, and user-entered hours count as source hours,
 // so they also skip the Seasonal rule (Ashley, 2026-10-26).
 // A bathroom someone added has no city status: its hours decide, unless we marked it closed.
-export const bathroomStatus = (b, now = new Date()) => {
+export const bathroomStatus = (b, now = new Date(), clock = null) => {
   if (b.reportedClosedAt) return { state: 'closed', label: 'Reported closed' };
   if (b.source !== 'user') {
     const fields = b.userFields ?? [];
-    if (!fields.length) return getStatus(b, now);
+    if (!fields.length) return getStatus(b, now, clock);
     const open = fields.includes('open');
     const season = open || (fields.includes('hours') && b.season === 'Seasonal') ? null : b.season;
-    return getStatus({ ...b, status: open ? 'Operational' : b.status, season }, now);
+    return getStatus({ ...b, status: open ? 'Operational' : b.status, season }, now, clock);
   }
   if (b.recordStatus === 'closed') return { state: 'closed', label: 'Closed' };
-  return placeStatus(b, now);
+  return placeStatus(b, now, clock);
 };
 
 // One entry per bathroom. A saved shared bathroom stays one entry (its data + your notes).
@@ -34,17 +35,18 @@ export const bathroomStatus = (b, now = new Date()) => {
 // they're Public and in the shared data. A saved bathroom missing from the data (e.g. it left the
 // city data) falls back to being "yours". Duplicates (the same café added by two people) both show.
 export function buildEntries(bathrooms, places, now = new Date()) {
+  const clock = nyClock(now); // one New York clock for the whole list
   const placeById = new Map(places.map((p) => [p.id, p]));
   const shown = new Set();
   const entries = [];
   for (const b of bathrooms) {
     if (placeById.get(b.id)?.own) continue;
     shown.add(b.id);
-    entries.push({ kind: 'public', id: b.id, name: b.name, lat: b.lat, lng: b.lng, bathroom: b, place: placeById.get(b.id) ?? null, status: bathroomStatus(b, now) });
+    entries.push({ kind: 'public', id: b.id, name: b.name, lat: b.lat, lng: b.lng, bathroom: b, place: placeById.get(b.id) ?? null, status: bathroomStatus(b, now, clock) });
   }
   for (const p of places) {
     if (shown.has(p.id) || !Number.isFinite(p.lat) || !Number.isFinite(p.lng)) continue;
-    entries.push({ kind: 'mine', id: p.id, name: p.name, lat: p.lat, lng: p.lng, bathroom: null, place: p, status: placeStatus(p, now) });
+    entries.push({ kind: 'mine', id: p.id, name: p.name, lat: p.lat, lng: p.lng, bathroom: null, place: p, status: placeStatus(p, now, clock) });
   }
   return entries;
 }

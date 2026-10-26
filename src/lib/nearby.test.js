@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildEntries, nearby, matches, bathroomStatus } from './nearby.js';
+import { buildEntries, nearby, matches, bathroomStatus, placeStatus } from './nearby.js';
 import { parseHours } from './hours.js';
 
 // Wed Oct 8 2025, 6:30pm in New York.
@@ -117,4 +117,25 @@ test("a user's corrections to a city restroom: open again overrides the city, us
   assert.equal(bathroomStatus(city({ status: 'Not Operational', userFields: ['hours'] }), NOW).state, 'closed');
   // A corrected name changes nothing about the status.
   assert.equal(bathroomStatus(city({ season: 'Seasonal', userFields: ['name'] }), NOW).state, 'varies');
+});
+
+test('one New York clock for the whole list, with the same statuses as checking each alone', () => {
+  const proto = Intl.DateTimeFormat.prototype;
+  const original = proto.formatToParts;
+  let reads = 0;
+  proto.formatToParts = function (...args) {
+    reads++;
+    return original.apply(this, args);
+  };
+  let entries;
+  try {
+    entries = buildEntries(bathrooms, places, NOW);
+  } finally {
+    proto.formatToParts = original;
+  }
+  assert.ok(entries.length > 2);
+  assert.equal(reads, 1);
+  for (const e of entries) {
+    assert.deepEqual(e.status, e.bathroom ? bathroomStatus(e.bathroom, NOW) : placeStatus(e.place, NOW), e.id);
+  }
 });
