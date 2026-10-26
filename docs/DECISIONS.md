@@ -185,3 +185,9 @@ Designed around two users: the person who needs a bathroom now (Is it open? Can 
 - **Old log fields become tappable tags inside the E3 rating dimensions** (Ashley): Clean: Trash cans, Smell; Getting in: Number of stalls; Vibes: Lighting. Tapping a tag opens that field's old rating. Until E3 they're off the form; the old values are kept to carry over.
 - **Known gaps, kept as is** (Ashley): a Public place that hasn't reached the server yet is already locked, though nobody else can see it; and hiding a Public place may not reach phones that cached the restroom list until other bathroom data changes (the cache check only looks at the newest visible row). Fixes are noted in TASKS.md if they become needed.
 - **Sync for your own bathrooms doesn't compare clocks:** a place changed on the phone is sent, otherwise the account's copy wins. List items keep "newer edit wins", as `places` did.
+
+## 2026-10-26: Rating chips, and what needs an account (Ashley)
+
+- **One set of chips per rating, no separate tags.** Tapping a chip marks it as a problem. Chips for the old log fields (Clean: Trash cans, Smell; Getting in: Number of stalls; Vibes: Lighting) also open that field's own 1–5 rating. The full chip list per rating: *Clean:* dirty floors, smell, trash cans; *Getting in:* needs a code, had to buy something, had to wait, hard to find, number of stalls; *Vibes:* lighting, music.
+- **Signed-out visits are allowed.** "I went here" and ratings work without an account; they're kept on the phone and count toward public numbers only after sign-in, so "3 different people" stays reliable.
+- **Only signed-in users can add new places or keep their own list (My places).** This replaces "Signed out, a Public place stays on the phone until sign-in" from the 2026-10-26 E2 entry. Places already saved on a signed-out phone are kept and move to the account at sign-in.
