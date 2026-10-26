@@ -173,3 +173,15 @@ Designed around two users: the person who needs a bathroom now (Is it open? Can 
 ## 2026-10-24: Startup location check (PR #21)
 
 - **At startup, a "denied" from the browser's permission check isn't trusted on its own.** The app shows the blocked state (zip first), quietly tries to get the location once, and switches to it if that works. Why: on iOS 26/27, Home Screen apps can report "denied" while location actually works (Apple Developer Forums thread 804381). On a phone that really is blocked, the try fails at once with no prompt. `already_blocked` in the location log views keeps its meaning, so no database change.
+
+## 2026-10-26: Lists and shared bathrooms (PR #24)
+
+- **New places default to Public** for now (Ashley), to grow the shared map; one tap makes a place Private. Signed out, a Public place stays on the phone until sign-in ("Public after sign-in"). Flipping the default to Private with a make-public prompt is a likely future change.
+- **Public bathrooms people add are readable by everyone right away,** without waiting for us to confirm them. The old "seed or confirmed" read rule would have kept a new Public café off the map until it was confirmed by hand. We can still hide one by setting its status to `removed` (its owner still sees it).
+- **Making a place Public can't be undone** (Ashley): others may have saved it. The app locks the choice and a database trigger refuses Public → Private for every role. Creators can still edit a Public place. Users can delete only Private places; "Remove from My places" takes a place off your list only and leaves it on the map.
+- **Deleting an account keeps that person's Public bathrooms,** with no owner (nobody can edit them in the app; corrections come through E7). Their Private bathrooms, list and notes are deleted.
+- **One list per person ("My places")** until lists can be shared (E10) (Ashley).
+- **Duplicates show as separate entries,** with no "possibly the same place" hint (prototype answer).
+- **Old log fields become tappable tags inside the E3 rating dimensions** (Ashley): Clean: Trash cans, Smell; Getting in: Number of stalls; Vibes: Lighting. Tapping a tag opens that field's old rating. Until E3 they're off the form; the old values are kept to carry over.
+- **Known gaps, kept as is** (Ashley): a Public place that hasn't reached the server yet is already locked, though nobody else can see it; and hiding a Public place may not reach phones that cached the restroom list until other bathroom data changes (the cache check only looks at the newest visible row). Fixes are noted in TASKS.md if they become needed.
+- **Sync for your own bathrooms doesn't compare clocks:** a place changed on the phone is sent, otherwise the account's copy wins. List items keep "newer edit wins", as `places` did.
