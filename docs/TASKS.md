@@ -65,6 +65,7 @@ Updated 2026-10-26. Steps map to the MVP scope in `SPEC.md`. Product improvement
 
 ## Done
 
+- [x] 2026-10-26: **Map searches where you drag it** (user feedback): dragging or zooming the map well away from you shows the closest restrooms around the new map center (same radius and filters), with distances still from you and a "Back to me" button
 - [x] 2026-10-26: **E2: lists, and saved places on the shared bathrooms table** (#24): `lists` / `list_items` (one list per person), `bathrooms` gets owner, visibility (Public / Private) and address; Add a place asks "Who can use it?" and "Who can see it?" (Public by default); cards and detail pages show Customer Only and Public / Private; the 6 `places` rows moved over (2 city restrooms as list items, 4 hand-added places as Private) with a one-time "Share your places?" prompt; `places` is read-only; deleting an account keeps its Public bathrooms
 - [x] 2026-10-24: **Startup location check no longer trusts "denied" alone** (#21): shows the blocked state, quietly tries once, and switches to your location if it works; logs the real result
 - [x] 2026-10-24: **Map card: Directions as an icon next to the distance** (#22), and bottom sheets now sit above the map card

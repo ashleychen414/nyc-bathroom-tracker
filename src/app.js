@@ -16,7 +16,7 @@ import { placesView } from './views/places.js';
 import { openForm, closeForm, isFormOpen, handleFormClick, handleFormInput } from './views/form.js';
 import { tabBar } from './views/shared.js';
 import { homeScreenSheet, backupSheet, backupResult } from './views/sheets.js';
-import { mountMap, mountBackdrop, unmountMap, selectPin } from './views/map.js';
+import { mountMap, mountBackdrop, unmountMap, selectPin, showArea } from './views/map.js';
 import { mapSheet } from './views/nearby.js';
 import { signInSheet, accountSheet, shareSheet } from './views/account.js';
 import { logVisit, getVisit, rateVisit, cleanRatings, dismissNudge, clearVisits, DIMENSIONS } from './lib/visits.js';
@@ -58,6 +58,9 @@ const state = {
   // Map first (Oct 14 decision); the list is remembered only if someone switches to it.
   view: prefs.view === 'list' ? 'list' : 'map',
   selectedId: null, // pin selected on the map; null = best match
+  // The map searched where the user dragged it: { center, here }. Only counts for that same `here`,
+  // so a new location brings the map back to the user.
+  mapArea: null,
   // Closed restrooms are hidden by default; the "Hide closed" chip turns that off.
   filters: { kind: 'all', type: '', hideClosed: true, openNow: false, accessible: false, changing: false },
   sheet: null, // 'homescreen' | 'backup' | 'signin' | 'account' | 'share' | 'rate'
@@ -196,10 +199,7 @@ function render() {
     }
 
     default: {
-      const list =
-        state.data && state.here
-          ? nearby(buildEntries(state.data.bathrooms, listPlaces()), state.here, { radius: state.radius, ...state.filters })
-          : null;
+      const list = nearbyList();
       currentList = list;
       if (list && state.selectedId && ![...list.inside, ...list.outside].some((e) => e.id === state.selectedId)) state.selectedId = null;
       paint(nearbyView(state, list), 'nearby');
@@ -209,12 +209,14 @@ function render() {
         mountMap(mapEl, {
           entries: [...list.inside, ...list.outside],
           here,
+          center: list.area ?? here,
           radius: state.radius,
           approx: here.source === 'zip',
           zip: here.zip,
           selected: state.selectedId ?? [...list.inside, ...list.outside][0]?.id,
           sheet: app.querySelector('#map-sheet'),
           onSelect: (id) => selectOnMap(id),
+          onMove: searchMapArea,
         });
       }
       return;
@@ -222,9 +224,33 @@ function render() {
   }
 }
 
+// The Nearby list around the user, or on the map around where they dragged it. Distances are
+// always from the user; only which restrooms show (and their order) follows the map.
+function nearbyList() {
+  if (!state.data || !state.here) return null;
+  const entries = buildEntries(state.data.bathrooms, listPlaces());
+  const options = { radius: state.radius, ...state.filters };
+  const area = state.view === 'map' && state.mapArea?.here === state.here ? state.mapArea.center : null;
+  if (!area) return nearby(entries, state.here, options);
+  const list = nearby(entries, area, options);
+  const fromYou = (e) => ({ ...e, distance: distanceMiles(state.here, e) });
+  return { inside: list.inside.map(fromYou), outside: list.outside.map(fromYou), area };
+}
+
 // ---------- Map selection (updates the card and the pin without rebuilding the map) ----------
 
 let currentList = null;
+
+// The user dragged the map somewhere new: show the closest restrooms there, keeping their view.
+function searchMapArea(center) {
+  state.mapArea = { center, here: state.here };
+  state.selectedId = null;
+  currentList = nearbyList();
+  const entries = [...currentList.inside, ...currentList.outside];
+  const sheet = app.querySelector('#map-sheet');
+  if (sheet) sheet.innerHTML = mapSheet(state, currentList, null);
+  showArea({ center, entries, selected: entries[0]?.id });
+}
 
 function selectOnMap(id, { pan = false } = {}) {
   state.selectedId = id;
@@ -666,6 +692,10 @@ app.addEventListener('click', (e) => {
       return app.querySelector('#zip')?.focus();
     case 'sheet-step':
       return stepSelection(Number(value));
+    case 'map-home':
+      state.mapArea = null;
+      state.selectedId = null;
+      return render();
     case 'view':
       state.view = value;
       savePrefs({ view: value });
