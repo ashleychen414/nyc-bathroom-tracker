@@ -93,11 +93,35 @@ export function rateSheetBody(draft) {
   });
   return `<h2 id="rate-title">How was ${esc(draft.name ?? 'it')}?</h2>
      <p class="muted">Share your feedback with the community</p>
+     ${draft.confirm ? confirmHtml(draft.confirm) : ''}
      ${dims.join('')}
      <div class="sheet-actions">
        <button class="btn block" data-action="rate-later">Later</button>
        <button class="btn primary block" data-action="rate-save">Save</button>
      </div>`;
+}
+
+// Right after "I went here" on a shared bathroom: "Was it open?", then "Hours right?" when it has
+// hours. Each answer is sent at once (it counts even if the rating is skipped) and only once.
+// confirm: { open: null | 'yes' | 'no', hours: null | 'yes' | 'no', hoursKnown, reopened, error }
+function confirmHtml(c) {
+  const seg = (action, field, value, text) =>
+    `<button type="button" class="seg ${c[field] === value ? 'on' : ''}" aria-pressed="${c[field] === value}" data-action="${action}" data-value="${value}" ${c[field] ? 'disabled' : ''}>${text}</button>`;
+  const openThanks = c.open === 'no' ? 'Thanks, reported.' : c.reopened ? 'Thanks! Marked open again for everyone.' : c.open ? 'Thanks!' : '';
+  const hours =
+    c.open === 'yes' && c.hoursKnown
+      ? `<div class="field">
+          <div class="field-row"><span class="field-label">Hours right?</span>${c.hours === 'yes' ? '<span class="hint">Thanks!</span>' : ''}</div>
+          <div class="segmented">${seg('confirm-hours', 'hours', 'yes', 'Yes')}${seg('confirm-hours', 'hours', 'no', 'No, fix them')}</div>
+          ${c.hours === 'no' ? "<p class=\"hint\">The hours open next, so you can fix them.</p>" : ''}
+        </div>`
+      : '';
+  return `<div class="field">
+      <div class="field-row"><span class="field-label">Was it open?</span>${openThanks ? `<span class="hint">${openThanks}</span>` : ''}</div>
+      <div class="segmented">${seg('confirm-open', 'open', 'yes', 'Yes')}${seg('confirm-open', 'open', 'no', 'No, closed')}</div>
+      ${c.error ? `<p class="error" role="alert">${esc(c.error)}</p>` : ''}
+    </div>
+    ${hours}`;
 }
 
 // Below 5 stars: tap what was a problem. An old log field's chip also opens its own rating.

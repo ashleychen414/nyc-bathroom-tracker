@@ -1,6 +1,6 @@
 // Checks what an anonymous visitor (no sign-in) can do against the live Supabase project.
 // Signed-in, cross-user checks live in supabase/tests/places_rls.sql (needs database access).
-// Covers places, profiles, the shared bathrooms table, lists, list_items, visits, bathroom_stats(), data_sources and location_events.
+// Covers places, profiles, the shared bathrooms table, lists, list_items, visits, bathroom_stats(), bathroom_edits (and its functions), data_sources and location_events.
 // Run: npm run test:rls
 
 import assert from 'node:assert/strict';
@@ -89,6 +89,33 @@ const checks = [
       assert.match(row.last_visit, /^\d{4}-\d{2}-\d{2}$/); // a date, never a time
       for (const dim of ['clean', 'get_in', 'vibes']) assert.ok(row[dim] === null || row[`${dim}_people`] >= min.body, `${row.bathroom_id} ${dim} average from too few people`);
     }
+  }],
+  // Edits only through the functions (their rules are tested in places_rls.sql). These checks
+  // change nothing: a bathroom history is read, and the writes are refused.
+  ['anonymous visitors cannot read or write bathroom edits directly', async () => {
+    blocked(await call('/rest/v1/bathroom_edits?select=id&limit=1'));
+    blocked(await call('/rest/v1/bathroom_edits_per_person?select=person&limit=1'));
+    blocked(await call('/rest/v1/bathroom_edits', { method: 'POST', body: { bathroom_id: 'rls-check-none', kind: 'confirm_open', device_id: '00000000-0000-0000-0000-000000000000' } }));
+    for (const fn of ['bathrooms_recompute_closed', 'is_admin', 'bathroom_edits_rate_check']) {
+      const r = await call(`/rest/v1/rpc/${fn}`, { method: 'POST', body: {} });
+      assert.ok([401, 403, 404].includes(r.status), `${fn}: expected 401/403/404, got ${r.status}`);
+    }
+  }],
+  ['a bathroom history never says who', async () => {
+    const r = await call('/rest/v1/rpc/bathroom_history', { method: 'POST', body: { p_bathroom_id: 'rls-check-none' } });
+    assert.equal(r.status, 200);
+    assert.deepEqual(r.body, []);
+    const [b] = (await call('/rest/v1/bathrooms?select=id&source=eq.seed&limit=1')).body;
+    const h = await call('/rest/v1/rpc/bathroom_history', { method: 'POST', body: { p_bathroom_id: b.id } });
+    assert.equal(h.status, 200);
+    for (const row of h.body) assert.deepEqual(Object.keys(row).sort(), ['can_undo', 'changes', 'created_at', 'id', 'kind', 'mine', 'previous', 'undone']);
+  }],
+  ['anonymous visitors cannot edit a missing bathroom or undo others', async () => {
+    const device = '00000000-0000-0000-0000-000000000000';
+    const edit = await call('/rest/v1/rpc/edit_bathroom', { method: 'POST', body: { p_bathroom_id: 'rls-check-none', p_device_id: device, p_changes: { name: 'x' } } });
+    assert.ok(edit.status >= 400, `edit of a missing bathroom: got ${edit.status}`);
+    const undo = await call('/rest/v1/rpc/undo_bathroom_edit', { method: 'POST', body: { p_edit_id: device, p_device_id: device } });
+    assert.ok(undo.status >= 400, `undo of a missing edit: got ${undo.status}`);
   }],
   ['anonymous visitors cannot run the bathrooms sync', async () => {
     const r = await call('/rest/v1/rpc/sync_seed_bathrooms', { method: 'POST', body: { rows: [], mark_missing: false } });

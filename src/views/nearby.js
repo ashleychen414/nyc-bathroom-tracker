@@ -2,7 +2,7 @@
 
 import { esc, icon } from '../lib/html.js';
 import { formatDistance, directionsUrl, googleMapsUrl } from '../lib/geo.js';
-import { getStatus, describeHours } from '../lib/hours.js';
+import { describeHours } from '../lib/hours.js';
 import { RADII, placeStatus, bathroomStatus } from '../lib/nearby.js';
 import { statusBadge, mineBadge, placeTags, ACCESS, publicTags, restroomType, backBar, sourceDate } from './shared.js';
 import { mapLegend } from './map.js';
@@ -11,6 +11,7 @@ import { currentUser } from '../lib/auth.js';
 import { statsFor } from '../lib/stats.js';
 import { myVisits, nextToRate } from '../lib/visits.js';
 import { cardRatings, ratingsSection, wentHereButton, nudgeCard } from './ratings.js';
+import { correctionsSection } from './corrections.js';
 
 const KINDS = [
   ['all', 'All'],
@@ -298,7 +299,9 @@ function accessSection(item, { own = false, editHref } = {}) {
 
 // Structured hours when we could read them; otherwise the city's wording once, so it's never shown twice.
 function publicHours(b) {
-  const raw = b.hoursText?.replace(/\s*\n\s*/g, '; ');
+  // Hours a user corrected replace the city's (and its free text no longer applies).
+  const userHours = b.userFields?.includes('hours');
+  const raw = userHours ? null : b.hoursText?.replace(/\s*\n\s*/g, '; ');
   let body;
   if (describeHours(b.hours)) {
     body = hoursRows(b.hours) + (b.hours.kind === 'minimum' ? '<p class="hint">Open later in season.</p>' : '');
@@ -308,15 +311,15 @@ function publicHours(b) {
     body = '<p class="muted">Hours unknown</p>';
   }
   return `${body}
-    ${b.season === 'Seasonal' ? '<p class="hint">Seasonal restroom: it may be closed outside its season.</p>' : ''}
-    <p class="source">Hours from <a href="${SOURCE_URL}" target="_blank" rel="noopener">NYC Open Data</a> · <a href="${googleMapsUrl(b)}" target="_blank" rel="noopener">View on Google Maps</a></p>`;
+    ${b.season === 'Seasonal' && !userHours ? '<p class="hint">Seasonal restroom: it may be closed outside its season.</p>' : ''}
+    <p class="source">Hours from ${userHours ? 'a NYC Poops user' : `<a href="${SOURCE_URL}" target="_blank" rel="noopener">NYC Open Data</a>`} · <a href="${googleMapsUrl(b)}" target="_blank" rel="noopener">View on Google Maps</a></p>`;
 }
 
 const kv = (label, value) => (value ? `<div class="kv"><span>${esc(label)}</span><span>${esc(value)}</span></div>` : '');
 
 export function publicDetailView(s, b, place, distance) {
   if (b.source === 'user') return sharedDetailView(s, b, place, distance);
-  const status = getStatus(b);
+  const status = bathroomStatus(b);
   const sub = [b.type, b.operator, distance !== null ? `${s.here?.source === 'zip' ? '~' : ''}${formatDistance(distance)} away` : null]
     .filter(Boolean)
     .join(' · ');
@@ -345,6 +348,7 @@ export function publicDetailView(s, b, place, distance) {
         ${b.notes ? `<p class="hint">${esc(b.notes)}</p>` : ''}
         ${b.website ? `<a class="link-out" href="${esc(b.website)}" target="_blank" rel="noopener">Operator website</a>` : ''}
       </section>
+      ${correctionsSection(b, s.history[b.id])}
       ${sourceDate(s.data)}
     </main>`;
 }
@@ -372,6 +376,7 @@ function sharedDetailView(s, b, place, distance) {
         <div class="kv-head"><h2 class="label">Hours</h2><span class="muted small">Added by NYC Poops users</span></div>
         ${b.hours ? hoursRows(b.hours) : '<p class="muted">Hours unknown</p>'}
       </section>
+      ${correctionsSection(b, s.history[b.id])}
     </main>`;
 }
 

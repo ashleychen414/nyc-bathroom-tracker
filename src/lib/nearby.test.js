@@ -100,3 +100,21 @@ test('a bathroom someone added is open only by its hours, and closed when we mar
   assert.equal(bathroomStatus(user({ hours: null }), NOW).state, 'unknown');
   assert.equal(bathroomStatus(user({ recordStatus: 'closed' }), NOW).state, 'closed');
 });
+
+test('two closed reports show closed, for city and user bathrooms alike', () => {
+  const at = '2025-10-08T20:00:00Z';
+  assert.deepEqual(bathroomStatus(pub('c', 0, '6am - 11pm', { source: 'seed', reportedClosedAt: at }), NOW), { state: 'closed', label: 'Reported closed' });
+  assert.equal(bathroomStatus({ id: 'u', source: 'user', hours: parseHours('7am - 10pm').hours, reportedClosedAt: at }, NOW).state, 'closed');
+});
+
+test("a user's corrections to a city restroom: open again overrides the city, user hours skip Seasonal", () => {
+  const city = (extra) => pub('c', 0, '6am - 11pm', { source: 'seed', ...extra });
+  assert.equal(bathroomStatus(city({ status: 'Not Operational' }), NOW).state, 'closed');
+  assert.equal(bathroomStatus(city({ status: 'Not Operational', userFields: ['open'] }), NOW).state, 'open');
+  assert.equal(bathroomStatus(city({ season: 'Seasonal' }), NOW).state, 'varies');
+  assert.equal(bathroomStatus(city({ season: 'Seasonal', userFields: ['hours'] }), NOW).state, 'open');
+  // Corrected hours alone don't override the city's closed status.
+  assert.equal(bathroomStatus(city({ status: 'Not Operational', userFields: ['hours'] }), NOW).state, 'closed');
+  // A corrected name changes nothing about the status.
+  assert.equal(bathroomStatus(city({ season: 'Seasonal', userFields: ['name'] }), NOW).state, 'varies');
+});

@@ -371,6 +371,10 @@ a.card:active { transform: scale(.99); }
 .kv-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .notes-card { background: var(--open-bg); border-color: color-mix(in srgb, var(--accent) 30%, var(--border)); }
 .notes-card .btn.outline { background: var(--surface); }
+.actions a.btn { text-decoration: none; }
+.changes { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; font-size: 14px; }
+.change { display: flex; justify-content: space-between; align-items: center; gap: 8px; min-height: 36px; }
+.change.undone > span > span:first-child { text-decoration: line-through; }
 
 /* ---------- Hours form ---------- */
 .switch-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; font-weight: 600; }
