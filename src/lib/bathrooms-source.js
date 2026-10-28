@@ -1,7 +1,7 @@
 // Loads the restrooms for the app from the shared Supabase table `bathrooms`, in the same shape
 // as public/data/bathrooms.json. A copy is kept on the phone, so later opens only check whether
 // anything changed (two tiny requests) instead of downloading every restroom again.
-// If Supabase can't answer, it falls back to public/data/bathrooms.json, then to the phone's copy.
+// If Supabase can't answer, it keeps the phone's copy, or, with no copy yet, loads public/data/bathrooms.json.
 
 import { SUPABASE_URL, SUPABASE_KEY } from './supabase-config.js';
 
@@ -10,6 +10,11 @@ const OLD_CACHE_KEYS = ['nbt.bathrooms', 'nbt.bathrooms.v2'];
 const SOURCE_ID = 'nyc-open-data';
 const FILE = 'public/data/bathrooms.json';
 export const PAGE = 1000; // Supabase returns at most 1,000 rows per request
+// A hung request ends in the fallbacks below instead of "Loading…" forever. The file gets longer:
+// it's ~520 KB, slow on a weak cellular signal, and the last resort.
+const SUPABASE_TIMEOUT_MS = 8000;
+const FILE_TIMEOUT_MS = 30000;
+// AbortSignal.timeout needs iOS 16+: older phones just wait, as before.
 
 // The city's own facts stay in source_data until they get columns of their own.
 const CITY_FIELDS = ['type', 'operator', 'status', 'season', 'hoursText', 'accessibility', 'restroomType', 'changingStations', 'notes', 'website'];
@@ -23,8 +28,8 @@ export const BATHROOM_SELECT = [
   ...CITY_FIELDS.map((f) => `${f}:source_data->>${f}`),
 ].join(',');
 
-async function getJson(url, fetchImpl, headers = {}) {
-  const res = await fetchImpl(url, { headers });
+async function getJson(url, fetchImpl, headers = {}, timeoutMs = SUPABASE_TIMEOUT_MS) {
+  const res = await fetchImpl(url, { headers, signal: AbortSignal.timeout?.(timeoutMs) });
   if (!res.ok) throw new Error(`${url} → HTTP ${res.status}`);
   return res.json();
 }
@@ -88,11 +93,10 @@ export async function loadBathrooms(onData, { fetchImpl = fetch, storage = defau
     } catch {} // full or blocked storage: the app still works, it just downloads again next time
     onData(data);
   } catch {
-    // Supabase unreachable or not ready: the published file is current as of the last deploy.
-    try {
-      onData(await getJson(FILE, fetchImpl));
-    } catch (err) {
-      if (!hasCache) throw err; // offline with nothing saved
-    }
+    // Supabase unreachable, slow or not ready. The phone's copy stays: it has the Public bathrooms
+    // people added, which the city-only file doesn't, and keeps a ~520 KB download off cellular.
+    if (hasCache) return;
+    // Nothing saved yet: the published file is current as of the last deploy. Rejects when offline.
+    onData(await getJson(FILE, fetchImpl, {}, FILE_TIMEOUT_MS));
   }
 }
