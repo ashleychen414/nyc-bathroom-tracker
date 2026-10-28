@@ -3,6 +3,7 @@
 
 import { getStatus, nyClock, STATE_RANK } from './hours.js';
 import { distanceMiles } from './geo.js';
+import { factsFor } from './facts.js';
 
 export const RADII = [0.25, 0.5, 1];
 export const MIN_RESULTS = 5;
@@ -58,9 +59,10 @@ export function matches(entry, { kind = 'all', type = '', hideClosed = false, op
   if (kind === 'public' && entry.kind !== 'public') return false;
   if (kind === 'mine' && !entry.place) return false;
   if (openNow && entry.status.state !== 'open') return false;
-  // Accessible means fully accessible: "Partially" isn't enough to promise someone.
-  if (accessible && entry.bathroom?.accessibility !== 'Fully Accessible') return false;
-  if (changing && !entry.bathroom?.changingStations?.startsWith('Yes')) return false;
+  // Accessible means fully accessible: "Partially" isn't enough to promise someone. Both follow the
+  // facts (the majority answer, the city's included).
+  if (accessible && factsFor(entry.bathroom)?.accessible?.value !== 'full') return false;
+  if (changing && factsFor(entry.bathroom)?.changing_table?.value !== 'yes') return false;
   return true;
 }
 

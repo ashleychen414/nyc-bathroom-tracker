@@ -4,7 +4,8 @@ import { esc, icon } from '../lib/html.js';
 import { formatDistance, directionsUrl, googleMapsUrl } from '../lib/geo.js';
 import { describeHours } from '../lib/hours.js';
 import { RADII, placeStatus, bathroomStatus } from '../lib/nearby.js';
-import { statusBadge, mineBadge, placeTags, ACCESS, publicTags, restroomType, backBar, sourceDate } from './shared.js';
+import { statusBadge, mineBadge, placeTags, ACCESS, restroomType, backBar, sourceDate } from './shared.js';
+import { factTags, factsSection } from './facts.js';
 import { mapLegend } from './map.js';
 import { locationHelp, mobilePlatform, isStandalone, isIOSSafari } from '../lib/device.js';
 import { currentUser } from '../lib/auth.js';
@@ -139,7 +140,7 @@ function entryCard(e, approx) {
     <a class="card ${e.status.state === 'closed' ? 'dim' : ''}" href="${href}">
       <div class="card-head"><h2>${esc(e.name)}</h2><span class="dist">${approx ? '~' : ''}${formatDistance(e.distance)}</span></div>
       <div class="badges">${statusBadge(e.status)}${e.place ? mineBadge : ''}${sub ? `<span class="type">${sub}</span>` : ''}</div>
-      ${b ? publicTags(b) : ''}
+      ${b ? factTags(b, statsFor(e.id)) : ''}
       ${placeTags(b, e.place)}
       ${cardRatings(statsFor(e.id), myVisits(e.id))}
     </a>`;
@@ -341,10 +342,10 @@ export function publicDetailView(s, b, place, distance) {
       </section>
       <section class="group">
         <h2 class="label">What to expect</h2>
-        ${kv('Accessibility', b.accessibility)}
-        ${kv('Restroom type', b.restroomType && restroomType(b.restroomType))}
-        ${kv('Changing station', b.changingStations)}
+        ${factsSection(b, statsFor(b.id), s.factBusy)}
+        ${kv('Restroom type (city data)', b.restroomType && restroomType(b.restroomType))}
         ${kv('Open', b.season)}
+        ${b.changingStations?.startsWith('Yes, in') ? `<p class="hint">City data: changing station ${esc(b.changingStations.slice(5))}.</p>` : ''}
         ${b.notes ? `<p class="hint">${esc(b.notes)}</p>` : ''}
         ${b.website ? `<a class="link-out" href="${esc(b.website)}" target="_blank" rel="noopener">Operator website</a>` : ''}
       </section>
@@ -375,6 +376,10 @@ function sharedDetailView(s, b, place, distance) {
       <section class="group">
         <div class="kv-head"><h2 class="label">Hours</h2><span class="muted small">Added by NYC Poops users</span></div>
         ${b.hours ? hoursRows(b.hours) : '<p class="muted">Hours unknown</p>'}
+      </section>
+      <section class="group">
+        <h2 class="label">What to expect</h2>
+        ${factsSection(b, statsFor(b.id), s.factBusy)}
       </section>
       ${correctionsSection(b, s.history[b.id])}
     </main>`;

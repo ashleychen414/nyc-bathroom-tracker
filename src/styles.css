@@ -586,3 +586,9 @@ body.sheet-open { overflow: hidden; }
 /* Two digits at most: a small box, still 16px text so iOS doesn't zoom. */
 .sub-rating .input.count { width: 52px; min-height: 36px; padding: 4px 6px; text-align: center; }
 .map-sheet .actions .btn.primary { flex: 1.4; }
+
+/* ---------- Facts (What to expect) ---------- */
+.fact { display: grid; gap: 6px; padding: 8px 0; border-top: 1px solid var(--border); }
+.fact:first-of-type { border-top: 0; padding-top: 0; }
+.fact .count-row { display: flex; align-items: center; gap: 8px; }
+.fact .input.count { width: 56px; min-height: 36px; padding: 4px 6px; text-align: center; }

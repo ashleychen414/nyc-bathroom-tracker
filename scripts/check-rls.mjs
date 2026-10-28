@@ -1,6 +1,6 @@
 // Checks what an anonymous visitor (no sign-in) can do against the live Supabase project.
 // Signed-in, cross-user checks live in supabase/tests/places_rls.sql (needs database access).
-// Covers places, profiles, the shared bathrooms table, lists, list_items, visits, bathroom_stats(), bathroom_edits (and its functions), data_sources and location_events.
+// Covers places, profiles, the shared bathrooms table, lists, list_items, visits, bathroom_stats(), bathroom_edits and bathroom_fact_answers (and their functions), data_sources and location_events.
 // Run: npm run test:rls
 
 import assert from 'node:assert/strict';
@@ -116,6 +116,15 @@ const checks = [
     assert.ok(edit.status >= 400, `edit of a missing bathroom: got ${edit.status}`);
     const undo = await call('/rest/v1/rpc/undo_bathroom_edit', { method: 'POST', body: { p_edit_id: device, p_device_id: device } });
     assert.ok(undo.status >= 400, `undo of a missing edit: got ${undo.status}`);
+  }],
+  ['fact answers: no direct access, counts only', async () => {
+    blocked(await call('/rest/v1/bathroom_fact_answers?select=id&limit=1'));
+    blocked(await call('/rest/v1/bathroom_fact_answers', { method: 'POST', body: { bathroom_id: 'rls-check-none', fact: 'code', value: 'yes', device_id: '00000000-0000-0000-0000-000000000000' } }));
+    const r = await call('/rest/v1/rpc/bathroom_fact_counts', { method: 'POST', body: {} });
+    assert.equal(r.status, 200);
+    for (const row of r.body) assert.deepEqual(Object.keys(row).sort(), ['bathroom_id', 'count', 'fact', 'last_at', 'people', 'value']);
+    const answer = await call('/rest/v1/rpc/answer_fact', { method: 'POST', body: { p_bathroom_id: 'rls-check-none', p_device_id: '00000000-0000-0000-0000-000000000000', p_fact: 'code', p_value: 'yes' } });
+    assert.ok(answer.status >= 400, `answer for a missing bathroom: got ${answer.status}`);
   }],
   ['anonymous visitors cannot run the bathrooms sync', async () => {
     const r = await call('/rest/v1/rpc/sync_seed_bathrooms', { method: 'POST', body: { rows: [], mark_missing: false } });

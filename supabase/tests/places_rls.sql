@@ -1,5 +1,6 @@
 -- Row-level security tests for public.places, public.profiles, public.bathrooms, public.lists,
--- public.list_items, public.visits (and bathroom_stats()), public.data_sources and public.location_events.
+-- public.list_items, public.visits (and bathroom_stats()), public.bathroom_edits and public.bathroom_fact_answers
+-- (and their functions), public.data_sources and public.location_events.
 -- Runs entirely inside a transaction and rolls back: it leaves no users or rows behind.
 -- Run it in the Supabase SQL editor (or via the Supabase connector) after any change to
 -- a table or its policies. Any failed check raises an error naming the check.
@@ -810,6 +811,90 @@ do $$ begin
   assert (select signed_in from public.bathroom_edits_per_person where person = '22222222-2222-2222-2222-222222222222'), 'B should count as signed in';
 end $$;
 
+-- ---------- bathroom_fact_answers: facts by majority (Tier 1) ----------
+
+-- Signed out: only through the functions. One answer per person per fact; the latest replaces it.
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
+do $$
+declare r jsonb;
+begin
+  begin
+    perform 1 from public.bathroom_fact_answers;
+    raise exception 'anon was able to read bathroom_fact_answers';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    insert into public.bathroom_fact_answers (bathroom_id, fact, value, device_id) values ('rls-test-edit-shut', 'code', 'yes', gen_random_uuid());
+    raise exception 'anon was able to add a fact answer directly';
+  exception when insufficient_privilege then null;
+  end;
+  perform public.answer_fact('rls-test-edit-shut', 'f1000000-0000-0000-0000-000000000001', 'layout', 'stalls', 4);
+  perform public.answer_fact('rls-test-edit-shut', 'f1000000-0000-0000-0000-000000000001', 'layout', 'singles', 3);
+  perform public.answer_fact('rls-test-edit-shut', 'f2000000-0000-0000-0000-000000000002', 'layout', 'singles', null);
+  r := public.answer_fact('rls-test-edit-shut', 'f3000000-0000-0000-0000-000000000003', 'layout', 'stalls', 2);
+  assert (select c.people || '/' || c.count from public.bathroom_fact_counts() c where c.bathroom_id = 'rls-test-edit-shut' and c.fact = 'layout' and c.value = 'singles') = '2/3',
+    'a new answer should replace the same phone''s old one, with the latest count';
+  assert (select c.people from public.bathroom_fact_counts() c where c.bathroom_id = 'rls-test-edit-shut' and c.value = 'stalls') = 1, 'stalls: one person';
+  assert jsonb_array_length(r) = 2, 'answer_fact should return this bathroom''s counts';
+  assert (select count(*) from public.bathroom_fact_counts() c where c.bathroom_id = 'rls-test-edit-shut' and c.fact = 'layout') = 2, 'counts per value';
+  -- "Not sure" takes an answer back.
+  perform public.answer_fact('rls-test-edit-shut', 'f3000000-0000-0000-0000-000000000003', 'layout', null);
+  assert not exists (select 1 from public.bathroom_fact_counts() c where c.bathroom_id = 'rls-test-edit-shut' and c.value = 'stalls'), '"Not sure" should take the answer back';
+  -- Counts only for singles (2 or more) and stalls; values only from each fact's list.
+  perform public.answer_fact('rls-test-edit-shut', 'f1000000-0000-0000-0000-000000000001', 'accessible', 'full', 7);
+  assert (select c.count from public.bathroom_fact_counts() c where c.bathroom_id = 'rls-test-edit-shut' and c.fact = 'accessible') is null, 'a count only goes with a layout';
+  begin
+    perform public.answer_fact('rls-test-edit-shut', 'f1000000-0000-0000-0000-000000000001', 'layout', 'singles', 1);
+    raise exception 'one "several single bathrooms" was accepted';
+  exception when check_violation then null;
+  end;
+  begin
+    perform public.answer_fact('rls-test-edit-shut', 'f1000000-0000-0000-0000-000000000001', 'code', 'maybe');
+    raise exception 'a value outside the list was accepted';
+  exception when check_violation then null;
+  end;
+  begin
+    perform public.answer_fact('rls-test-edit-shut', 'f1000000-0000-0000-0000-000000000001', 'gender', 'yes');
+    raise exception 'an unknown fact was accepted';
+  exception when check_violation then null;
+  end;
+  begin
+    perform public.answer_fact('rls-test-edit-private', 'f1000000-0000-0000-0000-000000000001', 'code', 'yes');
+    raise exception 'anon was able to answer for someone''s Private bathroom';
+  exception when no_data_found then null;
+  end;
+  -- Answers show in the history, and can't be undone.
+  assert (select count(*) from public.bathroom_history('rls-test-edit-shut', 'f1000000-0000-0000-0000-000000000001') h where h.kind = 'fact' and h.mine and not h.can_undo) = 3,
+    'phone 1''s answers should show in the history, not undoable';
+  begin
+    perform public.undo_bathroom_edit(h.id, 'f1000000-0000-0000-0000-000000000001')
+      from public.bathroom_history('rls-test-edit-shut', 'f1000000-0000-0000-0000-000000000001') h where h.kind = 'fact' limit 1;
+    raise exception 'an answer was undone';
+  exception when check_violation then null;
+  end;
+end $$;
+
+-- Signed in as B: answers count per account, whatever the phone.
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}';
+do $$ begin
+  perform public.answer_fact('rls-test-edit-shut', 'fb000000-0000-0000-0000-00000000000b', 'code', 'yes');
+  perform public.answer_fact('rls-test-edit-shut', 'fc000000-0000-0000-0000-00000000000c', 'code', 'no');
+  assert (select string_agg(c.value || ':' || c.people, ',') from public.bathroom_fact_counts() c where c.bathroom_id = 'rls-test-edit-shut' and c.fact = 'code') = 'no:1',
+    'a signed-in answer from another phone should replace the account''s old one';
+  begin
+    perform 1 from public.bathroom_fact_answers;
+    raise exception 'a signed-in user was able to read bathroom_fact_answers';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+
+reset role;
+do $$ begin
+  assert (select fact_answers from public.bathroom_edits_per_person where person = 'phone f1000000') = 3, 'answers should count per person';
+end $$;
+
 -- ---------- deleting an account ----------
 
 -- Its Private bathrooms and list go; its Public bathrooms stay on the map, with no owner.
@@ -841,5 +926,5 @@ do $$ begin
 end $$;
 reset role;
 
-select 'places, profiles, bathrooms, lists, list_items, visits, data_sources, location_events RLS: all checks passed' as result;
+select 'places, profiles, bathrooms, lists, list_items, visits, bathroom_edits, bathroom_fact_answers, data_sources, location_events RLS: all checks passed' as result;
 rollback;
