@@ -334,7 +334,7 @@ export function publicDetailView(s, b, place, distance) {
       </div>
       <a class="btn primary block big" href="${directionsUrl(b)}" target="_blank" rel="noopener">${icon.directions()}Directions</a>
       ${wentHereButton(b.id)}
-      ${ratingsSection(statsFor(b.id), myVisits(b.id))}
+      ${ratingsSection(statsFor(b.id), myVisits(b.id), !!currentUser())}
       ${notesCard(place, `#/log/${encodeURIComponent(b.id)}`)}
       <section class="group">
         <h2 class="label">Hours</h2>
@@ -370,7 +370,7 @@ function sharedDetailView(s, b, place, distance) {
       </div>
       <a class="btn primary block big" href="${directionsUrl(b)}" target="_blank" rel="noopener">${icon.directions()}Directions</a>
       ${wentHereButton(b.id)}
-      ${ratingsSection(statsFor(b.id), myVisits(b.id))}
+      ${ratingsSection(statsFor(b.id), myVisits(b.id), !!currentUser())}
       ${accessSection(b)}
       ${notesCard(place, `#/log/${encodeURIComponent(b.id)}`)}
       <section class="group">
@@ -400,7 +400,7 @@ export function mineDetailView(s, place, distance) {
       </div>
       <a class="btn primary block big" href="${directionsUrl(place)}" target="_blank" rel="noopener">${icon.directions()}Directions</a>
       ${wentHereButton(place.id)}
-      ${ratingsSection(statsFor(place.id), myVisits(place.id))}
+      ${ratingsSection(statsFor(place.id), myVisits(place.id), !!currentUser())}
       ${place.own ? accessSection(place, { own: true, editHref: `#/edit/${encodeURIComponent(place.id)}` }) : ''}
       ${notesCard(place)}
       ${

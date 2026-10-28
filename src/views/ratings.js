@@ -38,13 +38,13 @@ export function cardRatings(stat, mine) {
 export const wentHereButton = (id, { primary = false, block = true } = {}) =>
   `<button class="btn ${primary ? 'primary' : 'outline went'} ${block ? 'block big' : ''}" data-action="went-here" data-value="${esc(id)}">✋ I went here</button>`;
 
-// The Ratings section on a restroom's page.
-export function ratingsSection(stat, mine) {
+// The Ratings section on a restroom's page. Signed-out visits stay on the phone until sign-in.
+export function ratingsSection(stat, mine, signedIn = true) {
   const you = youWent(mine);
   if (!stat) {
     return `<section class="group">
         <h2 class="label">Ratings</h2>
-        <p class="muted">${mine.length ? "Your visits haven't reached the public counts yet." : 'No visits logged yet. Tap "I went here" after you go.'}</p>
+        <p class="muted">${mine.length ? (signedIn ? "Your visits haven't reached the public counts yet." : 'Your visits are saved on this phone. Sign in to add them to the public counts.') : 'No visits logged yet. Tap "I went here" after you go.'}</p>
         ${you ? `<p class="trust">${esc(you)}</p>` : ''}
       </section>`;
   }

@@ -1,5 +1,5 @@
 -- Row-level security tests for public.places, public.profiles, public.bathrooms, public.lists,
--- public.list_items, public.visits (and bathroom_stats()), public.bathroom_edits and public.bathroom_fact_answers
+-- public.list_items, public.visits (and bathroom_stats()), public.bathroom_edits (and its edit_rate_hits limits) and public.bathroom_fact_answers
 -- (and their functions), public.data_sources and public.location_events.
 -- Runs entirely inside a transaction and rolls back: it leaves no users or rows behind.
 -- Run it in the Supabase SQL editor (or via the Supabase connector) after any change to
@@ -810,6 +810,78 @@ do $$ begin
     'edits per person should count phone 1';
   assert (select signed_in from public.bathroom_edits_per_person where person = '22222222-2222-2222-2222-222222222222'), 'B should count as signed in';
 end $$;
+
+-- ---------- edit_rate_hits: signed-out limits per network and overall ----------
+
+-- Nobody reads the counter or its key, or calls the address helper.
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
+do $$ begin
+  begin
+    perform 1 from public.edit_rate_hits;
+    raise exception 'anon was able to read edit_rate_hits';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    perform 1 from public.edit_rate_secret;
+    raise exception 'anon was able to read edit_rate_secret';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    perform public.request_ip();
+    raise exception 'anon was able to call request_ip()';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+
+-- 30 signed-out changes from one network an hour, whatever device ids it sends.
+reset role;
+delete from public.edit_rate_hits;
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
+set local request.headers = '{"x-forwarded-for":"203.0.113.7, 10.0.0.1"}';
+do $$ begin
+  for i in 1..30 loop
+    perform public.report_bathroom('rls-test-edit-seed', gen_random_uuid(), 'confirm_open');
+  end loop;
+  begin
+    perform public.report_bathroom('rls-test-edit-seed', gen_random_uuid(), 'confirm_open');
+    raise exception 'the per-network limit did not stop the 31st change';
+  exception when program_limit_exceeded then null;
+  end;
+end $$;
+-- Another network still can; a signed-in person on the same network still can.
+set local request.headers = '{"x-forwarded-for":"198.51.100.9"}';
+select public.report_bathroom('rls-test-edit-seed', gen_random_uuid(), 'confirm_open');
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}';
+set local request.headers = '{"x-forwarded-for":"203.0.113.7"}';
+select public.report_bathroom('rls-test-edit-seed', gen_random_uuid(), 'confirm_open');
+
+-- The address itself is never stored.
+reset role;
+do $$ begin
+  assert not exists (select 1 from public.edit_rate_hits where ip_hash like '%203.0.113%'), 'the address should be hashed';
+  assert (select count(distinct ip_hash) from public.edit_rate_hits) = 2, 'one hash per network';
+end $$;
+
+-- 300 signed-out changes an hour from everyone together.
+insert into public.edit_rate_hits (ip_hash, signed_in) select 'net' || g, false from generate_series(1, 300) g;
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
+set local request.headers = '{"x-forwarded-for":"192.0.2.44"}';
+do $$ begin
+  begin
+    perform public.report_bathroom('rls-test-edit-seed', gen_random_uuid(), 'confirm_open');
+    raise exception 'the overall signed-out limit did not stop a change';
+  exception when program_limit_exceeded then null;
+  end;
+end $$;
+
+-- Clear the counter so the checks below start fresh.
+reset role;
+delete from public.edit_rate_hits;
+reset request.headers;
 
 -- ---------- bathroom_fact_answers: facts by majority (Tier 1) ----------
 
