@@ -25,6 +25,9 @@ import { rateSheetBody } from './views/ratings.js';
 import { openFix, closeFix, isFixOpen, handleFixClick, handleFixInput } from './views/fix.js';
 import { reportBathroom, editBathroom, undoEdit, bathroomHistory, applyResult, canReopen } from './lib/corrections.js';
 import { refreshFacts, answerFact, myFactAnswer, COUNTED } from './lib/facts.js';
+import { logUsage } from './lib/usage-log.js';
+import { sendFeedback } from './lib/feedback.js';
+import { reportSheetBody, feedbackSheetBody } from './views/report.js';
 
 const app = document.getElementById('app');
 
@@ -71,6 +74,8 @@ const state = {
   history: {}, // restroom id → its latest changes (bathroom_history), 'loading' or 'error'
   fixFocus: null, // 'hours' when "Hours right? No" opens Suggest an edit
   factBusy: null, // the fact being sent from a restroom's page
+  report: null, // "Something's wrong" being filled in: { bathroomId, name, kind, note, busy, error }
+  feedback: null, // "Send feedback" being written: { bathroomId, name, text, busy, error }
   afterSignIn: null, // where to go once signed in (e.g. #/add)
   shareChoices: {}, // "Share your places?": place id → 'public' (default Private)
   shareAnswered: false, // this session, so the prompt doesn't come back before the account hears
@@ -116,6 +121,8 @@ const sheetWrap = (id, body) => `
 
 function sheetHtml() {
   if (state.sheet === 'rate' && state.rateDraft) return sheetWrap('rate-title', rateSheetBody(state.rateDraft));
+  if (state.sheet === 'report' && state.report) return sheetWrap('report-title', reportSheetBody(state.report));
+  if (state.sheet === 'feedback' && state.feedback) return sheetWrap('feedback-title', feedbackSheetBody(state.feedback));
   if (state.sheet === 'homescreen') return homeScreenSheet(mobilePlatform() ?? 'ios');
   if (state.sheet === 'share') return shareSheet({ places: privatePlaces(), choices: state.shareChoices });
   if (state.sheet === 'signin') return signInSheet(state.signin);
@@ -166,6 +173,7 @@ function render() {
       const b = findBathroom(id);
       if (!b) return paint('<main class="list"><p class="error">That restroom is no longer in the city data.</p></main>', 'nearby');
       if (state.history[id] === undefined) loadHistory(id);
+      logView(id);
       return paint(publicDetailView(state, b, place, distanceTo(b)), null);
     }
 
@@ -179,9 +187,11 @@ function render() {
       paintedHash = location.hash;
       app.classList.remove('has-tabbar');
       window.scrollTo(0, 0);
+      logUsage('edit_open', { bathroomId: id, place: 'page' });
       return openFix(app, b, {
         focus,
         done: (result) => {
+          logUsage(result ? 'edit_save' : 'edit_cancel', { bathroomId: id, place: 'page' });
           delete state.history[id];
           if (result) toast('Thanks! Changed for everyone. You can undo it on its page.');
           goBack(`#/r/${encodeURIComponent(id)}`);
@@ -192,6 +202,7 @@ function render() {
     case 'mine': {
       const place = getPlace(id);
       if (!place) return paint('<main class="list"><p class="error">That place no longer exists.</p></main>', 'places');
+      logView(id);
       return paint(mineDetailView(state, place, distanceTo(place)), null);
     }
 
@@ -325,6 +336,19 @@ function toast(text) {
   }, 4000);
 }
 
+// One restroom_view per time a restroom's page is opened (not per repaint, and not lost when the
+// page first showed "Loading…").
+let viewLogged = null;
+function logView(id) {
+  if (viewLogged === location.hash) return;
+  viewLogged = location.hash;
+  logUsage('restroom_view', { bathroomId: id, place: 'page' });
+}
+window.addEventListener('hashchange', () => (viewLogged = null));
+
+// Where an action happened, for the usage log: a restroom's page, or the Nearby map or list.
+const whereNow = () => (['r', 'mine'].includes(parseRoute().name) ? 'page' : state.view === 'list' ? 'list' : 'map');
+
 // ---------- Visits and ratings ----------
 
 // "I went here": logs the visit at once (even if the rating is skipped), then offers the rating.
@@ -336,6 +360,7 @@ function wentHere(id) {
   } catch {
     return toast("Couldn't save on this phone. Check that your browser allows site data.");
   }
+  logUsage('went_here', { bathroomId: id, place: whereNow() });
   const b = findBathroom(id);
   openRate(visit, b ? { bathroomId: id, hoursKnown: Boolean(b.hours), open: null, hours: null } : null);
 }
@@ -407,6 +432,7 @@ async function confirmClick(action, value) {
     } else result = await reportBathroom(c.bathroomId, 'confirm_open');
     applyResult(b, result);
     delete state.history[c.bathroomId];
+    logUsage('confirm_answer', { bathroomId: c.bathroomId, place: 'sheet' });
   } catch (err) {
     c[field] = null;
     c.error = err.message || "Couldn't send that. Try again.";
@@ -429,6 +455,7 @@ function finishRating(save) {
       const clean = cleanRatings(values);
       rated = ['clean', 'getIn', 'vibes'].some((k) => clean[k]);
       rateVisit(visitId, clean);
+      if (rated) logUsage('rating_saved', { bathroomId: getVisit(visitId)?.bathroomId ?? null, place: 'sheet' });
     } catch {
       toast("Couldn't save on this phone. Check that your browser allows site data.");
       return render();
@@ -464,11 +491,81 @@ async function correct(id, send, thanks) {
   refresh();
 }
 
-function reportClosed(id) {
-  if (!confirm(`Report "${findName(id)}" closed? It shows closed for everyone once two people report it.`)) return;
-  correct(id, () => reportBathroom(id, 'report_closed'), (b) =>
-    b.reportedClosedAt ? 'Thanks. It now shows closed for everyone.' : 'Thanks. It shows closed once one more person reports it.',
+// "Something's wrong": closed (two people → Reported closed), not here, wrong spot or something
+// else, with an optional note only the team sees.
+function openReport(id) {
+  state.report = { bathroomId: id, name: findName(id), kind: null, note: '', busy: false, error: '' };
+  state.sheet = 'report';
+  logUsage('report_open', { bathroomId: id, place: 'page' });
+  render();
+}
+
+function closeReport(sent) {
+  const r = state.report;
+  if (!r) return;
+  if (!sent) logUsage('report_cancel', { bathroomId: r.bathroomId, place: 'sheet' });
+  state.report = null;
+  state.sheet = null;
+  render();
+}
+
+async function sendReport() {
+  const r = state.report;
+  if (!r?.kind || r.busy) return;
+  Object.assign(r, { busy: true, error: '' });
+  repaintSheet();
+  const b = findBathroom(r.bathroomId);
+  try {
+    applyResult(b, await reportBathroom(r.bathroomId, r.kind, r.note.trim()));
+  } catch (err) {
+    Object.assign(r, { busy: false, error: err.message || "Couldn't send that. Try again." });
+    return repaintSheet();
+  }
+  logUsage('report_send', { bathroomId: r.bathroomId, place: 'sheet' });
+  delete state.history[r.bathroomId];
+  toast(
+    r.kind !== 'report_closed'
+      ? "Thanks! We'll look into it."
+      : b?.reportedClosedAt
+        ? 'Thanks. It now shows closed for everyone.'
+        : 'Thanks. It shows closed once one more person reports it.',
   );
+  closeReport(true);
+}
+
+// "Send feedback" (bottom of each restroom page): free text, anonymous, saved for later.
+function openFeedback(id) {
+  state.feedback = { bathroomId: id || null, name: id ? findName(id) : null, text: '', busy: false, error: '' };
+  state.sheet = 'feedback';
+  logUsage('feedback_open', { bathroomId: id || null, place: 'page' });
+  render();
+  app.querySelector('#feedback-text')?.focus();
+}
+
+function closeFeedback(sent) {
+  const f = state.feedback;
+  if (!f) return;
+  if (!sent) logUsage('feedback_cancel', { bathroomId: f.bathroomId, place: 'sheet' });
+  state.feedback = null;
+  state.sheet = null;
+  render();
+}
+
+async function submitFeedback() {
+  const f = state.feedback;
+  if (!f || f.busy) return;
+  Object.assign(f, { busy: true, error: '' });
+  repaintSheet();
+  try {
+    await sendFeedback(f.text, f.bathroomId);
+  } catch (err) {
+    Object.assign(f, { busy: false, error: err.message });
+    repaintSheet();
+    return app.querySelector('#feedback-text')?.focus();
+  }
+  logUsage('feedback_send', { bathroomId: f.bathroomId, place: 'sheet' });
+  toast('Thanks! Your feedback was sent.');
+  closeFeedback(true);
 }
 
 const reopen = (id) => correct(id, () => editBathroom(id, { open: true }), () => 'Thanks! It shows open again for everyone.');
@@ -488,6 +585,7 @@ async function answer(id, fact, value, count = null) {
   refresh();
   try {
     await answerFact(id, fact, value, count);
+    logUsage('fact_answer', { bathroomId: id, place: 'page' });
     delete state.history[id];
     toast(value === null ? 'Answer taken back.' : 'Thanks! Your answer counts toward what everyone sees.');
   } catch (err) {
@@ -767,6 +865,8 @@ app.addEventListener('click', (e) => {
   const { action, value } = target.dataset;
   switch (action) {
     case 'close-sheet':
+      if (state.sheet === 'report') return closeReport(false);
+      if (state.sheet === 'feedback') return closeFeedback(false);
       state.rateDraft = null; // closing the rating sheet keeps the visit, unrated
       return closeSheet();
     case 'went-here':
@@ -789,8 +889,21 @@ app.addEventListener('click', (e) => {
     case 'confirm-open':
     case 'confirm-hours':
       return confirmClick(action, value);
-    case 'report-closed':
-      return reportClosed(value);
+    case 'report-open':
+      return openReport(value);
+    case 'report-kind':
+      state.report.kind = value;
+      return repaintSheet();
+    case 'report-send':
+      return sendReport();
+    case 'report-cancel':
+      return closeReport(false);
+    case 'feedback-open':
+      return openFeedback(value);
+    case 'feedback-send':
+      return submitFeedback();
+    case 'feedback-cancel':
+      return closeFeedback(false);
     case 'reopen':
       return reopen(value);
     case 'undo-edit':
@@ -893,7 +1006,17 @@ app.addEventListener('change', (e) => {
 });
 
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && state.sheet) closeSheet();
+  if (e.key !== 'Escape' || !state.sheet) return;
+  if (state.sheet === 'report') return closeReport(false);
+  if (state.sheet === 'feedback') return closeFeedback(false);
+  closeSheet();
+});
+
+// Directions links leave for the maps app; log the tap on the way out (usage-log.js sends it with
+// keepalive, so it still arrives).
+app.addEventListener('click', (e) => {
+  const link = e.target.closest('a[data-track="directions"]');
+  if (link) logUsage('directions', { bathroomId: link.dataset.id, place: link.dataset.place });
 });
 
 app.addEventListener('input', (e) => {
@@ -901,6 +1024,8 @@ app.addEventListener('input', (e) => {
   if (handleFixInput(e)) return;
   if (e.target.id === 'signin-email') return void (state.signin.email = e.target.value);
   if (e.target.id === 'signin-code') return void (state.signin.code = e.target.value);
+  if (e.target.id === 'report-note' && state.report) return void (state.report.note = e.target.value);
+  if (e.target.id === 'feedback-text' && state.feedback) return void (state.feedback.text = e.target.value);
   if (e.target.id === 'rate-stall-count' && state.rateDraft) {
     const n = e.target.value.replace(/\D/g, '').slice(0, 2);
     e.target.value = n;
