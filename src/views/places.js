@@ -50,7 +50,7 @@ export function placesView(s, places) {
     <header class="bar">
       <h1>My places</h1>
       <div class="bar-actions">
-        <button class="btn icon-btn" data-action="${s.user ? 'open-account' : 'open-backup'}" aria-label="${s.user ? 'Your account' : 'Back up your places'}">${icon.more()}</button>
+        ${s.user ? `<button class="btn icon-btn" data-action="open-account" aria-label="Your account">${icon.more()}</button>` : ''}
         ${addButton(s.user, '+ Add')}
       </div>
     </header>
