@@ -834,14 +834,15 @@ do $$ begin
   end;
 end $$;
 
--- 30 signed-out changes from one network an hour, whatever device ids it sends.
+-- 30 signed-out changes from one network an hour, whatever device ids or forwarded-for
+-- entries it sends (a client can put its own first entry in X-Forwarded-For).
 reset role;
 delete from public.edit_rate_hits;
 set local role anon;
 set local request.jwt.claims = '{"role":"anon"}';
-set local request.headers = '{"x-forwarded-for":"203.0.113.7, 10.0.0.1"}';
 do $$ begin
   for i in 1..30 loop
+    perform set_config('request.headers', format('{"x-forwarded-for":"10.9.%s.1, 203.0.113.7","cf-connecting-ip":"203.0.113.7"}', i), true);
     perform public.report_bathroom('rls-test-edit-seed', gen_random_uuid(), 'confirm_open');
   end loop;
   begin
@@ -851,11 +852,11 @@ do $$ begin
   end;
 end $$;
 -- Another network still can; a signed-in person on the same network still can.
-set local request.headers = '{"x-forwarded-for":"198.51.100.9"}';
+set local request.headers = '{"x-forwarded-for":"198.51.100.9","cf-connecting-ip":"198.51.100.9"}';
 select public.report_bathroom('rls-test-edit-seed', gen_random_uuid(), 'confirm_open');
 set local role authenticated;
 set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}';
-set local request.headers = '{"x-forwarded-for":"203.0.113.7"}';
+set local request.headers = '{"cf-connecting-ip":"203.0.113.7"}';
 select public.report_bathroom('rls-test-edit-seed', gen_random_uuid(), 'confirm_open');
 
 -- The address itself is never stored.
@@ -869,7 +870,7 @@ end $$;
 insert into public.edit_rate_hits (ip_hash, signed_in) select 'net' || g, false from generate_series(1, 300) g;
 set local role anon;
 set local request.jwt.claims = '{"role":"anon"}';
-set local request.headers = '{"x-forwarded-for":"192.0.2.44"}';
+set local request.headers = '{"cf-connecting-ip":"192.0.2.44"}';
 do $$ begin
   begin
     perform public.report_bathroom('rls-test-edit-seed', gen_random_uuid(), 'confirm_open');
