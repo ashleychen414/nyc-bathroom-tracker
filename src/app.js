@@ -344,7 +344,10 @@ function logView(id) {
   viewLogged = location.hash;
   logUsage('restroom_view', { bathroomId: id, place: 'page' });
 }
-window.addEventListener('hashchange', () => (viewLogged = null));
+// Runs after render()'s hashchange listener, so only forget a page once we've left it.
+window.addEventListener('hashchange', () => {
+  if (location.hash !== viewLogged) viewLogged = null;
+});
 
 // Where an action happened, for the usage log: a restroom's page, or the Nearby map or list.
 const whereNow = () => (['r', 'mine'].includes(parseRoute().name) ? 'page' : state.view === 'list' ? 'list' : 'map');
