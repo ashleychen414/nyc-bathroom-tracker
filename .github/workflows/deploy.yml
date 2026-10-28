@@ -33,8 +33,13 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: 22
+      # Unit tests stay on every run: they're quick and touch nothing live, and they catch a main
+      # that breaks after two separately-tested PRs merge, or a push made without a PR.
       - run: npm test
       - name: Check database access rules (anonymous visitor)
+        # Already checked on the PR (test.yml), and each run writes an rls-check row into the live
+        # location_events table, so pushes skip it. Nightly and manual runs still check.
+        if: github.event_name != 'push'
         run: npm run test:rls
       - name: Refresh restroom data
         if: github.event_name != 'push'
@@ -60,11 +65,16 @@ jobs:
       - name: Keep the Supabase project awake
         if: github.event_name != 'push'
         # Free-plan projects pause after ~7 quiet days; one small query a day prevents it.
-        # The publishable key is public by design (row-level security protects the data).
+        # The project URL and publishable key come from the app's own config (public by design:
+        # row-level security protects the data).
         run: |
-          curl -fsS -X POST "https://fvombovjjgffhiphzgiw.supabase.co/rest/v1/rpc/keep_alive" \
-            -H "apikey: sb_publishable_ey4-1LzjhoJXRGQ7P9NbmQ_yEkQLTs-" -H "Content-Type: application/json" -d '{}' \
-            || echo "::warning::Supabase keep-alive failed"
+          node --input-type=module -e "
+            import { SUPABASE_URL, SUPABASE_KEY } from './src/lib/supabase-config.js';
+            const res = await fetch(SUPABASE_URL + '/rest/v1/rpc/keep_alive', {
+              method: 'POST', headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' }, body: '{}',
+            });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+          " || echo "::warning::Supabase keep-alive failed"
       - run: node scripts/assemble-site.mjs
       - uses: actions/configure-pages@v6
       - uses: actions/upload-pages-artifact@v5

@@ -4,6 +4,7 @@
 import { SUPABASE_URL, SUPABASE_KEY } from './supabase-config.js';
 
 const KEY = 'nbt.session';
+const TIMEOUT_MS = 8000;
 
 const read = () => {
   try {
@@ -26,17 +27,27 @@ function write(next) {
 
 export const currentUser = () => session?.user ?? null;
 
-async function call(path, { method = 'GET', body, token, headers = {} } = {}) {
-  const res = await fetch(SUPABASE_URL + path, {
-    method,
-    headers: {
-      apikey: SUPABASE_KEY,
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...headers,
-    },
-    body: body === undefined ? undefined : JSON.stringify(body),
-  });
+// timeoutMs: signed-in requests (authedFetch and its token refresh) give up after 8 seconds, so a
+// hung connection ends in the caller's error handling. The error has no status, so a timed-out
+// refresh doesn't sign anyone out.
+async function call(path, { method = 'GET', body, token, headers = {}, timeoutMs } = {}) {
+  let res;
+  try {
+    res = await fetch(SUPABASE_URL + path, {
+      method,
+      headers: {
+        apikey: SUPABASE_KEY,
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...headers,
+      },
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: timeoutMs ? AbortSignal.timeout?.(timeoutMs) : undefined,
+    });
+  } catch (err) {
+    if (err?.name === 'TimeoutError') throw new Error("Couldn't reach NYC Poops. Check your connection and try again.");
+    throw err;
+  }
   const text = await res.text();
   const data = text ? JSON.parse(text) : null;
   if (!res.ok) {
@@ -69,7 +80,7 @@ let refreshing = null;
 async function accessToken() {
   if (!session) return null;
   if (session.expires_at - 60 > Date.now() / 1000) return session.access_token;
-  refreshing ??= call('/auth/v1/token?grant_type=refresh_token', { method: 'POST', body: { refresh_token: session.refresh_token } })
+  refreshing ??= call('/auth/v1/token?grant_type=refresh_token', { method: 'POST', body: { refresh_token: session.refresh_token }, timeoutMs: TIMEOUT_MS })
     .then((d) => write(keep(d)))
     .catch((err) => {
       // A rejected refresh token means the sign-in ended (e.g. signed out elsewhere); a network error doesn't.
@@ -84,7 +95,7 @@ async function accessToken() {
 export async function authedFetch(path, opts = {}) {
   const token = await accessToken();
   if (!token) throw Object.assign(new Error('Not signed in'), { status: 401 });
-  return call(path, { ...opts, token });
+  return call(path, { timeoutMs: TIMEOUT_MS, ...opts, token });
 }
 
 export function signOut() {

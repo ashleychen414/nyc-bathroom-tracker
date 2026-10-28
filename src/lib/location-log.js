@@ -36,6 +36,7 @@ export function createLocationLog({ fetch = globalThis.fetch, online = () => nav
         headers: { apikey: SUPABASE_KEY, 'Content-Type': 'application/json', Prefer: 'return=minimal' },
         body: JSON.stringify(row),
         keepalive: true, // still sent if the page reloads right away (the Reload button)
+        signal: AbortSignal.timeout?.(8000),
       }).catch(() => {});
       return true;
     } catch {

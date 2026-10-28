@@ -99,36 +99,36 @@ export function formatTime(minute) {
   return `${h}${mm ? `:${String(mm).padStart(2, '0')}` : ''}${m < 720 ? 'am' : 'pm'}`;
 }
 
+// Built once: creating a formatter is slow, and getStatus runs for every restroom on every render.
+const NY_PARTS = new Intl.DateTimeFormat('en-US', {
+  timeZone: TIME_ZONE,
+  weekday: 'short',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+});
+
 // Day of week (0 = Sunday) and minute of day in New York, regardless of device time zone.
 export function nyClock(now) {
-  const parts = Object.fromEntries(
-    new Intl.DateTimeFormat('en-US', {
-      timeZone: TIME_ZONE,
-      weekday: 'short',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-      hourCycle: 'h23',
-    })
-      .formatToParts(now)
-      .map((p) => [p.type, p.value]),
-  );
+  const parts = Object.fromEntries(NY_PARTS.formatToParts(now).map((p) => [p.type, p.value]));
   const day = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(parts.weekday);
   const date = `${parts.year}-${parts.month}-${parts.day}`;
   return { day, date, minute: Number(parts.hour) * 60 + Number(parts.minute) };
 }
 
 // state: 'open' | 'unknown' | 'varies' | 'closed'. 'closed' renders greyed out.
-export function getStatus(bathroom, now = new Date()) {
+// clock: nyClock(now), passed in when checking many restrooms at the same moment.
+export function getStatus(bathroom, now = new Date(), clock = null) {
   const { status, season, hours } = bathroom;
   if (status !== 'Operational') return { state: 'closed', label: status || 'Not operational' };
   if (season === 'Future') return { state: 'closed', label: 'Not open yet' };
   // The source gives no season dates, so a seasonal restroom may be closed right now.
   if (season === 'Seasonal') return { state: 'varies', label: 'Seasonal: may be closed' };
 
-  const { day, date, minute } = nyClock(now);
+  const { day, date, minute } = clock ?? nyClock(now);
   const special = bathroom.specialDays?.[date];
   if (special !== undefined) return specialDayStatus(special, minute);
 

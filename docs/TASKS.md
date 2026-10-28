@@ -1,11 +1,10 @@
 # Tasks
 
-Updated 2026-10-26 (after #34, confirm and correct; Tier 1 #1 done). Steps map to the MVP scope in `SPEC.md`. Product improvements (Ashley, Oct 12) are sized and cross-referenced in `docs/IMPROVEMENTS-SCOPING.md`; epic numbers (E0–E13) refer to that doc.
+Updated 2026-10-26 (after #39, facts; Tier 1 #1 and #2 done). Steps map to the MVP scope in `SPEC.md`. Product improvements (Ashley, Oct 12) are sized and cross-referenced in `docs/IMPROVEMENTS-SCOPING.md`; epic numbers (E0–E13) refer to that doc.
 
 ## Now
 
-- [ ] **Make your account an admin** so you can undo anyone's edit (#34): in the Supabase SQL editor, `update profiles set role = 'admin' where id = '<your user id>';`
-- [ ] **Try confirm and correct on a real iPhone, signed in and signed out** (#34): "Was it open?" / "Hours right?" after "I went here", Suggest an edit, Report closed, Undo.
+- [ ] **Try confirm and correct, and facts, on a real iPhone, signed in and signed out** (#34, #39): "Was it open?" / "Hours right?" after "I went here", Suggest an edit, Report closed, Undo; answering a fact on "What to expect", and the "how many" step for Layout.
 - [ ] **Brooklyn hours: Ashley's calls** (Ashley will do these later) on what's left after PR #2 (review list is down from 52 rows to 22):
   - Gravesend, Ryder and Leonard libraries are open per BPL but "Closed for Construction" in city data. They stay greyed out until overrides can set `status` (below).
   - Carver Playground is "Not Operational" in city data, but NYC Parks rated it "Acceptable" in Sept 2025. It may be open.
@@ -15,9 +14,11 @@ Updated 2026-10-26 (after #34, confirm and correct; Tier 1 #1 done). Steps map t
 
 Order set 2026-10-26 by two principles (see `DECISIONS.md` and `IMPROVEMENTS-SCOPING.md` §5): the app is only as good as its database, and users must be able to rate, confirm and edit incomplete information quickly.
 
-- [ ] **Facts** (smaller E5, off hold; next, its migration can start now that #34 is in): load the city's accessibility, restroom type and changing stations into `bathrooms`; add layout (one single / several singles → how many / one with stalls → how many, card chips like "3 single bathrooms"; existing logs convert), step-free, changing table and code needed, each confirmed with a tap.
-- [ ] **Ask for what's missing:** cards with gaps say so ("Hours unknown · Know them?", "Access unknown") and open the same fix form (Suggest an edit, `#/fix/<id>`, from #34).
-- [ ] **Where inside? (finding the restroom once you're there)** (Ashley, 2026-10-26): tapping a bathroom doesn't say where it is in a big place. Ex: "Penn Station LIRR Restroom" is too broad; you need to know where in Penn Station. The city data has no field for this (its note for Penn Station is generic: "outside of fare gates"), so it has to come from people: a short "How to find it" line (level, near which exit / track / store) on the detail page and map card, editable like other facts, and asked for when missing ("Where inside? · Know it?"). Matters most for stations, malls, parks, libraries and museums. Uses the Suggest an edit form (#34); pairs with Facts and Ask for what's missing.
+- [ ] **Ask for what's missing** (next): cards with gaps say so ("Hours unknown · Know them?", "Access unknown", "Layout unknown") and open the fix form (Suggest an edit, `#/fix/<id>`, from #34) or the facts on "What to expect" (#39).
+
+- [ ] **Where inside? (finding the restroom once you're there)** (Ashley, 2026-10-26): tapping a bathroom doesn't say where it is in a big place. Ex: "Penn Station LIRR Restroom" is too broad; you need to know where in Penn Station. The city data has no field for this (its note for Penn Station is generic: "outside of fare gates"), so it has to come from people: a short "How to find it" line (level, near which exit / track / store) on the detail page and map card, editable like other facts, and asked for when missing ("Where inside? · Know it?"). Matters most for stations, malls, parks, libraries and museums. Uses the Suggest an edit form (#34); pairs with the facts on "What to expect" (#39) and Ask for what's missing.
+
+- [ ] **Public door codes** (Ashley, 2026-10-27; see DECISIONS.md): a public "Code" field on each bathroom, editable through Suggest an edit, shown with "Code needed" and when it was last added or confirmed. Change the copy that sends codes to private notes ("Only you see these. A good place for door codes", and "Keep the code itself in your private notes" on the rating sheet). Pairs with "Where inside?" (same kind of public text).
 
 ## Next, Tier 2: more bathrooms
 
@@ -53,6 +54,9 @@ Order set 2026-10-26 by two principles (see `DECISIONS.md` and `IMPROVEMENTS-SCO
 
 - [ ] **"Hours from a visitor" label** next to "Open" when the hours came from a user (low priority, Ashley 2026-10-26): says where the hours came from, which may get more people to report a mistake. Since #34 the restroom page's source line says "Hours from a NYC Poops user"; cards and the map card don't yet.
 - [ ] **"No, fix them" then tapping outside the rating sheet** doesn't open the hours form (it opens after Save or Later) (#34).
+- [ ] **Old stall counts aren't used for Layout** (flagged, Ashley 2026-10-26; #39): 5 bathrooms have a "Number of stalls" from a visit. Revisit if Layout stays unanswered there, or if people keep tapping the "Number of stalls" rating chip instead of answering Layout.
+- [ ] **A gender fact** (all gender / separate rooms), if the "All gender" tag from the city's restroom type proves useful (#39).
+- [ ] **Public door codes pair with the Code fact** (#39, #40): the yes/no "Code or key" fact already exists; the planned public code text would show next to it.
 - [ ] **Remove a visit:** a mistaken "I went here" still counts; there's no delete yet (#29).
 - [ ] **Rate limit on visits** if spam ever shows up: one person can inflate the visit count, though not the people count (#29).
 - [ ] **Raise `stats_min_people()` above 1** before the app opens beyond friends: with one visitor, the count, date and ratings are that person's (2026-10-26).
@@ -71,6 +75,8 @@ Order set 2026-10-26 by two principles (see `DECISIONS.md` and `IMPROVEMENTS-SCO
 
 ## Done
 
+- [x] 2026-10-26: **Facts by majority** (#39, Tier 1 #2): "What to expect" on each restroom's page has Accessible (Fully / Partly / No), Layout (one single / several singles / one room with stalls / singles and stalls, with how many), Changing table and Code or key, each answered with a tap by anyone, signed in or not. Each person's latest answer counts once and the city's value counts as one more; a tie goes to the newest. Cards show tags like "3 single bathrooms" and "All gender"; the Accessible and Changing station filters follow the facts. Answers show in "Recent changes" and count in `bathroom_edits_per_person` (`fact_answers`), but can't be undone
+- [x] 2026-10-26: **Ashley's account is an admin** (`profiles.role`), so it can undo anyone's edit (#34)
 - [x] 2026-10-27: **Map: after dragging, the search centers on the part of the map you can see** (Ashley, from a real iPhone), not the middle of the whole map, part of which sits behind the card. Also checked on iPhone: sign-in with E2 lists and E3 visits works (Ashley)
 - [x] 2026-10-26: **Confirm and correct any bathroom** (#34, Tier 1 #1): anyone, signed in or not, can Suggest an edit (name, who can use it, hours, "It's open again"), Report closed, and answer "Was it open?" / "Hours right?" after "I went here". Edits go live with a history ("Recent changes" on each restroom page, never who) and Undo for the person who made it or an admin. Two people reporting closed shows "Reported closed" until someone edits it open again. User hours can show "Open" and skip the Seasonal rule. The nightly sync keeps corrected names and hours. Edits per person: `select * from bathroom_edits_per_person;`. Limit: 60 changes per person per hour
 - [x] 2026-10-26: **Backlog cleanup:** milestone order closed (Milestone A shipped; Milestone B's E1–E3 shipped, E5 on hold); "Saving without a confirmation step" closed (the pop-up is gone; saving is a list item since E2 and logging is a visit since E3); the `dev` test rows in `location_events` deleted (there were 6)

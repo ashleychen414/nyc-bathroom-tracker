@@ -88,3 +88,42 @@ test('works when storage is unavailable', async () => {
   const [data] = await load({ fetchImpl: fakeFetch().fetchImpl, storage: null });
   assert.equal(data.bathrooms.length, 1);
 });
+
+test('with a phone copy, a failure after the version check keeps the copy and skips the file', async () => {
+  const storage = memoryStorage();
+  await load({ fetchImpl: fakeFetch().fetchImpl, storage });
+  const { fetchImpl: changed } = fakeFetch({ rows: [row(1), row(2)], latest: '2026-10-15T09:00:00+00:00' });
+  const calls = [];
+  const fetchImpl = async (url, opts) => {
+    calls.push(url);
+    if (url.includes('offset=')) throw new TypeError('Failed to fetch'); // e.g. a page times out
+    return changed(url, opts);
+  };
+  const seen = await load({ fetchImpl, storage });
+  assert.deepEqual(seen.map((d) => d.bathrooms[0].id), [row(1).id]);
+  assert.equal(calls.some((u) => u.endsWith('bathrooms.json')), false);
+});
+
+test('a hung Supabase request times out after 8 seconds and falls back to the file', async () => {
+  const original = AbortSignal.timeout;
+  const asked = [];
+  // Shortened for the test. (Node's own timeout timer doesn't keep the test running, so a plain one.)
+  AbortSignal.timeout = (ms) => {
+    asked.push(ms);
+    const controller = new AbortController();
+    setTimeout(() => controller.abort(new DOMException('timed out', 'TimeoutError')), 5);
+    return controller.signal;
+  };
+  // Supabase never answers; only the abort signal ends the request.
+  const fetchImpl = (url, { signal }) =>
+    url.endsWith('bathrooms.json')
+      ? Promise.resolve({ ok: true, json: async () => FILE })
+      : new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason)));
+  try {
+    const [data] = await load({ fetchImpl, storage: memoryStorage() });
+    assert.equal(data.bathrooms[0].id, row('file').id);
+    assert.ok(asked.includes(8000));
+  } finally {
+    AbortSignal.timeout = original;
+  }
+});
