@@ -938,6 +938,34 @@ do $$ begin
   assert (select other_reports from public.bathroom_edits_per_person where person = 'phone e3000000') = 1, 'other reports should count per person';
 end $$;
 
+-- "Code still works?" (door codes, PR #42) still goes through the same function: refused without
+-- a code, and with one it records the code it confirmed and counts as a confirmation.
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
+do $$ begin
+  begin
+    perform public.report_bathroom('rls-test-edit-seed', 'e4000000-0000-0000-0000-000000000004', 'confirm_code');
+    raise exception 'confirming a code that isn''t there was accepted';
+  exception when check_violation then null;
+  end;
+end $$;
+
+reset role;
+update public.bathrooms set code = '4321' where id = 'rls-test-edit-seed';
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
+do $$ begin
+  perform public.report_bathroom('rls-test-edit-seed', 'e4000000-0000-0000-0000-000000000004', 'confirm_code');
+end $$;
+
+reset role;
+do $$ begin
+  assert (select changes->>'code' from public.bathroom_edits where bathroom_id = 'rls-test-edit-seed' and kind = 'confirm_code') = '4321',
+    'confirm_code should record the code it confirmed';
+  assert (select code_confirmed_at from public.bathrooms where id = 'rls-test-edit-seed') is not null, 'confirm_code should set code_confirmed_at';
+  assert (select confirmations from public.bathroom_edits_per_person where person = 'phone e4000000') = 1, 'confirm_code should count as a confirmation';
+end $$;
+
 -- ---------- usage_events and feedback ----------
 
 -- Anyone adds a row, and nothing else: no reading (tables or views), changing, deleting, or
