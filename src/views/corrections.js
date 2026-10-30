@@ -1,5 +1,6 @@
-// "Is this right?" on a restroom's page: Report closed / It's open again, Suggest an edit, and
-// the latest changes with Undo on your own (or on any, for an admin). Never shows who.
+// "Is this right?" on a restroom's page: Something's wrong (closed, not here, wrong spot, other),
+// It's open again, Suggest an edit, and the latest changes with Undo on your own (or on any, for
+// an admin). Never shows who.
 
 import { esc } from '../lib/html.js';
 import { canReopen, describeChange } from '../lib/corrections.js';
@@ -12,12 +13,9 @@ export function correctionsSection(b, history) {
   const reopen = canReopen(b);
   return `<section class="group" id="corrections">
       <h2 class="label">Is this right?</h2>
+      ${reopen ? `<button class="btn outline block" data-action="reopen" data-value="${esc(b.id)}">It's open again</button>` : ''}
       <div class="actions">
-        ${
-          reopen
-            ? `<button class="btn outline" data-action="reopen" data-value="${esc(b.id)}">It's open again</button>`
-            : `<button class="btn outline" data-action="report-closed" data-value="${esc(b.id)}">Report closed</button>`
-        }
+        <button class="btn outline" data-action="report-open" data-value="${esc(b.id)}">Something's wrong</button>
         <a class="btn outline" href="#/fix/${encodeURIComponent(b.id)}">Suggest an edit</a>
       </div>
       ${reopen && b.reportedClosedAt ? '<p class="hint">Two people reported it closed. Saw it open? Tap "It\'s open again".</p>' : ''}

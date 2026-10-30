@@ -30,7 +30,7 @@ function placeCard(p, bathroom, approx) {
       ${notesLine(p)}
       <p class="meta">Updated ${formatDate(p.updatedAt)}</p>
       <div class="actions">
-        <a class="btn primary" href="${directionsUrl(p)}" target="_blank" rel="noopener">Directions</a>
+        <a class="btn primary" href="${directionsUrl(p)}" target="_blank" rel="noopener" data-track="directions" data-id="${esc(p.id)}" data-place="list">Directions</a>
         <a class="btn" href="#/edit/${encodeURIComponent(p.id)}">Edit</a>
       </div>
     </article>`;

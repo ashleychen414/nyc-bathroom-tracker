@@ -13,6 +13,7 @@ import { statsFor } from '../lib/stats.js';
 import { myVisits, nextToRate } from '../lib/visits.js';
 import { cardRatings, ratingsSection, wentHereButton, nudgeCard } from './ratings.js';
 import { correctionsSection } from './corrections.js';
+import { feedbackButton } from './report.js';
 
 const KINDS = [
   ['all', 'All'],
@@ -207,7 +208,7 @@ export function mapSheet(s, list, selectedId) {
       <h2>${esc(e.name)}</h2>
       <span class="dist-dir">
         <span class="dist">${approx ? '~' : ''}${formatDistance(e.distance)}</span>
-        <a class="btn icon-btn dir" href="${directionsUrl(e)}" target="_blank" rel="noopener" aria-label="Directions to ${esc(e.name)}">${icon.directions(20)}</a>
+        <a class="btn icon-btn dir" href="${directionsUrl(e)}" target="_blank" rel="noopener" data-track="directions" data-id="${esc(e.id)}" data-place="map" aria-label="Directions to ${esc(e.name)}">${icon.directions(20)}</a>
       </span>
     </div>
     <div class="badges">${statusBadge(e.status)}${e.place ? mineBadge : ''}${sub ? `<span class="type">${esc(sub)}</span>` : ''}</div>
@@ -332,7 +333,7 @@ export function publicDetailView(s, b, place, distance) {
         <p class="muted">${esc(sub)}</p>
         <div class="badges">${statusBadge(status)}${place ? mineBadge : ''}</div>
       </div>
-      <a class="btn primary block big" href="${directionsUrl(b)}" target="_blank" rel="noopener">${icon.directions()}Directions</a>
+      <a class="btn primary block big" href="${directionsUrl(b)}" target="_blank" rel="noopener" data-track="directions" data-id="${esc(b.id)}" data-place="page">${icon.directions()}Directions</a>
       ${wentHereButton(b.id)}
       ${ratingsSection(statsFor(b.id), myVisits(b.id))}
       ${notesCard(place, `#/log/${encodeURIComponent(b.id)}`)}
@@ -350,6 +351,7 @@ export function publicDetailView(s, b, place, distance) {
         ${b.website ? `<a class="link-out" href="${esc(b.website)}" target="_blank" rel="noopener">Operator website</a>` : ''}
       </section>
       ${correctionsSection(b, s.history[b.id])}
+      ${feedbackButton(b.id)}
       ${sourceDate(s.data)}
     </main>`;
 }
@@ -368,7 +370,7 @@ function sharedDetailView(s, b, place, distance) {
         <div class="badges">${statusBadge(bathroomStatus(b))}${place ? mineBadge : ''}</div>
         ${placeTags(b, null)}
       </div>
-      <a class="btn primary block big" href="${directionsUrl(b)}" target="_blank" rel="noopener">${icon.directions()}Directions</a>
+      <a class="btn primary block big" href="${directionsUrl(b)}" target="_blank" rel="noopener" data-track="directions" data-id="${esc(b.id)}" data-place="page">${icon.directions()}Directions</a>
       ${wentHereButton(b.id)}
       ${ratingsSection(statsFor(b.id), myVisits(b.id))}
       ${accessSection(b)}
@@ -382,6 +384,7 @@ function sharedDetailView(s, b, place, distance) {
         ${factsSection(b, statsFor(b.id), s.factBusy)}
       </section>
       ${correctionsSection(b, s.history[b.id])}
+      ${feedbackButton(b.id)}
     </main>`;
 }
 
@@ -398,7 +401,7 @@ export function mineDetailView(s, place, distance) {
         <div class="badges">${statusBadge(placeStatus(place))}${mineBadge}</div>
         ${placeTags(null, place)}
       </div>
-      <a class="btn primary block big" href="${directionsUrl(place)}" target="_blank" rel="noopener">${icon.directions()}Directions</a>
+      <a class="btn primary block big" href="${directionsUrl(place)}" target="_blank" rel="noopener" data-track="directions" data-id="${esc(place.id)}" data-place="page">${icon.directions()}Directions</a>
       ${wentHereButton(place.id)}
       ${ratingsSection(statsFor(place.id), myVisits(place.id))}
       ${place.own ? accessSection(place, { own: true, editHref: `#/edit/${encodeURIComponent(place.id)}` }) : ''}
@@ -412,5 +415,6 @@ export function mineDetailView(s, place, distance) {
       </section>`
           : '<p class="hint">This restroom is no longer in the city data.</p>'
       }
+      ${feedbackButton(place.id)}
     </main>`;
 }

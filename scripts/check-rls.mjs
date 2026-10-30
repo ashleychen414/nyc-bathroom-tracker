@@ -1,6 +1,6 @@
 // Checks what an anonymous visitor (no sign-in) can do against the live Supabase project.
 // Signed-in, cross-user checks live in supabase/tests/places_rls.sql (needs database access).
-// Covers places, profiles, the shared bathrooms table, lists, list_items, visits, bathroom_stats(), bathroom_edits and bathroom_fact_answers (and their functions), data_sources and location_events.
+// Covers places, profiles, the shared bathrooms table, lists, list_items, visits, bathroom_stats(), bathroom_edits and bathroom_fact_answers (and their functions), data_sources, location_events, usage_events and feedback.
 // Run: npm run test:rls
 
 import assert from 'node:assert/strict';
@@ -162,6 +162,18 @@ const checks = [
     blocked(await call('/rest/v1/location_events_weekly?select=platform&limit=1'));
     blocked(await call('/rest/v1/location_events?app_version=eq.rls-check', { method: 'PATCH', body: { result: 'granted' } }));
     blocked(await call('/rest/v1/location_events?app_version=eq.rls-check', { method: 'DELETE' }));
+  }],
+  // Each leaves one real row per run, tagged app_version 'rls-check'; the reading views skip those.
+  ['anonymous visitors can add a usage event and feedback, and read neither', async () => {
+    const event = { event: 'restroom_view', place: 'page', bathroom_id: null, session_id: '00000000-0000-0000-0000-000000000000', platform: 'other', app_version: 'rls-check' };
+    assert.equal((await call('/rest/v1/usage_events', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: event })).status, 201);
+    assert.equal((await call('/rest/v1/feedback', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: { message: 'rls-check', platform: 'other', app_version: 'rls-check' } })).status, 201);
+    assert.equal((await call('/rest/v1/usage_events', { method: 'POST', body: { ...event, event: 'clicked_ad' } })).status, 400);
+    blocked(await call('/rest/v1/usage_events', { method: 'POST', body: { ...event, created_at: '2020-01-01T00:00:00Z' } }));
+    for (const table of ['usage_events', 'usage_events_daily', 'usage_by_restroom', 'usage_sessions', 'feedback', 'feedback_recent', 'bathroom_reports']) {
+      blocked(await call(`/rest/v1/${table}?limit=1`));
+    }
+    blocked(await call('/rest/v1/feedback?app_version=eq.rls-check', { method: 'DELETE' }));
   }],
   ['keep_alive works for the nightly job', async () => {
     const r = await call('/rest/v1/rpc/keep_alive', { method: 'POST', body: {} });

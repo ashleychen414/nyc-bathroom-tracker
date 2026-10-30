@@ -1,6 +1,6 @@
 -- Row-level security tests for public.places, public.profiles, public.bathrooms, public.lists,
 -- public.list_items, public.visits (and bathroom_stats()), public.bathroom_edits and public.bathroom_fact_answers
--- (and their functions), public.data_sources and public.location_events.
+-- (and their functions), public.data_sources, public.location_events, public.usage_events and public.feedback.
 -- Runs entirely inside a transaction and rolls back: it leaves no users or rows behind.
 -- Run it in the Supabase SQL editor (or via the Supabase connector) after any change to
 -- a table or its policies. Any failed check raises an error naming the check.
@@ -895,6 +895,132 @@ do $$ begin
   assert (select fact_answers from public.bathroom_edits_per_person where person = 'phone f1000000') = 3, 'answers should count per person';
 end $$;
 
+-- ---------- "Something's wrong": reports with notes ----------
+
+-- The new kinds are recorded with their note, don't close the bathroom, can be undone by the same
+-- phone, and the note never shows in the public history.
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
+do $$
+declare r jsonb;
+begin
+  r := public.report_bathroom('rls-test-edit-seed', 'e1000000-0000-0000-0000-000000000001', 'report_not_here', '  Gone, it''s a bank now  ');
+  perform public.report_bathroom('rls-test-edit-seed', 'e2000000-0000-0000-0000-000000000002', 'report_wrong_spot');
+  perform public.report_bathroom('rls-test-edit-seed', 'e3000000-0000-0000-0000-000000000003', 'report_other', 'Door is around the corner');
+  assert (select reported_closed_at from public.bathrooms where id = 'rls-test-edit-seed') is null, 'other reports should not close it';
+  assert (select count(*) from public.bathroom_history('rls-test-edit-seed', 'e1000000-0000-0000-0000-000000000001') h where h.kind = 'report_not_here' and h.mine and h.can_undo) = 1,
+    'the reporter should be able to undo their report';
+  assert not exists (select 1 from public.bathroom_history('rls-test-edit-seed') h where h.changes::text like '%bank%' or h.previous::text like '%bank%'),
+    'a note should never show in the history';
+  perform public.undo_bathroom_edit((r->>'editId')::uuid, 'e1000000-0000-0000-0000-000000000001');
+  begin
+    perform public.report_bathroom('rls-test-edit-seed', 'e1000000-0000-0000-0000-000000000001', 'report_other', repeat('x', 501));
+    raise exception 'a note over 500 characters was accepted';
+  exception when check_violation then null;
+  end;
+  begin
+    perform public.report_bathroom('rls-test-edit-seed', 'e1000000-0000-0000-0000-000000000001', 'report_gone');
+    raise exception 'an unknown report kind was accepted';
+  exception when check_violation then null;
+  end;
+  begin
+    perform 1 from public.bathroom_reports;
+    raise exception 'anon was able to read bathroom_reports';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+
+reset role;
+do $$ begin
+  assert (select note || '/' || undone from public.bathroom_reports where report = 'not_here' and bathroom_id = 'rls-test-edit-seed') = 'Gone, it''s a bank now/true',
+    'bathroom_reports should show the trimmed note and that it was undone';
+  assert (select count(*) from public.bathroom_reports where bathroom_id = 'rls-test-edit-seed' and report in ('wrong_spot', 'other')) = 2, 'both other reports should show';
+  assert (select other_reports from public.bathroom_edits_per_person where person = 'phone e3000000') = 1, 'other reports should count per person';
+end $$;
+
+-- "Code still works?" (door codes, PR #42) still goes through the same function: refused without
+-- a code, and with one it records the code it confirmed and counts as a confirmation.
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
+do $$ begin
+  begin
+    perform public.report_bathroom('rls-test-edit-seed', 'e4000000-0000-0000-0000-000000000004', 'confirm_code');
+    raise exception 'confirming a code that isn''t there was accepted';
+  exception when check_violation then null;
+  end;
+end $$;
+
+reset role;
+update public.bathrooms set code = '4321' where id = 'rls-test-edit-seed';
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
+do $$ begin
+  perform public.report_bathroom('rls-test-edit-seed', 'e4000000-0000-0000-0000-000000000004', 'confirm_code');
+end $$;
+
+reset role;
+do $$ begin
+  assert (select changes->>'code' from public.bathroom_edits where bathroom_id = 'rls-test-edit-seed' and kind = 'confirm_code') = '4321',
+    'confirm_code should record the code it confirmed';
+  assert (select code_confirmed_at from public.bathrooms where id = 'rls-test-edit-seed') is not null, 'confirm_code should set code_confirmed_at';
+  assert (select confirmations from public.bathroom_edits_per_person where person = 'phone e4000000') = 1, 'confirm_code should count as a confirmation';
+end $$;
+
+-- ---------- usage_events and feedback ----------
+
+-- Anyone adds a row, and nothing else: no reading (tables or views), changing, deleting, or
+-- setting the server-side columns.
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
+insert into public.usage_events (event, place, bathroom_id, session_id, platform, app_version)
+  values ('restroom_view', 'page', 'rls-test-edit-seed', '5e550000-0000-0000-0000-000000000001', 'ios-safari', 'rls-test'),
+         ('directions', 'page', 'rls-test-edit-seed', '5e550000-0000-0000-0000-000000000001', 'ios-safari', 'rls-test'),
+         ('went_here', 'page', 'rls-test-edit-seed', '5e550000-0000-0000-0000-000000000001', 'ios-safari', 'rls-test');
+insert into public.feedback (message, bathroom_id, platform, app_version) values ('Love it, but the map is slow', 'rls-test-edit-seed', 'android', 'rls-test');
+do $$ begin
+  begin perform 1 from public.usage_events; raise exception 'anon was able to read usage_events'; exception when insufficient_privilege then null; end;
+  begin perform 1 from public.usage_events_daily; raise exception 'anon was able to read usage_events_daily'; exception when insufficient_privilege then null; end;
+  begin perform 1 from public.usage_by_restroom; raise exception 'anon was able to read usage_by_restroom'; exception when insufficient_privilege then null; end;
+  begin perform 1 from public.usage_sessions; raise exception 'anon was able to read usage_sessions'; exception when insufficient_privilege then null; end;
+  begin perform 1 from public.feedback; raise exception 'anon was able to read feedback'; exception when insufficient_privilege then null; end;
+  begin perform 1 from public.feedback_recent; raise exception 'anon was able to read feedback_recent'; exception when insufficient_privilege then null; end;
+  begin update public.feedback set message = 'x'; raise exception 'anon was able to change feedback'; exception when insufficient_privilege then null; end;
+  begin delete from public.usage_events; raise exception 'anon was able to delete usage_events'; exception when insufficient_privilege then null; end;
+  begin
+    insert into public.usage_events (created_at, event, session_id, platform) values (now() - interval '30 days', 'directions', gen_random_uuid(), 'desktop');
+    raise exception 'anon was able to set created_at';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    insert into public.usage_events (event, session_id, platform) values ('clicked_ad', gen_random_uuid(), 'desktop');
+    raise exception 'an event outside the list was accepted';
+  exception when check_violation then null;
+  end;
+  begin
+    insert into public.feedback (message, platform) values ('   ', 'desktop');
+    raise exception 'empty feedback was accepted';
+  exception when check_violation then null;
+  end;
+end $$;
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+insert into public.usage_events (event, session_id, platform, app_version) values ('feedback_send', gen_random_uuid(), 'desktop', 'rls-test');
+insert into public.feedback (message, platform, app_version) values ('Signed in, still anonymous', 'desktop', 'rls-test');
+do $$ begin
+  begin perform 1 from public.usage_events; raise exception 'a signed-in user was able to read usage_events'; exception when insufficient_privilege then null; end;
+  begin perform 1 from public.feedback; raise exception 'a signed-in user was able to read feedback'; exception when insufficient_privilege then null; end;
+end $$;
+
+reset role;
+do $$ begin
+  assert (select count(*) from public.usage_events where app_version = 'rls-test') = 4, 'all usage rows should land';
+  assert (select directions_then_went from public.usage_sessions where session_id = '5e550000-0000-0000-0000-000000000001'), 'the session should show Directions then I went here';
+  assert (select views || '/' || directions || '/' || went_here from public.usage_by_restroom where bathroom_id = 'rls-test-edit-seed') = '1/1/1', 'per restroom counts';
+  assert (select count(*) from public.feedback_recent where app_version = 'rls-test') = 2, 'both feedback rows should show';
+  assert (select name from public.feedback_recent where message like 'Love it%') is not null, 'feedback should show the restroom name';
+end $$;
+
 -- ---------- deleting an account ----------
 
 -- Its Private bathrooms and list go; its Public bathrooms stay on the map, with no owner.
@@ -926,5 +1052,5 @@ do $$ begin
 end $$;
 reset role;
 
-select 'places, profiles, bathrooms, lists, list_items, visits, bathroom_edits, bathroom_fact_answers, data_sources, location_events RLS: all checks passed' as result;
+select 'places, profiles, bathrooms, lists, list_items, visits, bathroom_edits, bathroom_fact_answers, data_sources, location_events, usage_events, feedback RLS: all checks passed' as result;
 rollback;
