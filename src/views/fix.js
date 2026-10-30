@@ -1,10 +1,10 @@
 // "Suggest an edit" on any shared bathroom (city restrooms included): name, who can use it, hours,
-// and "It's open again" when it shows closed. Changes go live for everyone right away and can be
+// the public door code, and "It's open again" when it shows closed. Changes go live for everyone right away and can be
 // undone from the restroom's page (corrections.js). Like form.js, it owns its draft and events and
 // repaints only the parts that change, so typing never loses focus.
 
 import { emptyHoursForm, formFromHours, hoursFromForm } from '../lib/hours-form.js';
-import { changesFrom, canReopen, editBathroom, applyResult } from '../lib/corrections.js';
+import { changesFrom, canReopen, editBathroom, applyResult, codeError, CODE_MAX } from '../lib/corrections.js';
 import { hoursFieldsHtml, hoursClick, hoursInput } from './hours-fields.js';
 import { esc } from '../lib/html.js';
 
@@ -22,7 +22,7 @@ export function closeFix() {
 }
 
 // done(result): called after a save (result = the database's answer) or a cancel (null).
-// focus: 'hours' scrolls to the hours ("Hours right? No").
+// focus: 'hours' scrolls to the hours ("Hours right? No"); 'code' goes to the door code ("Know the code?").
 export function openFix(container, b, { done, focus }) {
   root = container;
   bathroom = b;
@@ -30,9 +30,13 @@ export function openFix(container, b, { done, focus }) {
   busy = false;
   // Hours the form can't show (e.g. "at least 8am–4pm") start as "Don't know" in the form, so
   // they're only sent once someone touches the Hours section.
-  draft = { name: b.name, access: b.access ?? 'unknown', hoursForm: b.hours ? formFromHours(b.hours) : emptyHoursForm(), hoursTouched: false, open: false };
+  draft = { name: b.name, access: b.access ?? 'unknown', hoursForm: b.hours ? formFromHours(b.hours) : emptyHoursForm(), hoursTouched: false, open: false, code: b.code ?? '' };
   render();
   if (focus === 'hours') root.querySelector('#fix-hours')?.scrollIntoView({ block: 'start' });
+  if (focus === 'code') {
+    root.querySelector('#fix-code-group')?.scrollIntoView({ block: 'start' });
+    root.querySelector('#fix-code')?.focus();
+  }
 }
 
 function render() {
@@ -58,6 +62,11 @@ function render() {
         <input id="fix-name" class="input" value="${esc(draft.name)}" maxlength="200" autocomplete="off">
       </section>
       <section class="group" id="fix-access">${accessHtml()}</section>
+      <section class="group" id="fix-code-group">
+        <label class="field-label" for="fix-code">Door code</label>
+        <input id="fix-code" class="input" value="${esc(draft.code)}" maxlength="${CODE_MAX}" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="e.g. 4321#">
+        <p class="hint">Everyone sees it. Leave it empty if there's no code.</p>
+      </section>
       <section class="group" id="fix-hours">${hoursFieldsHtml(draft.hoursForm, { hint: 'Only if you know them' })}</section>
       <p class="error" id="fix-error" role="alert"></p>
     </main>`;
@@ -82,8 +91,9 @@ async function save() {
     if (result.error) return (error.textContent = result.error);
     hours = result.hours;
   }
-  const changes = changesFrom(bathroom, { name: draft.name, access: draft.access, hours, open: draft.open });
+  const changes = changesFrom(bathroom, { name: draft.name, access: draft.access, hours, open: draft.open, code: draft.code });
   if (!draft.name.trim()) return (error.textContent = 'A name is needed.');
+  if (codeError(draft.code)) return (error.textContent = codeError(draft.code));
   if (!Object.keys(changes).length) return (error.textContent = 'Nothing has changed yet.');
   busy = true;
   error.textContent = '';
@@ -132,6 +142,7 @@ export function handleFixInput(e) {
   if (!draft) return false;
   const t = e.target;
   if (t.id === 'fix-name') draft.name = t.value;
+  else if (t.id === 'fix-code') draft.code = t.value;
   else if (t.id === 'fix-open') draft.open = t.checked;
   else {
     const changed = hoursInput(draft.hoursForm, t);

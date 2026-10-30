@@ -5,7 +5,7 @@ import { formatDistance, directionsUrl, googleMapsUrl } from '../lib/geo.js';
 import { describeHours } from '../lib/hours.js';
 import { RADII, placeStatus, bathroomStatus } from '../lib/nearby.js';
 import { statusBadge, mineBadge, placeTags, ACCESS, restroomType, backBar, sourceDate } from './shared.js';
-import { factTags, factsSection } from './facts.js';
+import { factTags, factsSection, codeSection, codeMapLine } from './facts.js';
 import { mapLegend } from './map.js';
 import { locationHelp, mobilePlatform, isStandalone, isIOSSafari } from '../lib/device.js';
 import { currentUser } from '../lib/auth.js';
@@ -212,6 +212,7 @@ export function mapSheet(s, list, selectedId) {
     </div>
     <div class="badges">${statusBadge(e.status)}${e.place ? mineBadge : ''}${sub ? `<span class="type">${esc(sub)}</span>` : ''}</div>
     ${placeTags(e.bathroom, e.place)}
+    ${e.bathroom ? codeMapLine(e.bathroom, statsFor(e.id)) : ''}
     ${cardRatings(statsFor(e.id), myVisits(e.id))}
     <div class="actions">
       ${wentHereButton(e.id, { primary: true, block: false })}
@@ -263,7 +264,7 @@ function notesCard(place, addHref) {
     return `
     <section class="group notes-card">
       <div class="kv-head"><h2 class="label">Private notes</h2><span class="muted small">Not saved</span></div>
-      <p>Only you see these. A good place for door codes and tips for next time.</p>
+      <p>Only you see these. Handy for tips for next time.</p>
       <button class="btn outline block" data-action="signin-then" data-value="${esc(addHref)}">${icon.pencil()}Save to My places</button>
       <p class="hint">Sign in to save restrooms to My places, with notes if you like.</p>
     </section>`;
@@ -279,7 +280,7 @@ function notesCard(place, addHref) {
   return `
     <section class="group notes-card">
       <div class="kv-head"><h2 class="label">Private notes</h2><span class="muted small">${place ? 'None yet' : 'Not saved'}</span></div>
-      <p>Only you see these. A good place for door codes and tips for next time.</p>
+      <p>Only you see these. Handy for tips for next time.</p>
       <a class="btn outline block" href="${place ? `#/edit/${encodeURIComponent(place.id)}` : addHref}">${icon.pencil()}${place ? 'Add notes' : 'Save to My places'}</a>
       ${place ? '' : '<p class="hint">Saves this restroom to My places, with notes if you like.</p>'}
     </section>`;
@@ -333,6 +334,7 @@ export function publicDetailView(s, b, place, distance) {
         <div class="badges">${statusBadge(status)}${place ? mineBadge : ''}</div>
       </div>
       <a class="btn primary block big" href="${directionsUrl(b)}" target="_blank" rel="noopener">${icon.directions()}Directions</a>
+      ${codeSection(b, statsFor(b.id))}
       ${wentHereButton(b.id)}
       ${ratingsSection(statsFor(b.id), myVisits(b.id))}
       ${notesCard(place, `#/log/${encodeURIComponent(b.id)}`)}
@@ -369,6 +371,7 @@ function sharedDetailView(s, b, place, distance) {
         ${placeTags(b, null)}
       </div>
       <a class="btn primary block big" href="${directionsUrl(b)}" target="_blank" rel="noopener">${icon.directions()}Directions</a>
+      ${codeSection(b, statsFor(b.id))}
       ${wentHereButton(b.id)}
       ${ratingsSection(statsFor(b.id), myVisits(b.id))}
       ${accessSection(b)}

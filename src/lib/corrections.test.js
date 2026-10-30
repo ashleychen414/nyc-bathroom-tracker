@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { changesFrom, canReopen, cityClosed, applyResult, describeChange, deviceId } from './corrections.js';
+import { changesFrom, canReopen, cityClosed, applyResult, describeChange, deviceId, normalizeCode, codeError, codeText } from './corrections.js';
 
 const city = (extra) => ({ id: 'nyc-1', source: 'seed', name: 'Park House', access: 'public', hours: { kind: 'always' }, status: 'Operational', season: 'Year Round', userFields: [], reportedClosedAt: null, ...extra });
 
@@ -54,4 +54,37 @@ test('deviceId is made once per phone and kept', () => {
   // Blocked storage: still an id, the same for the rest of the page's life.
   const blocked = { getItem: () => { throw new Error('blocked'); }, setItem: () => { throw new Error('blocked'); } };
   assert.equal(deviceId(blocked), deviceId(blocked));
+});
+
+test('door code: sent trimmed, cleared when empty, only when it changed', () => {
+  assert.deepEqual(changesFrom(city(), { code: undefined }), {});
+  assert.deepEqual(changesFrom(city(), { code: '' }), {});
+  assert.deepEqual(changesFrom(city(), { code: ' 4321# ' }), { code: '4321#' });
+  assert.deepEqual(changesFrom(city({ code: '4321#' }), { code: '4321#' }), {});
+  assert.deepEqual(changesFrom(city({ code: '4321#' }), { code: '  ' }), { code: null });
+  assert.equal(normalizeCode(null), null);
+  assert.equal(codeError('4321'), null);
+  assert.equal(codeError(''), null);
+  assert.equal(codeError('9'.repeat(41)), 'A code is up to 40 characters.');
+  assert.equal(codeError(' ' + '9'.repeat(40) + ' '), null);
+  assert.equal(codeError('12\n34'), 'A code is one line.');
+});
+
+test('codeText shows the code with its New York date', () => {
+  assert.equal(codeText(city()), null);
+  assert.equal(codeText(city({ code: '4321' })), 'Code: 4321');
+  assert.equal(codeText(city({ code: '4321', codeConfirmedAt: '2026-10-27T15:00:00Z' })), 'Code: 4321 · confirmed Oct 27');
+  // 1am UTC on the 28th is still the 27th in New York.
+  assert.equal(codeText(city({ code: '4321', codeConfirmedAt: '2026-10-28T01:00:00Z' })), 'Code: 4321 · confirmed Oct 27');
+});
+
+test('applyResult and describeChange carry the code', () => {
+  const b = city();
+  applyResult(b, { bathroom: { id: 'nyc-1', name: 'Park House', hours: null, access: 'public', userFields: [], code: '4321', codeConfirmedAt: '2026-10-27T15:00:00Z' } });
+  assert.deepEqual([b.code, b.codeConfirmedAt], ['4321', '2026-10-27T15:00:00Z']);
+  applyResult(b, { bathroom: { id: 'nyc-1', name: 'Park House', hours: null, access: 'public', userFields: [] } });
+  assert.equal(b.code, null);
+  assert.equal(describeChange({ kind: 'edit', changes: { code: '4321' } }), 'Code: 4321');
+  assert.equal(describeChange({ kind: 'edit', changes: { code: null } }), 'Code removed');
+  assert.equal(describeChange({ kind: 'confirm_code', changes: { code: '4321' } }), 'Confirmed the code still works');
 });

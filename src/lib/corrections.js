@@ -1,5 +1,5 @@
 // Confirm and correct any bathroom (Tier 1): "Suggest an edit", "Report closed", "Was it open?",
-// "Hours right?", and undo. Everything goes through database functions (migration
+// "Hours right?", "Code still works?", and undo. Everything goes through database functions (migration
 // 20261026210000_bathroom_edits.sql) and goes live at once, for everyone.
 // Works signed out: each phone keeps a random id of its own, so edits can be counted per person
 // and undone from the same phone. Signed in, the account counts too (undo from any phone).
@@ -51,11 +51,12 @@ async function rpc(name, body) {
   return data;
 }
 
-// changes: any of { name, hours, access, open: true }. Resolves { editId, bathroom: { id, name,
-// hours, access, userFields, reportedClosedAt } }.
+// changes: any of { name, hours, access, open: true, code }. Resolves { editId, bathroom: { id, name,
+// hours, access, userFields, reportedClosedAt, code, codeConfirmedAt } }.
 export const editBathroom = (id, changes) => rpc('edit_bathroom', { p_bathroom_id: id, p_device_id: deviceId(), p_changes: changes });
 
-// kind: 'report_closed' | 'confirm_open' | 'confirm_hours'. Resolves like editBathroom.
+// kind: 'report_closed' | 'confirm_open' | 'confirm_hours' | 'confirm_code' ("Code still works?").
+// Resolves like editBathroom.
 export const reportBathroom = (id, kind) => rpc('report_bathroom', { p_bathroom_id: id, p_device_id: deviceId(), p_kind: kind });
 
 export const undoEdit = (editId) => rpc('undo_bathroom_edit', { p_edit_id: editId, p_device_id: deviceId() });
@@ -67,7 +68,15 @@ export const bathroomHistory = (id) => rpc('bathroom_history', { p_bathroom_id: 
 export function applyResult(bathroom, result) {
   const b = result?.bathroom;
   if (!bathroom || !b) return bathroom;
-  Object.assign(bathroom, { name: b.name, hours: b.hours, access: b.access, userFields: b.userFields ?? [], reportedClosedAt: b.reportedClosedAt ?? null });
+  Object.assign(bathroom, {
+    name: b.name,
+    hours: b.hours,
+    access: b.access,
+    userFields: b.userFields ?? [],
+    reportedClosedAt: b.reportedClosedAt ?? null,
+    code: b.code ?? null,
+    codeConfirmedAt: b.codeConfirmedAt ?? null,
+  });
   return bathroom;
 }
 
@@ -79,8 +88,31 @@ export const cityClosed = (b) => b.source !== 'user' && (b.status !== 'Operation
 // closed status that nobody has overridden yet.
 export const canReopen = (b) => Boolean(b.reportedClosedAt) || (cityClosed(b) && !(b.userFields ?? []).includes('open'));
 
+// ---------- Door codes (public, Ashley 2026-10-27) ----------
+
+export const CODE_MAX = 40;
+
+// The code to send: trimmed, or null to clear it.
+export const normalizeCode = (text) => (text ?? '').trim() || null;
+
+// Why a typed code can't be saved, or null. The database checks the same.
+export function codeError(text) {
+  const code = normalizeCode(text);
+  if (code && /[\r\n]/.test(code)) return 'A code is one line.';
+  if (code && code.length > CODE_MAX) return `A code is up to ${CODE_MAX} characters.`;
+  return null;
+}
+
+// "Code: 4321 · confirmed Oct 27" (New York date), or null when there's no code. Pure, for tests.
+export function codeText(b) {
+  if (!b?.code) return null;
+  const at = b.codeConfirmedAt ? new Date(b.codeConfirmedAt) : null;
+  const when = at && !isNaN(at) ? ` · confirmed ${at.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'America/New_York' })}` : '';
+  return `Code: ${b.code}${when}`;
+}
+
 // Only what differs from the bathroom. draft: { name, access, hours (undefined = hours not
-// touched), open }. Pure, for tests.
+// touched), open, code (undefined = not touched; empty clears it) }. Pure, for tests.
 export function changesFrom(b, draft) {
   const changes = {};
   const name = draft.name?.trim();
@@ -88,6 +120,7 @@ export function changesFrom(b, draft) {
   if (draft.access && draft.access !== (b.access ?? 'unknown')) changes.access = draft.access;
   if (draft.hours !== undefined && JSON.stringify(draft.hours ?? null) !== JSON.stringify(b.hours ?? null)) changes.hours = draft.hours;
   if (draft.open && canReopen(b)) changes.open = true;
+  if (draft.code !== undefined && normalizeCode(draft.code) !== (b.code ?? null)) changes.code = normalizeCode(draft.code);
   return changes;
 }
 
@@ -98,6 +131,7 @@ export function describeChange(row) {
   if (row.kind === 'report_closed') return 'Reported closed';
   if (row.kind === 'confirm_open') return 'Confirmed open';
   if (row.kind === 'confirm_hours') return 'Confirmed the hours';
+  if (row.kind === 'confirm_code') return 'Confirmed the code still works';
   if (row.kind === 'fact') {
     const { fact, value, count } = row.changes ?? {};
     const name = FACTS.find((f) => f.key === fact)?.label ?? fact;
@@ -108,6 +142,7 @@ export function describeChange(row) {
   if ('name' in c) parts.push(`Name changed to ${c.name}`);
   if ('hours' in c) parts.push(c.hours ? 'Hours changed' : 'Hours marked unknown');
   if ('access' in c) parts.push(`Access: ${ACCESS_WORDS[c.access] ?? c.access}`);
+  if ('code' in c) parts.push(c.code ? `Code: ${c.code}` : 'Code removed');
   if (c.open) parts.push('Marked open again');
   return parts.join(' · ') || 'Edited';
 }
