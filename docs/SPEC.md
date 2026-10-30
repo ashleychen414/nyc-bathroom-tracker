@@ -34,7 +34,7 @@ Scope locked 2026-10-08. UX confirmed 2026-10-08 on the [UX canvas](https://clau
    - Log (all optional): 💡 lighting, 🧼 cleanliness, 🌸 smelly vibes (1-5), stalls Y/N + how many, trash cans Y/N, 🗑️ trash cleanliness (hidden if no trash cans), notes
    - Edit, delete (with confirmation). Stored on the phone.
 8. **Directions:** Google Maps walking directions (`/maps/dir/?api=1&destination=lat,lng&travelmode=walking`) from detail and My places cards.
-9. **Keeping saved places:** "Add to Home Screen" sheet after the first save (again after the 3rd if not installed), a silent request that the browser store data permanently, and backup (export a .json file; import merges by place id, newer edit wins). In-app note that saved places live on this phone only.
+9. **Keeping saved places:** "Add to Home Screen" sheet after the first save (again after the 3rd if not installed), and a silent request that the browser store data permanently. Accounts sync saved places across phones (backup files were removed 2026-10-28).
 
 ## Out of scope for MVP
 
