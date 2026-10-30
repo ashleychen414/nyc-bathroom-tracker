@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { placeKind, normalize, rankResults, resultMeta, toResult, scoreResult, positionErrorReason, getPosition, locationPermission, startupLocation, tryPosition, locationAfter } from './geo.js';
+import { placeKind, normalize, rankResults, resultMeta, toResult, scoreResult, positionErrorReason, getPosition, locationPermission, startupLocation, tryPosition, locationAfter, directionsUrl } from './geo.js';
 
 const HERE = { lat: 40.6728, lng: -73.9701 }; // Grand Army Plaza
 const MILE_LAT = 1 / 69; // ~1 mile of latitude
@@ -204,4 +204,10 @@ test('after a blocked startup, success clears the blocked state and failure keep
   }
   // Not blocked before (a button tap): the failure shows as itself.
   assert.equal(locationAfter({ result: 'timeout', issue: 'timeout' }).locationIssue, 'timeout');
+});
+
+test('directionsUrl: Apple Maps walking on iPhone, Google Maps walking elsewhere', () => {
+  const spot = { lat: 40.762238, lng: -73.986944 };
+  assert.equal(directionsUrl(spot, true), 'https://maps.apple.com/?daddr=40.762238,-73.986944&dirflg=w');
+  assert.equal(directionsUrl(spot, false), 'https://www.google.com/maps/dir/?api=1&destination=40.762238,-73.986944&travelmode=walking');
 });
