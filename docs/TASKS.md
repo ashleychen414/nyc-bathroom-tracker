@@ -16,6 +16,8 @@ Order set 2026-10-26 by two principles (see `DECISIONS.md` and `IMPROVEMENTS-SCO
 
 - [ ] **Ask for what's missing** (next): cards with gaps say so ("Hours unknown · Know them?", "Access unknown", "Layout unknown") and open the fix form (Suggest an edit, `#/fix/<id>`, from #34) or the facts on "What to expect" (#39).
 
+- [ ] **Where inside? (finding the restroom once you're there)** (Ashley, 2026-10-26): tapping a bathroom doesn't say where it is in a big place. Ex: "Penn Station LIRR Restroom" is too broad; you need to know where in Penn Station. The city data has no field for this (its note for Penn Station is generic: "outside of fare gates"), so it has to come from people: a short "How to find it" line (level, near which exit / track / store) on the detail page and map card, editable like other facts, and asked for when missing ("Where inside? · Know it?"). Matters most for stations, malls, parks, libraries and museums. Uses the Suggest an edit form (#34); pairs with the facts on "What to expect" (#39) and Ask for what's missing.
+
 - [ ] **Public door codes** (Ashley, 2026-10-27; see DECISIONS.md): a public "Code" field on each bathroom, editable through Suggest an edit, shown with "Code needed" and when it was last added or confirmed. Change the copy that sends codes to private notes ("Only you see these. A good place for door codes", and "Keep the code itself in your private notes" on the rating sheet). Pairs with "Where inside?" (same kind of public text).
 
 ## Next, Tier 2: more bathrooms
