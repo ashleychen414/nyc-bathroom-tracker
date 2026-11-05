@@ -592,3 +592,9 @@ body.sheet-open { overflow: hidden; }
 .fact:first-of-type { border-top: 0; padding-top: 0; }
 .fact .count-row { display: flex; align-items: center; gap: 8px; }
 .fact .input.count { width: 56px; min-height: 36px; padding: 4px 6px; text-align: center; }
+
+/* ---------- Something's wrong / Send feedback ---------- */
+.opts { display: grid; gap: 8px; }
+.opts .opt { min-height: 48px; padding: 10px 14px; font-weight: 600; }
+.opt.on { border-color: var(--accent); background: var(--open-bg); color: var(--accent); }
+.feedback-link { margin-top: 4px; color: var(--accent); }

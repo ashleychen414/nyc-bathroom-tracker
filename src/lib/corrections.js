@@ -55,8 +55,19 @@ async function rpc(name, body) {
 // hours, access, userFields, reportedClosedAt } }.
 export const editBathroom = (id, changes) => rpc('edit_bathroom', { p_bathroom_id: id, p_device_id: deviceId(), p_changes: changes });
 
-// kind: 'report_closed' | 'confirm_open' | 'confirm_hours'. Resolves like editBathroom.
-export const reportBathroom = (id, kind) => rpc('report_bathroom', { p_bathroom_id: id, p_device_id: deviceId(), p_kind: kind });
+// kind: one of REPORTS' keys, 'confirm_open' or 'confirm_hours'. note: optional, with a report only
+// (never shown publicly). Resolves like editBathroom.
+export const reportBathroom = (id, kind, note = null) =>
+  rpc('report_bathroom', { p_bathroom_id: id, p_device_id: deviceId(), p_kind: kind, p_note: note || null });
+
+// "Something's wrong" choices. Only closed changes what the app shows (two people → Reported
+// closed); the others are kept for review (bathroom_reports).
+export const REPORTS = [
+  ['report_closed', "It's closed", 'Reported closed'],
+  ['report_not_here', "There's no restroom here", 'Reported not here'],
+  ['report_wrong_spot', 'The pin is in the wrong spot', 'Reported the pin in the wrong spot'],
+  ['report_other', 'Something else', 'Reported a problem'],
+];
 
 export const undoEdit = (editId) => rpc('undo_bathroom_edit', { p_edit_id: editId, p_device_id: deviceId() });
 
@@ -95,7 +106,8 @@ const ACCESS_WORDS = { public: 'Available to Public', customers_only: 'Customer 
 
 // One line per history row, e.g. "Name changed to Prospect Park Boathouse · Hours changed".
 export function describeChange(row) {
-  if (row.kind === 'report_closed') return 'Reported closed';
+  const report = REPORTS.find(([kind]) => kind === row.kind);
+  if (report) return report[2];
   if (row.kind === 'confirm_open') return 'Confirmed open';
   if (row.kind === 'confirm_hours') return 'Confirmed the hours';
   if (row.kind === 'fact') {
