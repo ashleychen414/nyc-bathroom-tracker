@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { fromV1, mergeBy, mergeBackup, planSync } from './storage.js';
+import { fromV1, mergeBy, planSync } from './storage.js';
 
 const item = (bathroomId, updatedAt, extra = {}) => ({ bathroomId, createdAt: updatedAt, updatedAt, ...extra });
 const mine = (id, updatedAt, extra = {}) => ({ id, name: id, lat: 40.7, lng: -73.9, address: '', hours: null, access: 'unknown', visibility: 'private', createdAt: updatedAt, updatedAt, ...extra });
@@ -37,17 +37,4 @@ test('list items sync: newer edit wins in both directions, and a newer delete be
   assert.equal(byId.b.deletedAt, '2026-10-06T00:00:00Z');
   assert.deepEqual(toPush.map((i) => i.bathroomId).sort(), ['b', 'c']);
   assert.equal(planSync(server, server, 'bathroomId').toPush.length, 0);
-});
-
-test('backups: v2 merges items and bathrooms; v1 backups are moved over first', () => {
-  const current = { items: [item('x', '2026-10-01T00:00:00Z')], mine: [] };
-  const v2 = { version: 2, items: [item('u1', '2026-10-02T00:00:00Z'), { bad: true }], mine: [mine('u1', '2026-10-02T00:00:00Z')] };
-  const a = mergeBackup(current, v2);
-  assert.deepEqual(a.counts, { added: 1, updated: 0, unchanged: 0, skipped: 1 });
-  assert.equal(a.data.mine[0].dirty, true); // imported: send to the account when signed in
-
-  const v1 = { version: 1, places: [{ id: 'u9', name: 'Old', lat: 40.7, lng: -73.9, log: {}, updatedAt: '2026-10-02T00:00:00Z' }, { id: 'broken' }] };
-  const b = mergeBackup(current, v1);
-  assert.deepEqual(b.counts, { added: 1, updated: 0, unchanged: 0, skipped: 1 });
-  assert.equal(b.data.mine.find((m) => m.id === 'u9').visibility, 'private');
 });

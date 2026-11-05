@@ -1,6 +1,6 @@
 // Sign-in and account: the My places banner, the sign-in sheet, and the account sheet.
 
-import { esc, icon } from '../lib/html.js';
+import { esc } from '../lib/html.js';
 
 const sheet = (id, body) => `
   <div class="sheet-backdrop" data-action="close-sheet"></div>
@@ -79,7 +79,6 @@ export function accountSheet({ user, status, count, homeScreenTip }) {
      <p class="hint">${esc(syncText(status))}</p>
      ${status.state !== 'syncing' ? '<button class="btn block" data-action="sync-now">Sync now</button>' : ''}
      ${homeScreenTip ? '<button class="link" data-action="open-homescreen">Add NYC Poops to your Home Screen</button>' : ''}
-     <button class="opt" data-action="open-backup"><span class="opt-icon">${icon.download()}</span><span><b>Export or import a file</b><span class="sub">A copy of your places, or bring in a backup</span></span></button>
      <div class="sheet-actions">
        <button class="btn block" data-action="sign-out">Sign out</button>
        <button class="btn danger block" data-action="delete-account">Delete account</button>

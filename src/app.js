@@ -3,7 +3,7 @@
 // Routes: #/nearby (default), #/places, #/welcome, #/r/<restroom id>, #/mine/<place id>,
 //         #/add, #/edit/<place id>, #/log/<restroom id>, #/fix/<restroom id> (Suggest an edit)
 
-import { listPlaces, getPlace, privatePlaces, makePublic, exportPlaces, importPlaces, clearLocal } from './lib/storage.js';
+import { listPlaces, getPlace, privatePlaces, makePublic, clearLocal } from './lib/storage.js';
 import { currentUser, sendCode, verifyCode, signOut, deleteAccount } from './lib/auth.js';
 import { startSync, syncNow, syncStatus, clearSharePrompt } from './lib/sync.js';
 import { isStandalone, mobilePlatform, currentPlatformLabel } from './lib/device.js';
@@ -15,7 +15,7 @@ import { welcomeView, nearbyView, publicDetailView, mineDetailView } from './vie
 import { placesView } from './views/places.js';
 import { openForm, closeForm, isFormOpen, handleFormClick, handleFormInput } from './views/form.js';
 import { tabBar } from './views/shared.js';
-import { homeScreenSheet, backupSheet, backupResult } from './views/sheets.js';
+import { homeScreenSheet } from './views/sheets.js';
 import { mountMap, mountBackdrop, unmountMap, selectPin, showArea } from './views/map.js';
 import { mapSheet } from './views/nearby.js';
 import { signInSheet, accountSheet, shareSheet } from './views/account.js';
@@ -66,7 +66,7 @@ const state = {
   mapArea: null,
   // Closed restrooms are hidden by default; the "Hide closed" chip turns that off.
   filters: { kind: 'all', type: '', hideClosed: true, openNow: false, accessible: false, changing: false },
-  sheet: null, // 'homescreen' | 'backup' | 'signin' | 'account' | 'share' | 'rate'
+  sheet: null, // 'homescreen' | 'signin' | 'account' | 'share' | 'rate'
   rateDraft: null, // the quick rating being filled in (see rateSheetBody)
   history: {}, // restroom id → its latest changes (bathroom_history), 'loading' or 'error'
   fixFocus: null, // 'hours' when "Hours right? No" opens Suggest an edit
@@ -80,8 +80,6 @@ const state = {
   get user() {
     return currentUser();
   },
-  backupMessage: '',
-  backupError: '',
 };
 
 // ---------- Routing ----------
@@ -121,9 +119,6 @@ function sheetHtml() {
   if (state.sheet === 'signin') return signInSheet(state.signin);
   if (state.sheet === 'account' && state.user) {
     return accountSheet({ user: state.user, status: syncStatus, count: listPlaces().length, homeScreenTip: Boolean(mobilePlatform()) && !isStandalone() });
-  }
-  if (state.sheet === 'backup') {
-    return backupSheet({ count: listPlaces().length, lastExport: prefs.lastExport, message: state.backupMessage, error: state.backupError });
   }
   return '';
 }
@@ -305,8 +300,6 @@ function refresh() {
 
 function openSheet(name) {
   state.sheet = name;
-  state.backupMessage = '';
-  state.backupError = '';
   render();
 }
 
@@ -611,43 +604,6 @@ async function handleDeleteAccount() {
   render();
 }
 
-async function exportBackup() {
-  const data = exportPlaces();
-  const name = `nyc-poops-places-${data.exportedAt.slice(0, 10)}.json`;
-  const file = new File([JSON.stringify(data, null, 2)], name, { type: 'application/json' });
-  try {
-    // On phones the share sheet is the reliable way to save a file ("Save to Files").
-    if (mobilePlatform() && navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: 'NYC Poops backup' });
-    else {
-      const url = URL.createObjectURL(file);
-      const a = Object.assign(document.createElement('a'), { href: url, download: name });
-      document.body.append(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
-    }
-  } catch (err) {
-    if (err.name === 'AbortError') return; // closed the share sheet
-    state.backupError = "Couldn't export. Try again.";
-    return render();
-  }
-  savePrefs({ lastExport: data.exportedAt });
-  state.backupMessage = `Exported ${data.places.length} place${data.places.length === 1 ? '' : 's'} to ${name}.`;
-  state.backupError = '';
-  render();
-}
-
-async function importBackup(file) {
-  try {
-    state.backupMessage = backupResult(importPlaces(await file.text()));
-    state.backupError = '';
-  } catch (err) {
-    state.backupMessage = '';
-    state.backupError = err.message;
-  }
-  render();
-}
-
 // ---------- "Share your places?" (once, for places moved over as Private) ----------
 
 function maybePromptShare() {
@@ -801,8 +757,6 @@ app.addEventListener('click', (e) => {
       return factCount(target);
     case 'signin-then':
       return askSignIn(value);
-    case 'open-backup':
-      return openSheet('backup');
     case 'open-account':
       return openSheet('account');
     case 'open-homescreen':
@@ -826,8 +780,6 @@ app.addEventListener('click', (e) => {
       return render();
     case 'share-done':
       return answerSharePrompt(value === 'save');
-    case 'export':
-      return exportBackup();
     case 'back':
       return goBack('#/nearby');
     case 'radius':
@@ -889,7 +841,6 @@ app.addEventListener('change', (e) => {
     state.filters.type = e.target.value;
     return render();
   }
-  if (e.target.id === 'import-file' && e.target.files[0]) importBackup(e.target.files[0]);
 });
 
 document.addEventListener('keydown', (e) => {

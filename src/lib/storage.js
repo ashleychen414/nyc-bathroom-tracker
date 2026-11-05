@@ -209,58 +209,6 @@ export function planSync(server, local, key) {
   return { merged, toPush };
 }
 
-// ---------- Backup ----------
-
-const BACKUP_APP = 'nyc-bathroom-tracker';
-
-export function exportPlaces() {
-  const data = load();
-  return {
-    app: BACKUP_APP,
-    version: SCHEMA_VERSION,
-    exportedAt: new Date().toISOString(),
-    places: places(data), // for reading; import uses items and mine
-    items: data.items.filter(visible),
-    mine: data.mine.filter(visible),
-  };
-}
-
-const isItem = (i) => i && typeof i.bathroomId === 'string' && typeof i.updatedAt === 'string';
-const isBathroom = (b) =>
-  b && typeof b.id === 'string' && typeof b.name === 'string' && Number.isFinite(b.lat) && Number.isFinite(b.lng) && typeof b.updatedAt === 'string';
-
-// Merges a backup into the current data; when something is in both, the newer edit wins.
-// Version 1 backups (whole places) are moved over first. Pure, so it can be tested.
-export function mergeBackup(current, backup) {
-  const incoming = backup.version >= 2 ? { items: backup.items ?? [], mine: backup.mine ?? [] } : fromV1(backup.places ?? []);
-  const mine = incoming.mine.filter(isBathroom);
-  const mineIds = new Set([...current.mine, ...mine].map((b) => b.id));
-  // An item for a bathroom of yours needs that bathroom; items for shared ones stand alone.
-  const items = incoming.items.filter((i) => isItem(i) && (!incoming.mine.some((b) => b.id === i.bathroomId) || mineIds.has(i.bathroomId)));
-  const total = backup.version >= 2 ? incoming.items.length : backup.places.length;
-  // Counts are per saved place (its item), so a place you created counts once.
-  const mergedItems = mergeBy(current.items, items, 'bathroomId');
-  const mergedMine = mergeBy(current.mine, mine.map((b) => ({ ...b, dirty: true })), 'id');
-  return { data: { items: mergedItems.list, mine: mergedMine.list }, counts: { ...mergedItems.counts, skipped: total - items.length } };
-}
-
-// Throws an Error with a readable message if the file isn't a backup from this app.
-export function importPlaces(text) {
-  let backup;
-  try {
-    backup = JSON.parse(text);
-  } catch {
-    throw new Error("That file isn't a backup from this app.");
-  }
-  const ok = backup?.app === BACKUP_APP && (Array.isArray(backup.places) || Array.isArray(backup.items));
-  if (!ok) throw new Error("That file isn't a backup from this app.");
-  if (backup.version > SCHEMA_VERSION) throw new Error('That backup is from a newer version of the app. Reload and try again.');
-  const { data, counts } = mergeBackup(load(), backup);
-  store(data);
-  notify();
-  return counts;
-}
-
 // Asks the browser not to clear our data under storage pressure. Helps on Android/Chrome;
 // on iOS, adding the app to the home screen is what protects it.
 export async function requestPersistence() {
