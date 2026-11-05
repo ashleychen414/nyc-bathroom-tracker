@@ -473,6 +473,13 @@ function reportClosed(id) {
 
 const reopen = (id) => correct(id, () => editBathroom(id, { open: true }), () => 'Thanks! It shows open again for everyone.');
 
+// "Know the code?" / "Edit code": Suggest an edit, at the door code. "Still works": refreshes its date.
+function editCode(id) {
+  state.fixFocus = 'code';
+  location.hash = `#/fix/${encodeURIComponent(id)}`;
+}
+const confirmCode = (id) => correct(id, () => reportBathroom(id, 'confirm_code'), () => 'Thanks! Marked as still working.');
+
 // Undo one of your changes (or anyone's, for an admin) on the restroom page you're on.
 function undoChange(editId) {
   const { id } = parseRoute();
@@ -795,6 +802,10 @@ app.addEventListener('click', (e) => {
       return reopen(value);
     case 'undo-edit':
       return undoChange(value);
+    case 'edit-code':
+      return editCode(value);
+    case 'confirm-code':
+      return confirmCode(value);
     case 'fact-answer':
       return factClick(target);
     case 'fact-count':

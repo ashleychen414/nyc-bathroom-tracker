@@ -1,5 +1,5 @@
 -- Row-level security tests for public.places, public.profiles, public.bathrooms, public.lists,
--- public.list_items, public.visits (and bathroom_stats()), public.bathroom_edits and public.bathroom_fact_answers
+-- public.list_items, public.visits (and bathroom_stats()), public.bathroom_edits, public.bathroom_fact_answers, door codes
 -- (and their functions), public.data_sources and public.location_events.
 -- Runs entirely inside a transaction and rolls back: it leaves no users or rows behind.
 -- Run it in the Supabase SQL editor (or via the Supabase connector) after any change to
@@ -639,6 +639,11 @@ do $$ begin
     raise exception 'anon was able to call is_admin()';
   exception when insufficient_privilege then null;
   end;
+  begin
+    perform public.bathrooms_recompute_code('rls-test-edit-seed');
+    raise exception 'anon was able to call bathrooms_recompute_code()';
+  exception when insufficient_privilege then null;
+  end;
 end $$;
 
 -- Phone 1 (signed out) corrects the name and hours; phone 2 can't undo it, and sees it as not theirs.
@@ -895,6 +900,106 @@ do $$ begin
   assert (select fact_answers from public.bathroom_edits_per_person where person = 'phone f1000000') = 3, 'answers should count per person';
 end $$;
 
+-- ---------- door codes: public, edited only through edit_bathroom() ----------
+
+-- Signed out: anyone reads the code on a visible bathroom, but can't write it directly.
+set local role anon;
+set local request.jwt.claims = '{"role":"anon"}';
+do $$
+declare r jsonb; first_edit uuid; first_at timestamptz;
+begin
+  begin
+    update public.bathrooms set code = '1234' where id = 'rls-test-edit-shut';
+    raise exception 'anon was able to set a code directly';
+  exception when insufficient_privilege then null;
+  end;
+  r := public.edit_bathroom('rls-test-edit-shut', 'c1000000-0000-0000-0000-000000000001', '{"code":"  4321 "}');
+  first_edit := (r->>'editId')::uuid;
+  assert r->'bathroom'->>'code' = '4321', 'a code should go live right away, trimmed';
+  assert r->'bathroom'->>'codeConfirmedAt' is not null, 'adding a code should set when it was confirmed';
+  assert not (r->'bathroom'->'userFields' ? 'code'), 'a code is not a city field';
+  assert (select code from public.bathrooms where id = 'rls-test-edit-shut') = '4321', 'anon should read the code';
+  assert not exists (select 1 from public.bathrooms where id = 'rls-test-edit-private'), 'anon should not see Private bathrooms (or their codes)';
+  first_at := (r->'bathroom'->>'codeConfirmedAt')::timestamptz;
+  -- Too long, two lines, or not text: refused.
+  begin
+    perform public.edit_bathroom('rls-test-edit-shut', 'c1000000-0000-0000-0000-000000000001', jsonb_build_object('code', repeat('9', 41)));
+    raise exception 'a 41-character code was accepted';
+  exception when check_violation then null;
+  end;
+  begin
+    perform public.edit_bathroom('rls-test-edit-shut', 'c1000000-0000-0000-0000-000000000001', jsonb_build_object('code', E'12\n34'));
+    raise exception 'a code with a newline was accepted';
+  exception when check_violation then null;
+  end;
+  begin
+    perform public.edit_bathroom('rls-test-edit-shut', 'c1000000-0000-0000-0000-000000000001', '{"code":1234}');
+    raise exception 'a code that isn''t text was accepted';
+  exception when check_violation then null;
+  end;
+  begin
+    perform public.edit_bathroom('rls-test-edit-private', 'c1000000-0000-0000-0000-000000000001', '{"code":"1"}');
+    raise exception 'anon was able to set a code on someone''s Private bathroom';
+  exception when no_data_found then null;
+  end;
+  -- "Code still works?" (phone 2) refreshes the date; phone 2 changes it; phone 1 can't undo that.
+  r := public.report_bathroom('rls-test-edit-shut', 'c2000000-0000-0000-0000-000000000002', 'confirm_code');
+  assert (r->'bathroom'->>'codeConfirmedAt')::timestamptz > first_at, 'confirming should refresh the date';
+  r := public.edit_bathroom('rls-test-edit-shut', 'c2000000-0000-0000-0000-000000000002', '{"code":"#5555"}');
+  begin
+    perform public.undo_bathroom_edit((r->>'editId')::uuid, 'c1000000-0000-0000-0000-000000000001');
+    raise exception 'phone 1 was able to undo phone 2''s code';
+  exception when insufficient_privilege then null;
+  end;
+  begin
+    perform public.undo_bathroom_edit(first_edit, 'c1000000-0000-0000-0000-000000000001');
+    raise exception 'a code edit was undone over a later code edit';
+  exception when object_not_in_prerequisite_state then null;
+  end;
+  -- Phone 2 undoes its change: the old code comes back, with its own last confirmation.
+  perform public.undo_bathroom_edit((r->>'editId')::uuid, 'c2000000-0000-0000-0000-000000000002');
+  assert (select code from public.bathrooms where id = 'rls-test-edit-shut') = '4321', 'undo should bring the code before back';
+  assert (select code_confirmed_at > first_at from public.bathrooms where id = 'rls-test-edit-shut'), 'the old code keeps its later confirmation';
+  -- Undoing the confirmation goes back to when it was added.
+  perform public.undo_bathroom_edit(h.id, 'c2000000-0000-0000-0000-000000000002')
+    from public.bathroom_history('rls-test-edit-shut', 'c2000000-0000-0000-0000-000000000002') h where h.kind = 'confirm_code';
+  assert (select code_confirmed_at from public.bathrooms where id = 'rls-test-edit-shut') = first_at, 'undoing a confirmation should restore the date before';
+  -- Clearing is allowed, and leaves nothing to confirm.
+  r := public.edit_bathroom('rls-test-edit-shut', 'c1000000-0000-0000-0000-000000000001', '{"code":""}');
+  assert r->'bathroom'->>'code' is null and r->'bathroom'->>'codeConfirmedAt' is null, 'an empty code should clear it';
+  begin
+    perform public.report_bathroom('rls-test-edit-shut', 'c1000000-0000-0000-0000-000000000001', 'confirm_code');
+    raise exception 'a missing code was confirmed';
+  exception when check_violation then null;
+  end;
+  perform public.edit_bathroom('rls-test-edit-shut', 'c1000000-0000-0000-0000-000000000001', '{"code":"4321"}');
+  assert (select count(*) from public.bathroom_history('rls-test-edit-shut') h where h.changes ? 'code') >= 4, 'code changes should show in the history';
+end $$;
+
+-- Owners can't write the code directly either; the nightly sync never touches it.
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"11111111-1111-1111-1111-111111111111","role":"authenticated"}';
+do $$ begin
+  begin
+    update public.bathrooms set code = '1' where id = 'rls-test-edit-private';
+    raise exception 'an owner was able to set a code directly';
+  exception when insufficient_privilege then null;
+  end;
+end $$;
+reset role;
+set local request.jwt.claims = '{"role":"service_role"}';
+select public.sync_seed_bathrooms('[{"id":"rls-test-edit-shut","name":"City closed","type":"Park","borough":"Brooklyn","lat":40.72,"lng":-73.9,"hours":null,"status":"Operational"}]', false);
+do $$ begin
+  assert (select code || '/' || (code_confirmed_at is not null) || '/' || lat from public.bathrooms where id = 'rls-test-edit-shut') = '4321/true/40.72',
+    'the sync should keep the code and update the rest';
+  begin
+    update public.bathrooms set code = E'1\n2' where id = 'rls-test-edit-shut';
+    raise exception 'a two-line code was stored';
+  exception when check_violation then null;
+  end;
+  assert (select confirmations from public.bathroom_edits_per_person where person = 'phone c2000000') = 1, 'code confirmations should count per person';
+end $$;
+
 -- ---------- deleting an account ----------
 
 -- Its Private bathrooms and list go; its Public bathrooms stay on the map, with no owner.
@@ -926,5 +1031,5 @@ do $$ begin
 end $$;
 reset role;
 
-select 'places, profiles, bathrooms, lists, list_items, visits, bathroom_edits, bathroom_fact_answers, data_sources, location_events RLS: all checks passed' as result;
+select 'places, profiles, bathrooms, lists, list_items, visits, bathroom_edits, bathroom_fact_answers, door codes, data_sources, location_events RLS: all checks passed' as result;
 rollback;

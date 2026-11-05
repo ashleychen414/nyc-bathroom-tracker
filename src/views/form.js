@@ -78,7 +78,7 @@ function render() {
       ${draft.publicId ? '' : `<section class="group" id="hours-group">${hoursHtml()}</section>`}
       <section class="group">
         <label class="field-label" for="notes">Private notes</label>
-        <p class="hint">Only you see these. A good place for door codes.</p>
+        <p class="hint">Only you see these.</p>
         <textarea id="notes" class="input" rows="3" maxlength="2000" placeholder="e.g. Code is on the receipt">${esc(draft.notes)}</textarea>
       </section>
       <p class="error" id="form-error" role="alert"></p>
@@ -204,7 +204,7 @@ function accessHtml() {
     `<button type="button" class="seg ${draft[field] === value ? 'on' : ''}" aria-pressed="${draft[field] === value}" data-choice="${field}" data-value="${value}" ${field === 'visibility' && locked ? 'disabled' : ''}>${text}</button>`;
   const accessHint =
     draft.access === 'customers_only'
-      ? 'You may need to buy something or ask staff. Codes go in your private notes.'
+      ? 'You may need to buy something or ask staff.'
       : draft.access === 'public'
         ? 'Anyone can walk in and use it.'
         : "Skip if you're not sure.";
