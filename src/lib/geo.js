@@ -1,6 +1,7 @@
-// Location helpers: GPS, distance, address search, Google Maps directions.
+// Location helpers: GPS, distance, address search, walking directions.
 
 import { searchRestaurants } from './restaurants.js';
+import { isIOS } from './device.js';
 
 // Address search uses Photon (photon.komoot.io): free, no API key, built on OpenStreetMap.
 // Fine for a friends-scale tool; revisit (e.g. Geoapify) if usage grows. Restaurants that
@@ -328,5 +329,9 @@ export async function lookupZip(zip, signal) {
 // Opens the spot in Google Maps (useful to cross-check hours there).
 export const googleMapsUrl = ({ lat, lng }) => `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
 
-export const directionsUrl =({ lat, lng }) =>
-  `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=walking`;
+// Walking directions. iPhone opens Apple Maps (always installed, starts from the phone's own
+// location); Google Maps on the web there ignores walking and guesses the start from the network.
+export const directionsUrl = ({ lat, lng }, ios = isIOS()) =>
+  ios
+    ? `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=w`
+    : `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=walking`;

@@ -95,8 +95,10 @@ const checks = [
   ['anonymous visitors cannot read or write bathroom edits directly', async () => {
     blocked(await call('/rest/v1/bathroom_edits?select=id&limit=1'));
     blocked(await call('/rest/v1/bathroom_edits_per_person?select=person&limit=1'));
+    blocked(await call('/rest/v1/edit_rate_hits?select=created_at&limit=1'));
+    blocked(await call('/rest/v1/edit_rate_secret?select=key&limit=1'));
     blocked(await call('/rest/v1/bathroom_edits', { method: 'POST', body: { bathroom_id: 'rls-check-none', kind: 'confirm_open', device_id: '00000000-0000-0000-0000-000000000000' } }));
-    for (const fn of ['bathrooms_recompute_closed', 'is_admin', 'bathroom_edits_rate_check']) {
+    for (const fn of ['bathrooms_recompute_closed', 'is_admin', 'bathroom_edits_rate_check', 'request_ip']) {
       const r = await call(`/rest/v1/rpc/${fn}`, { method: 'POST', body: {} });
       assert.ok([401, 403, 404].includes(r.status), `${fn}: expected 401/403/404, got ${r.status}`);
     }
